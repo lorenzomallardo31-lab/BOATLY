@@ -33,14 +33,17 @@ Initial supply: professional rental operators only.
 
 Private/P2P boat owners are not part of the initial MVP.
 
-## Technology Stack
+## Application Stack
 
-Planned stack:
+The application is based on:
 
 - Next.js
 - React
 - TypeScript
 - Tailwind CSS
+
+Additional planned platform technologies include:
+
 - shadcn/ui
 - Supabase
 - PostgreSQL
@@ -57,8 +60,12 @@ Planned stack:
 - Vitest
 - Playwright
 
-## Project Structure
+## Repository Structure
 
+The repository contains:
+
+- `src/` — application source code
+- `public/` — public static assets
 - `01_PRODUCT/` — product specifications
 - `02_DESIGN/` — brand, design system and UI specifications
 - `03_TECHNICAL/` — architecture, database and permissions
@@ -100,15 +107,13 @@ Planned stack:
 
 ## Project Status
 
-Phase A — Product & Technical Planning: Complete
+Phase A — Product & Technical Planning: Complete.
 
-Phase B — Design: Complete
+Phase B — Design: Complete.
 
-Phase C — Development: In progress
+Phase C — Development: In progress.
 
-Current step:
-
-`C1 — GitHub + Project Setup`
+Development progress is tracked through the project roadmap and Git history.
 
 ---
 
