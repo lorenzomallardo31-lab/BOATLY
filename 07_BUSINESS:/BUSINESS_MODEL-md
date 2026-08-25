@@ -1,0 +1,1816 @@
+# BOATLY — BUSINESS MODEL
+
+**Version:** 1.0
+**Status:** Approved business architecture — pricing hypotheses subject to validation
+**Project:** Boatly
+**Planning date:** August 2026
+
+---
+
+# 1. BUSINESS MODEL OBJECTIVE
+
+Boatly combines two complementary businesses:
+
+1. A B2C marketplace for boat rentals.
+2. A B2B SaaS management platform for professional rental operators.
+
+The commercial model must create alignment:
+
+Boatly earns more when operators receive more valuable bookings.
+
+At the same time, operators should be encouraged to use Boatly as their central fleet-management system even for reservations originating outside the Boatly marketplace.
+
+---
+
+# 2. PRIMARY VALUE PROPOSITION
+
+## For customers
+
+Boatly offers:
+
+* one marketplace
+* multiple operators
+* map-based comparison
+* real availability
+* transparent pricing
+* filters
+* online booking
+* secure online payment
+* verified reviews
+* simple booking management
+
+## For operators
+
+Boatly offers:
+
+* marketplace visibility
+* online booking
+* fleet management
+* centralized calendar
+* manual bookings
+* customer CRM
+* pricing
+* availability
+* staff management
+* skipper management
+* online payments
+* analytics
+* document management
+
+The strategic objective is for Boatly to become:
+
+the operating system of the rental business
+
+rather than simply another advertising website.
+
+---
+
+# 3. REVENUE STREAMS
+
+Boatly can generate revenue through several sources.
+
+## Core MVP revenue
+
+1. Marketplace booking commission
+2. SaaS operator subscriptions
+
+## Future revenue
+
+3. Sponsored listings
+4. Premium visibility
+5. Payment-related monetization where permitted
+6. Instant payout monetization where permitted
+7. Insurance partnerships
+8. Commercial partnerships
+9. API/channel-manager subscriptions
+10. Enterprise contracts
+
+The MVP should not depend on future revenue streams.
+
+---
+
+# 4. MARKETPLACE COMMISSION
+
+Boatly charges a commission only when a booking originates through the Boatly marketplace.
+
+Example:
+
+Customer searches on Boatly
+
+↓
+
+Customer books on Boatly
+
+↓
+
+Marketplace booking
+
+↓
+
+Boatly commission applies.
+
+---
+
+# 5. MANUAL BOOKINGS
+
+Manual bookings are reservations entered by operators into the Boatly management system.
+
+Examples:
+
+* telephone booking
+* WhatsApp booking
+* walk-in customer
+* returning customer
+* direct website lead
+* other offline/direct source
+
+Boatly marketplace commission:
+
+0%
+
+This is a fundamental commercial principle.
+
+The purpose is to encourage operators to place their entire reservation calendar inside Boatly.
+
+Manual bookings still consume:
+
+* fleet availability
+* calendar slots
+* CRM records
+* analytics
+* staff resources
+
+but do not generate marketplace commission.
+
+---
+
+# 6. WHY MANUAL BOOKINGS ARE FREE OF COMMISSION
+
+Charging commission on reservations Boatly did not generate would create an incentive for operators not to use the management platform.
+
+Instead:
+
+Direct reservation
+
+↓
+
+Operator enters it into Boatly
+
+↓
+
+0% marketplace commission
+
+↓
+
+Boatly calendar becomes accurate
+
+↓
+
+Marketplace availability becomes accurate
+
+↓
+
+Double bookings decrease
+
+↓
+
+Boatly marketplace improves
+
+This creates a positive network effect.
+
+---
+
+# 7. CUSTOMER BOOKING FEE
+
+Initial Boatly strategy:
+
+NO separate mandatory customer service fee at launch.
+
+The customer should see a transparent price.
+
+Example:
+
+Boat:
+
+€300
+
+Optional skipper:
+
+€120
+
+Total:
+
+€420
+
+Not:
+
+Boat €300
+
+then only at checkout:
+
+* Boatly booking fee
+* platform fee
+* unexpected charge
+
+Transparent pricing can become an important positioning advantage.
+
+A customer service fee may be introduced in the future only if:
+
+* economics require it
+* market testing supports it
+* it is clearly disclosed before checkout
+
+---
+
+# 8. COMMISSIONABLE AMOUNT
+
+Marketplace commission should apply to the commissionable booking subtotal.
+
+Initial rule:
+
+Commissionable:
+
+* boat rental price
+* Boatly-managed/operator-sold extras paid online where commercially applicable
+
+Not commissionable by default:
+
+* refundable security deposit
+* taxes collected purely on behalf of authorities
+* fuel paid directly at location
+* offline charges outside Boatly
+* refundable temporary authorizations
+
+The final accounting/tax treatment will be validated during A9 and professional legal/accounting review.
+
+---
+
+# 9. COMPETITIVE POSITIONING
+
+At the August 2026 planning date, public competitor information indicates marketplace owner commissions materially above Boatly's intended launch pricing.
+
+Reference benchmarks checked during planning include:
+
+* SamBoat: approximately 20% commission on rental price
+* Click&Boat: commission can reach approximately 26%, subject to individual agreements
+
+Boatly should initially position itself below large marketplace commission levels.
+
+This is not a permanent guarantee.
+
+Competitor pricing must be revalidated before commercial launch.
+
+---
+
+# 10. STANDARD COMMERCIAL MODEL
+
+Recommended Boatly pricing architecture:
+
+## STARTER
+
+Monthly subscription:
+
+€0
+
+Marketplace commission:
+
+15%
+
+Target:
+
+small operators and initial adoption.
+
+Includes:
+
+* marketplace listing
+* basic fleet management
+* basic calendar
+* manual bookings
+* basic availability
+* basic customer management
+* basic dashboard
+* online marketplace bookings
+* standard support
+
+Initial suggested fleet limit:
+
+5 boats.
+
+---
+
+# 11. PRO
+
+Monthly subscription:
+
+€49/month
+
+Marketplace commission:
+
+10%
+
+Target:
+
+professional rental companies using Boatly as an operational system.
+
+Includes everything in STARTER plus:
+
+* larger fleet
+* advanced calendar
+* multi-location support
+* full CRM
+* staff management
+* skipper management
+* advanced pricing
+* advanced extras
+* document management
+* payment dashboard
+* enhanced analytics
+* priority support
+
+Initial suggested fleet limit:
+
+25 boats.
+
+Commercial limits may be adjusted after real operator testing.
+
+---
+
+# 12. BUSINESS
+
+Monthly subscription:
+
+€99/month
+
+Marketplace commission:
+
+7%
+
+Target:
+
+larger professional rental operators.
+
+Includes PRO plus:
+
+* larger fleet capacity
+* multiple locations
+* advanced staff operations
+* advanced analytics
+* business reporting
+* priority onboarding
+* enhanced support
+* future integration benefits
+
+Initial suggested fleet limit:
+
+100 boats.
+
+The exact feature limits remain a commercial configuration, not hardcoded business assumptions.
+
+---
+
+# 13. ENTERPRISE
+
+Pricing:
+
+Custom
+
+Target:
+
+* very large rental operators
+* fleets exceeding standard limits
+* multi-brand organizations
+* franchises
+* large marina groups
+* custom integrations
+
+Potential features:
+
+* negotiated marketplace commission
+* custom fleet limits
+* custom onboarding
+* dedicated support
+* API access
+* integrations
+* custom reporting
+* service-level agreements
+
+Enterprise is not required for the MVP.
+
+---
+
+# 14. FOUNDING OPERATOR / PILOT PROGRAM
+
+The first Boatly operators should not immediately be treated like mature paying SaaS customers.
+
+Recommended pilot offer:
+
+FOUNDING OPERATOR
+
+Duration:
+
+approximately first 6 months or another explicitly agreed pilot period.
+
+Monthly fee:
+
+€0
+
+Marketplace commission:
+
+8%
+
+Access:
+
+full PRO functionality during pilot.
+
+Objective:
+
+* onboard initial fleet supply
+* collect feedback
+* test booking flows
+* validate operational workflows
+* validate pricing
+* generate testimonials
+* identify missing features
+* obtain real marketplace data
+
+The offer must have an explicit end date or commercial transition condition.
+
+It must not accidentally become a permanent contractual promise.
+
+---
+
+# 15. WHY USE MULTIPLE PLANS
+
+The model creates three incentives.
+
+## Small operator
+
+No monthly risk.
+
+Uses STARTER.
+
+Pays Boatly only when Boatly generates marketplace revenue.
+
+## Growing operator
+
+Pays €49/month.
+
+Receives better management tools and lower marketplace commission.
+
+## Larger operator
+
+Pays €99/month.
+
+Receives advanced management capability and an even lower marketplace commission.
+
+Therefore the operator can reduce commission by becoming a deeper Boatly customer.
+
+---
+
+# 16. PLAN CONFIGURATION
+
+Plan pricing must NOT be hardcoded throughout application code.
+
+Future database architecture should support commercial plans/configuration such as:
+
+* plan name
+* monthly price
+* marketplace commission
+* boat limit
+* location limit
+* staff limit
+* feature availability
+* effective date
+
+Exact subscription architecture will be designed when subscription billing is implemented.
+
+For the initial pilot, operator plans may be assigned administratively.
+
+---
+
+# 17. SUBSCRIPTION BILLING
+
+Long-term subscription billing can use Stripe Billing.
+
+Examples:
+
+PRO:
+
+€49/month
+
+BUSINESS:
+
+€99/month
+
+Potential future options:
+
+* monthly billing
+* annual billing with discount
+
+Example future strategy:
+
+PRO annual:
+
+10 months equivalent instead of 12.
+
+This is not required for the first pilot.
+
+Pilot operators can initially have plans provisioned administratively.
+
+---
+
+# 18. MARKETPLACE BOOKING ECONOMICS
+
+Example:
+
+Boat rental:
+
+€300
+
+Operator plan:
+
+PRO
+
+Marketplace commission:
+
+10%
+
+Boatly gross marketplace commission:
+
+€30
+
+Operator commercial amount before applicable payment-processing/accounting effects:
+
+€270
+
+The actual settlement breakdown must also consider:
+
+* payment processing costs
+* Connect costs
+* refunds
+* tax/VAT treatment
+* other legally applicable components
+
+These must be represented separately in financial records.
+
+---
+
+# 19. STARTER EXAMPLE
+
+Booking value:
+
+€300
+
+Starter commission:
+
+15%
+
+Boatly marketplace commission:
+
+€45
+
+Commercial operator amount before applicable processing/accounting effects:
+
+€255
+
+---
+
+# 20. BUSINESS EXAMPLE
+
+Booking value:
+
+€300
+
+Business commission:
+
+7%
+
+Boatly marketplace commission:
+
+€21
+
+Commercial operator amount before applicable processing/accounting effects:
+
+€279
+
+Plus:
+
+Business subscription revenue.
+
+---
+
+# 21. PAYMENT PROCESSING COSTS
+
+Stripe processing costs are not Boatly revenue.
+
+The financial model must distinguish:
+
+Customer amount
+
+↓
+
+Gross booking value
+
+↓
+
+Payment-provider costs
+
+↓
+
+Boatly marketplace commission
+
+↓
+
+Operator amount
+
+The exact commercial treatment of payment-processing costs must be finalized before production.
+
+Preferred customer-facing principle:
+
+avoid surprising the customer with a separate card-processing surcharge.
+
+Potential operational strategies include:
+
+1. Boatly absorbs processing costs within its marketplace commission.
+2. Processing costs are deducted transparently from operator settlement.
+3. Boatly uses a negotiated hybrid model.
+
+The final decision will depend on:
+
+* Stripe Connect architecture
+* booking values
+* card mix
+* actual transaction volume
+* commercial negotiations
+* tax/accounting advice
+
+For launch modeling, Boatly should assume payment processing is a real cost that reduces contribution margin.
+
+---
+
+# 22. STRIPE COST BENCHMARK
+
+At the August 2026 planning date, Stripe Italy publicly lists standard EEA card processing around:
+
+1.5% + €0.25 per successful standard EEA card payment.
+
+Different cards and currencies can cost more.
+
+Stripe Connect can also generate platform/account/payout costs depending on the Connect pricing model selected.
+
+These costs must be revalidated immediately before financial launch.
+
+They must never be confused with Boatly's own marketplace commission.
+
+---
+
+# 23. PAYMENT COST STRATEGY FOR PILOT
+
+Recommended initial strategy:
+
+Boatly absorbs normal payment-processing costs inside the marketplace economics during the small pilot.
+
+Reason:
+
+* simpler sales proposition
+* easier operator onboarding
+* no hidden operator fees
+* clean commercial testing
+
+After real transaction data exists:
+
+calculate actual payment cost percentage.
+
+Then decide whether:
+
+* continue absorbing it
+* partially pass it to operators
+* incorporate it into plan pricing
+* renegotiate processing rates
+
+No irreversible pricing decision should be made before transaction data exists.
+
+---
+
+# 24. SECURITY DEPOSIT
+
+Security deposit is not Boatly marketplace revenue.
+
+It must be treated separately.
+
+Possible future models:
+
+* card authorization
+* deposit managed by operator
+* dedicated provider mechanism
+
+The deposit:
+
+* should not generate normal marketplace commission
+* should not be included in GMV as rental revenue without deliberate accounting definition
+* must be clearly displayed to customer
+
+Final technical deposit architecture will be designed separately.
+
+---
+
+# 25. EXTRAS
+
+Examples:
+
+* skipper
+* snorkeling equipment
+* transfer
+* cleaning
+* equipment rental
+
+For MVP commercial simplicity:
+
+online operator extras can use the same marketplace commission logic as the booking commissionable subtotal unless specifically excluded.
+
+The architecture should allow future differentiated commission rates for extras if market testing justifies it.
+
+Offline extras do not generate Boatly marketplace commission unless Boatly actually processes/sells the service.
+
+---
+
+# 26. FUEL
+
+Fuel policy varies heavily between operators and boats.
+
+Possible models:
+
+* included
+* excluded
+* fixed fuel fee
+* customer refuels
+* operator calculates after rental
+
+Fuel must therefore be configured separately from the normal base boat price.
+
+Fuel paid directly/offline should not automatically generate Boatly marketplace commission.
+
+---
+
+# 27. SKIPPER ECONOMICS
+
+Skipper can be:
+
+* included in boat price
+* mandatory extra
+* optional extra
+* unavailable
+
+Where skipper is part of the online booking amount, the commercial treatment must be clearly configured.
+
+Where skipper is paid directly outside Boatly, Boatly must not falsely treat the amount as platform-processed revenue.
+
+Tax/legal classification must be reviewed in A9.
+
+---
+
+# 28. MARKETPLACE BOOKING SOURCE
+
+Every booking has a source.
+
+Initial values:
+
+MARKETPLACE
+
+MANUAL
+
+Commission rule:
+
+MARKETPLACE
+
+→ eligible for Boatly marketplace commission.
+
+MANUAL
+
+→ 0% Boatly marketplace commission.
+
+The booking stores this source permanently.
+
+Changing the booking later must not falsely change commission history.
+
+---
+
+# 29. FUTURE BOOKING SOURCES
+
+Future examples may include:
+
+* OPERATOR_WEBSITE
+* API
+* CHANNEL_MANAGER
+* PARTNER
+* IMPORT
+
+Each source can have its own commercial rules.
+
+The MVP only needs:
+
+MARKETPLACE
+MANUAL
+
+---
+
+# 30. COMMISSION SNAPSHOT
+
+Every confirmed marketplace booking must store the exact commission agreement used.
+
+Example:
+
+Operator current commission:
+
+10%
+
+Booking confirmed.
+
+Six months later operator upgrades and commission becomes:
+
+7%
+
+Old booking remains:
+
+10%
+
+New bookings use:
+
+7%
+
+This is why DATABASE_SCHEMA.md already includes:
+
+commission_snapshot.
+
+---
+
+# 31. PRICING PLAN SNAPSHOT
+
+Where relevant, Boatly should also be able to identify which commercial plan/rule generated a booking's commission.
+
+This supports:
+
+* accounting
+* disputes
+* reporting
+* commercial analysis
+
+Future plan changes must not rewrite historical financial records.
+
+---
+
+# 32. DISCOUNTS AND PROMOTIONS
+
+Boatly may later create promotional codes.
+
+Important distinction:
+
+## Boatly-funded discount
+
+Example:
+
+Boat price:
+
+€300
+
+Boatly gives customer:
+
+€20 promotional discount.
+
+Operator should not automatically lose €20.
+
+Boatly can fund the discount from its own commercial margin.
+
+## Operator-funded discount
+
+Operator intentionally reduces rental price.
+
+The lower price becomes the commissionable rental value.
+
+The funding source of every promotion must therefore be explicit.
+
+---
+
+# 33. OPERATOR CANCELLATION
+
+Operator cancellations damage marketplace trust.
+
+Recommended policy architecture:
+
+First exceptional cancellation:
+
+warning/review depending on reason.
+
+Repeated unjustified cancellations may cause:
+
+* ranking penalty
+* temporary listing restriction
+* operator suspension
+* financial penalty where contractually/legal permitted
+
+Customer must receive the applicable refund.
+
+Boatly must preserve cancellation metrics for operator quality scoring.
+
+Exact penalties will be finalized in commercial terms.
+
+---
+
+# 34. CUSTOMER CANCELLATION
+
+Customer refund is determined by the cancellation policy snapshot stored in the booking.
+
+Example:
+
+€300 booking
+
+Applicable policy allows 50% refund.
+
+Customer receives:
+
+€150
+
+The economic allocation of the retained €150 must follow the contractual commercial rules.
+
+Boatly commission should be calculated according to the final retained rental economics rather than blindly preserving commission on value returned to the customer.
+
+Exact accounting implementation will be validated before production.
+
+---
+
+# 35. FULL REFUND
+
+Where a booking is fully refunded:
+
+the platform should not treat the original booking value as realized marketplace revenue.
+
+Boatly's commission should normally reverse economically along with the refunded booking value, subject to:
+
+* non-refundable provider processing costs
+* operator cancellation responsibility
+* contractual penalties
+* exceptional dispute costs
+
+---
+
+# 36. PAYMENT PROCESSING COST AFTER REFUND
+
+Payment providers may not return all original processing costs after a refund.
+
+Therefore:
+
+Customer refund
+
+and
+
+Boatly/operator economic settlement
+
+are separate calculations.
+
+Boatly must track:
+
+* customer refund amount
+* Boatly commission adjustment
+* provider cost
+* operator settlement adjustment
+
+This prevents hidden financial losses.
+
+---
+
+# 37. OPERATOR PAYOUT POLICY
+
+Recommended initial marketplace payout policy:
+
+Customer pays at booking.
+
+↓
+
+Funds are processed securely.
+
+↓
+
+Booking takes place.
+
+↓
+
+Payout becomes eligible after the rental has successfully passed the defined payout-release point.
+
+Initial commercial target:
+
+approximately 24 hours after scheduled rental completion.
+
+This can be adjusted depending on:
+
+* Stripe Connect limitations
+* fraud risk
+* disputes
+* cancellation windows
+* operator history
+
+Exact technical payout timing will be finalized during D5.
+
+---
+
+# 38. WHY NOT IMMEDIATE PAYOUT
+
+Immediate payout at booking creates additional risk.
+
+Example:
+
+Customer books in May.
+
+Rental happens in August.
+
+Operator receives funds immediately.
+
+Rental is cancelled in July.
+
+Boatly must recover funds.
+
+A delayed marketplace payout simplifies:
+
+* cancellations
+* fraud
+* refunds
+* operator failure
+* disputes
+
+However, operator cash-flow needs must be considered before final launch policy.
+
+---
+
+# 39. MANUAL BOOKING PAYMENTS
+
+Manual bookings can use payment methods such as:
+
+* CASH
+* BANK_TRANSFER
+* CARD_AT_LOCATION
+* OTHER
+
+Boatly only records the status.
+
+Example:
+
+€300 paid in cash.
+
+Boatly records:
+
+MANUAL PAYMENT — €300
+
+But:
+
+Boatly did not process €300.
+
+Therefore:
+
+* it is not Stripe volume
+* it is not Boatly marketplace GMV unless specifically defined for analytics
+* it generates no marketplace commission
+
+This distinction is critical.
+
+---
+
+# 40. MANAGED GMV VS TOTAL OPERATOR VOLUME
+
+Boatly should track two different metrics.
+
+## Marketplace GMV
+
+Value of marketplace bookings generated through Boatly.
+
+## Managed Booking Volume
+
+Value of all reservations managed in Boatly:
+
+Marketplace
+
+*
+
+Manual.
+
+Example:
+
+Marketplace bookings:
+
+€10,000
+
+Manual bookings:
+
+€20,000
+
+Marketplace GMV:
+
+€10,000
+
+Managed Booking Volume:
+
+€30,000
+
+This shows how important Boatly has become to the operator beyond marketplace revenue.
+
+---
+
+# 41. BOATLY REVENUE
+
+Revenue metrics should distinguish:
+
+## Marketplace commission revenue
+
+Revenue generated from marketplace transactions.
+
+## Subscription revenue
+
+Recurring operator subscription revenue.
+
+## Other revenue
+
+Future:
+
+* sponsorships
+* partner commissions
+* premium services
+
+Never equate:
+
+GMV
+
+with
+
+Boatly revenue.
+
+---
+
+# 42. CORE PLATFORM KPI
+
+Primary business KPIs:
+
+## Supply
+
+* active operators
+* published boats
+* active locations
+
+## Demand
+
+* searches
+* active customers
+* booking conversion
+
+## Marketplace
+
+* marketplace bookings
+* Marketplace GMV
+* average booking value
+* cancellation rate
+* repeat booking rate
+
+## SaaS
+
+* active operator accounts
+* managed bookings
+* Managed Booking Volume
+* paid subscriptions
+* MRR
+* churn
+
+## Revenue
+
+* marketplace commission revenue
+* subscription revenue
+* total Boatly revenue
+
+---
+
+# 43. TAKE RATE
+
+Take Rate:
+
+Boatly marketplace commission revenue
+
+÷
+
+Marketplace GMV
+
+Example:
+
+Marketplace GMV:
+
+€100,000
+
+Commission revenue:
+
+€10,000
+
+Take Rate:
+
+10%
+
+Payment-provider fees are costs and should not artificially inflate marketplace revenue.
+
+---
+
+# 44. CONTRIBUTION MARGIN
+
+Boatly must monitor more than revenue.
+
+Simplified contribution calculation:
+
+Marketplace commission revenue
+
+MINUS
+
+payment processing
+
+MINUS
+
+refund-related unrecovered costs
+
+MINUS
+
+transaction-specific support/fraud costs
+
+=
+
+Marketplace contribution margin
+
+A 10% commission is not automatically a 10% profit margin.
+
+---
+
+# 45. SaaS METRICS
+
+When subscriptions launch, Boatly should measure:
+
+* MRR
+* ARR
+* ARPU
+* paid conversion
+* upgrade rate
+* downgrade rate
+* operator churn
+* subscription revenue by plan
+
+---
+
+# 46. OPERATOR ACQUISITION STRATEGY
+
+Initial supply acquisition should prioritize professional operators.
+
+Ideal early target:
+
+small-to-medium professional operators with approximately:
+
+3–30 boats
+
+Why:
+
+* enough inventory to matter
+* real calendar pain
+* need for management software
+* ability to generate multiple bookings
+* easier onboarding than large enterprise organizations
+
+---
+
+# 47. GEOGRAPHICAL LAUNCH STRATEGY
+
+Boatly should initially concentrate supply geographically.
+
+Better:
+
+100 boats concentrated around a strong destination cluster
+
+than:
+
+100 boats spread thinly across all Italy.
+
+Potential launch cluster example:
+
+Gulf of Naples / Campania
+
+* Napoli
+* Pozzuoli
+* Bacoli
+* Ischia
+* Procida
+* Capri
+* Sorrento
+* Amalfi Coast expansion
+
+Exact launch geography is a commercial decision.
+
+The marketplace becomes more useful when customer searches consistently return enough comparable inventory.
+
+---
+
+# 48. SUPPLY-FIRST STRATEGY
+
+Before aggressively buying customer traffic:
+
+build inventory.
+
+Target sequence:
+
+Operators
+
+↓
+
+Boats
+
+↓
+
+Accurate availability
+
+↓
+
+Quality listings
+
+↓
+
+Marketplace launch
+
+↓
+
+Customer acquisition
+
+A marketplace with no supply damages customer trust.
+
+---
+
+# 49. FOUNDING OPERATOR VALUE
+
+Founding operators provide Boatly with:
+
+* real fleet inventory
+* real operational feedback
+* booking workflow feedback
+* testimonials
+* early reviews
+* pricing feedback
+* usability data
+
+In exchange they receive:
+
+* lower commission
+* free PRO access
+* direct product influence
+* onboarding support
+* early visibility
+
+---
+
+# 50. MARKETPLACE RANKING AND PAID VISIBILITY
+
+Organic ranking must primarily depend on useful marketplace factors.
+
+Examples:
+
+* availability
+* relevance
+* distance
+* rating
+* response quality
+* listing quality
+* conversion
+* cancellation reliability
+
+Future sponsored placement may exist.
+
+If introduced, sponsored listings must be clearly identifiable and must not destroy marketplace relevance.
+
+---
+
+# 51. SPONSORED LISTINGS — FUTURE
+
+Potential model:
+
+Operator pays for enhanced visibility.
+
+Examples:
+
+* featured destination position
+* homepage feature
+* sponsored search placement
+
+Possible pricing:
+
+* fixed campaign
+* monthly fee
+* additional commission
+
+NOT required for MVP.
+
+---
+
+# 52. INSURANCE — FUTURE
+
+Future Boatly revenue could come from insurance partnerships.
+
+Examples:
+
+* cancellation protection
+* security-deposit protection
+* rental insurance products
+
+Boatly should not become an insurance intermediary without proper legal/regulatory evaluation.
+
+Not MVP.
+
+---
+
+# 53. PARTNERSHIP REVENUE — FUTURE
+
+Potential partners:
+
+* marinas
+* fuel services
+* nautical equipment
+* tourism experiences
+* transfers
+* hotels
+* travel providers
+
+Partner revenue must never reduce marketplace trust through irrelevant upselling.
+
+---
+
+# 54. OPERATOR DIRECT BOOKING WIDGET — FUTURE
+
+A high-value future SaaS feature:
+
+Boatly booking widget for operator websites.
+
+Example:
+
+marioboatrental.it
+
+↓
+
+"Prenota"
+
+↓
+
+Boatly availability engine
+
+↓
+
+Boatly booking engine
+
+Commercial model could differ from marketplace commission because Boatly did not generate the customer lead.
+
+Possible future model:
+
+* included in paid SaaS plan
+* lower payment/technology fee
+* fixed subscription usage
+
+Not required for MVP.
+
+---
+
+# 55. CHANNEL MANAGER — FUTURE
+
+Future Boatly could synchronize availability with:
+
+* operator website
+* other marketplaces
+* external management systems
+
+Potential enterprise SaaS revenue.
+
+Do not implement during MVP.
+
+---
+
+# 56. COMMERCIAL PRINCIPLE — NO LOCK-IN
+
+Operators must trust Boatly.
+
+Avoid artificial lock-in such as:
+
+* hiding their own customer information
+* making calendar exports impossible forever
+* deliberately blocking business data access
+
+The product should retain operators because:
+
+it is useful
+
+not because:
+
+leaving is technically painful.
+
+---
+
+# 57. COMMERCIAL PRINCIPLE — TRANSPARENCY
+
+Operator must always understand:
+
+Customer paid:
+
+X
+
+Boatly commission:
+
+Y
+
+Refund:
+
+Z
+
+Operator amount:
+
+W
+
+Payment status:
+
+...
+
+No unexplained financial black box.
+
+Customer must also understand:
+
+Rental price
+
+Extras
+
+Deposit
+
+Refund conditions
+
+Total.
+
+---
+
+# 58. COMMERCIAL PRINCIPLE — CONFIGURABILITY
+
+Do not hardcode:
+
+15%
+
+10%
+
+7%
+
+throughout application code.
+
+Commission comes from:
+
+commercial rule configuration.
+
+Booking stores:
+
+commission snapshot.
+
+This allows Boatly to negotiate:
+
+Operator A:
+
+10%
+
+Operator B:
+
+8%
+
+Operator C:
+
+custom enterprise agreement.
+
+---
+
+# 59. COMMERCIAL PRINCIPLE — NO RETROACTIVE CHANGES
+
+Changes to:
+
+* plan
+* commission
+* pricing
+* cancellation policy
+
+affect future eligible activity.
+
+They do not rewrite financial history.
+
+---
+
+# 60. SALES OFFER TO FIRST OPERATOR
+
+Recommended first commercial proposition:
+
+"Boatly centralizes your fleet, availability, customers and reservations in one dashboard.
+
+You can also use it for bookings received by phone or WhatsApp at no marketplace commission.
+
+When Boatly brings you a new customer through the marketplace, Boatly earns a commission.
+
+During the Founding Operator pilot, there is no monthly subscription and the marketplace commission is reduced."
+
+This is substantially easier to sell than:
+
+"Pay €99 per month for software you have never tested."
+
+---
+
+# 61. PILOT SUCCESS CRITERIA
+
+Before considering the commercial model validated, Boatly should have measurable pilot evidence.
+
+Suggested minimum validation goals:
+
+* 3–5 active operators
+* meaningful real fleet inventory
+* operators updating availability
+* manual bookings actively entered
+* marketplace test bookings completed
+* successful payment/refund testing
+* operator feedback collected
+* management dashboard used repeatedly
+
+The exact numbers are targets, not product requirements.
+
+---
+
+# 62. PILOT QUESTIONS TO VALIDATE
+
+Ask operators:
+
+1. Would you manage all your reservations in Boatly?
+2. What system do you currently use?
+3. What part saves the most time?
+4. What functionality is missing?
+5. Is a 15% free-plan marketplace commission acceptable?
+6. Would you pay €49/month to reduce commission and unlock advanced management?
+7. Would you pay €99/month for advanced multi-location/fleet tools?
+8. Which pricing structure feels simplest?
+9. How do you currently handle deposits?
+10. How do you currently handle cancellations/refunds?
+11. How and when do you expect payouts?
+12. Which reports are essential?
+
+Commercial pricing must be validated using real interviews.
+
+---
+
+# 63. MVP BUSINESS MODEL
+
+The initial production architecture supports:
+
+## Marketplace
+
+* marketplace commission
+* operator-specific commission
+* commission snapshots
+* Marketplace GMV
+* payment reconciliation
+
+## Operator SaaS
+
+Commercial tiers:
+
+* STARTER
+* PRO
+* BUSINESS
+
+Pilot:
+
+* FOUNDING OPERATOR
+
+## Manual bookings
+
+0% marketplace commission.
+
+## Customer
+
+No separate Boatly customer booking fee at launch.
+
+## Future
+
+* enterprise
+* sponsorship
+* insurance
+* partner revenue
+* direct booking widgets
+* integrations
+
+---
+
+# 64. PROVISIONAL PLAN TABLE
+
+| Plan              |     Monthly fee | Marketplace commission | Main target            |
+| ----------------- | --------------: | ---------------------: | ---------------------- |
+| Founding Operator | €0 during pilot |                     8% | First pilot partners   |
+| Starter           |              €0 |                    15% | Small/new operators    |
+| Pro               |             €49 |                    10% | Professional operators |
+| Business          |             €99 |                     7% | Larger fleets          |
+| Enterprise        |          Custom |                 Custom | Large organizations    |
+
+All pricing values are commercial launch hypotheses.
+
+They must remain configurable.
+
+Prices, VAT display and contractual treatment require validation before production sale.
+
+---
+
+# 65. STRATEGIC DIFFERENTIATOR
+
+Boatly should not compete only on:
+
+"we have boats too."
+
+Its strategic proposition is:
+
+MARKETPLACE
+
+*
+
+FULL OPERATOR MANAGEMENT SYSTEM
+
+A marketplace competitor can generate reservations.
+
+Boatly should generate reservations AND become the system where operators manage:
+
+* Boatly reservations
+* telephone reservations
+* WhatsApp reservations
+* fleet
+* availability
+* customers
+* staff
+* skippers
+* payments
+* analytics
+
+This creates significantly deeper product value.
+
+---
+
+# 66. A8 FINAL BUSINESS RULES
+
+Initial Boatly commercial rules:
+
+1. Marketplace bookings generate Boatly commission.
+
+2. Manual bookings generate 0% marketplace commission.
+
+3. Customer has no separate mandatory Boatly booking fee at launch.
+
+4. Commission is configurable.
+
+5. Commission is snapshotted on each booking.
+
+6. Subscription plans can reduce marketplace commission.
+
+7. Founding operators receive a temporary preferential pilot offer.
+
+8. Security deposits are separate from marketplace revenue.
+
+9. Payment-provider costs are tracked separately from Boatly commission.
+
+10. Refunds adjust realized economic results.
+
+11. Provider fees must not be mistaken for Boatly revenue.
+
+12. Marketplace GMV and Managed Booking Volume are different metrics.
+
+13. Historical financial terms are immutable.
+
+14. Future enterprise agreements are supported.
+
+15. Commercial rules must remain configuration-driven.
+
+---
+
+# 67. A8 COMPLETION CRITERIA
+
+A8 is complete when Boatly has defined:
+
+* primary revenue model
+* marketplace commission
+* manual-booking economics
+* customer fee strategy
+* operator subscription strategy
+* Starter plan
+* Pro plan
+* Business plan
+* pilot/founding operator plan
+* Enterprise direction
+* Stripe cost treatment
+* security-deposit treatment
+* extras/fuel/skipper principles
+* refunds
+* operator cancellations
+* payout target
+* GMV
+* Managed Booking Volume
+* take rate
+* contribution margin
+* MRR
+* operator acquisition strategy
+* geographical launch logic
+* future revenue streams
+
+Exact legally binding prices and tax treatment will be validated before commercial launch.
