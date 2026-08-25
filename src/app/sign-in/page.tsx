@@ -7,19 +7,37 @@ type SignInPageProps = {
     error?: string;
     next?: string;
     signedOut?: string;
+    passwordUpdated?: string;
   }>;
 };
+
+function getErrorMessage(error?: string) {
+  switch (error) {
+    case "invalid-credentials":
+      return "Email o password non corretti, oppure l'account non è ancora disponibile per l'accesso.";
+
+    case "invalid-form":
+      return "Inserisci email e password.";
+
+    case "confirmation-failed":
+      return "Il link di autenticazione non è valido o è scaduto. Riprova.";
+
+    default:
+      return null;
+  }
+}
 
 export default async function SignInPage({
   searchParams,
 }: SignInPageProps) {
   const params = await searchParams;
 
-  const hasError = params.error === "invalid-credentials";
-  const invalidForm = params.error === "invalid-form";
+  const errorMessage =
+    getErrorMessage(params.error);
 
   const next =
-    params.next?.startsWith("/") && !params.next.startsWith("//")
+    params.next?.startsWith("/") &&
+    !params.next.startsWith("//")
       ? params.next
       : "/account";
 
@@ -43,7 +61,8 @@ export default async function SignInPage({
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[#64748B]">
-            Inserisci email e password per accedere al tuo account.
+            Inserisci email e password per accedere al tuo
+            account.
           </p>
 
           {params.signedOut === "1" ? (
@@ -52,16 +71,16 @@ export default async function SignInPage({
             </div>
           ) : null}
 
-          {hasError ? (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-              Email o password non corretti, oppure l&apos;account non è
-              ancora disponibile per l&apos;accesso.
+          {params.passwordUpdated === "1" ? (
+            <div className="mt-6 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">
+              Password aggiornata correttamente. Puoi effettuare
+              nuovamente l&apos;accesso.
             </div>
           ) : null}
 
-          {invalidForm ? (
+          {errorMessage ? (
             <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-              Inserisci email e password.
+              {errorMessage}
             </div>
           ) : null}
 
@@ -92,12 +111,21 @@ export default async function SignInPage({
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm font-medium"
-              >
-                Password
-              </label>
+              <div className="mb-2 flex items-center justify-between gap-4">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium"
+                >
+                  Password
+                </label>
+
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-medium text-[#14B8A6] hover:underline"
+                >
+                  Password dimenticata?
+                </Link>
+              </div>
 
               <input
                 id="password"
