@@ -9,6 +9,7 @@ type OperatorOnboardingPageProps = {
   searchParams: Promise<{
     operator?: string;
     created?: string;
+    legalSaved?: string;
     error?: string;
   }>;
 };
@@ -17,6 +18,20 @@ type OperatorSummary = {
   id: string;
   name: string;
   status: string;
+};
+
+type LegalProfileSummary = {
+  legal_name: string | null;
+  legal_form: string | null;
+  vat_number: string | null;
+  tax_code: string | null;
+  registered_address_line_1: string | null;
+  registered_city: string | null;
+  registered_administrative_area: string | null;
+  registered_postal_code: string | null;
+  registered_country_code: string;
+  legal_representative_first_name: string | null;
+  legal_representative_last_name: string | null;
 };
 
 function getErrorMessage(error?: string) {
@@ -32,6 +47,28 @@ function getErrorMessage(error?: string) {
   }
 }
 
+function isLegalProfileComplete(
+  profile: LegalProfileSummary | null,
+) {
+  if (!profile) {
+    return false;
+  }
+
+  return Boolean(
+    profile.legal_name?.trim() &&
+      profile.legal_form?.trim() &&
+      profile.vat_number?.trim() &&
+      profile.tax_code?.trim() &&
+      profile.registered_address_line_1?.trim() &&
+      profile.registered_city?.trim() &&
+      profile.registered_administrative_area?.trim() &&
+      profile.registered_postal_code?.trim() &&
+      profile.registered_country_code === "IT" &&
+      profile.legal_representative_first_name?.trim() &&
+      profile.legal_representative_last_name?.trim(),
+  );
+}
+
 export default async function OperatorOnboardingPage({
   searchParams,
 }: OperatorOnboardingPageProps) {
@@ -39,8 +76,10 @@ export default async function OperatorOnboardingPage({
 
   const supabase = await createClient();
 
-  const { data: claimsData, error: claimsError } =
-    await supabase.auth.getClaims();
+  const {
+    data: claimsData,
+    error: claimsError,
+  } = await supabase.auth.getClaims();
 
   if (
     claimsError ||
@@ -54,6 +93,7 @@ export default async function OperatorOnboardingPage({
 
   const userId = claimsData.claims.sub;
 
+
   const {
     data: memberships,
     error: membershipsError,
@@ -64,19 +104,23 @@ export default async function OperatorOnboardingPage({
     .eq("role", "OWNER")
     .eq("status", "ACTIVE");
 
+
   if (membershipsError) {
     throw new Error(
       "Unable to load operator memberships.",
     );
   }
 
+
   const operatorIds = Array.from(
     new Set(
       (memberships ?? []).map(
-        (membership) => membership.operator_id,
+        (membership) =>
+          membership.operator_id,
       ),
     ),
   );
+
 
   let operators: OperatorSummary[] = [];
 
@@ -95,15 +139,18 @@ export default async function OperatorOnboardingPage({
       );
     }
 
-    operators = (operatorRows ?? []) as OperatorSummary[];
+    operators =
+      (operatorRows ?? []) as OperatorSummary[];
   }
 
+
   const requestedOperator =
-    params.operator &&
-    operators.find(
-      (operator) =>
-        operator.id === params.operator,
-    );
+    params.operator
+      ? operators.find(
+          (operator) =>
+            operator.id === params.operator,
+        )
+      : undefined;
 
   const draftOperator =
     operators.find(
@@ -112,10 +159,14 @@ export default async function OperatorOnboardingPage({
     );
 
   const selectedOperator =
-    requestedOperator || draftOperator || null;
+    requestedOperator ||
+    draftOperator ||
+    null;
+
 
   const errorMessage =
     getErrorMessage(params.error);
+
 
   if (!selectedOperator) {
     return (
@@ -136,6 +187,7 @@ export default async function OperatorOnboardingPage({
               Torna al tuo account
             </Link>
           </div>
+
 
           <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
             <section>
@@ -166,6 +218,7 @@ export default async function OperatorOnboardingPage({
                 </p>
               </div>
             </section>
+
 
             <section className="rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
               <p className="text-sm font-medium text-[#14B8A6]">
@@ -231,6 +284,49 @@ export default async function OperatorOnboardingPage({
     );
   }
 
+
+  const {
+    data: legalProfileRow,
+    error: legalProfileError,
+  } = await supabase
+    .from("operator_legal_profiles")
+    .select(`
+      legal_name,
+      legal_form,
+      vat_number,
+      tax_code,
+      registered_address_line_1,
+      registered_city,
+      registered_administrative_area,
+      registered_postal_code,
+      registered_country_code,
+      legal_representative_first_name,
+      legal_representative_last_name
+    `)
+    .eq(
+      "operator_id",
+      selectedOperator.id,
+    )
+    .maybeSingle();
+
+
+  if (legalProfileError) {
+    throw new Error(
+      "Unable to load operator legal profile.",
+    );
+  }
+
+
+  const legalProfile =
+    legalProfileRow as LegalProfileSummary | null;
+
+  const legalComplete =
+    isLegalProfileComplete(legalProfile);
+
+  const completedSteps =
+    legalComplete ? 2 : 1;
+
+
   const steps = [
     {
       number: "01",
@@ -240,14 +336,21 @@ export default async function OperatorOnboardingPage({
       status: "Completato",
       completed: true,
     },
+
     {
       number: "02",
       title: "Dati aziendali e legali",
       description:
-        "Inseriremo le informazioni anagrafiche e fiscali dell'attività.",
-      status: "Da completare",
-      completed: false,
+        legalComplete
+          ? "Le informazioni aziendali e legali sono state salvate."
+          : "Inserisci le informazioni anagrafiche, fiscali e societarie dell'attività.",
+      status:
+        legalComplete
+          ? "Completato"
+          : "Da completare",
+      completed: legalComplete,
     },
+
     {
       number: "03",
       title: "Prima sede operativa",
@@ -256,6 +359,7 @@ export default async function OperatorOnboardingPage({
       status: "Da completare",
       completed: false,
     },
+
     {
       number: "04",
       title: "Documenti",
@@ -264,6 +368,7 @@ export default async function OperatorOnboardingPage({
       status: "Da completare",
       completed: false,
     },
+
     {
       number: "05",
       title: "Invio a Boatly",
@@ -273,6 +378,7 @@ export default async function OperatorOnboardingPage({
       completed: false,
     },
   ];
+
 
   return (
     <main className="min-h-screen bg-[#FCFBF8] px-4 py-8 text-[#0B1F33] sm:px-6 sm:py-10">
@@ -293,12 +399,22 @@ export default async function OperatorOnboardingPage({
           </Link>
         </header>
 
+
         {params.created === "1" ? (
           <div className="mt-8 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">
             <strong>Workspace creato.</strong>{" "}
             Ora completiamo l&apos;onboarding della tua attività.
           </div>
         ) : null}
+
+
+        {params.legalSaved === "1" ? (
+          <div className="mt-8 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">
+            <strong>Dati aziendali salvati.</strong>{" "}
+            Il passaggio 2 dell&apos;onboarding è completato.
+          </div>
+        ) : null}
+
 
         <section className="mt-8 rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-5">
@@ -322,6 +438,7 @@ export default async function OperatorOnboardingPage({
             </div>
           </div>
 
+
           <div className="mt-8">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">
@@ -329,15 +446,21 @@ export default async function OperatorOnboardingPage({
               </span>
 
               <span className="text-[#64748B]">
-                1 di 5
+                {completedSteps} di 5
               </span>
             </div>
 
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1F5F4]">
-              <div className="h-full w-1/5 rounded-full bg-[#14B8A6]" />
+              <div
+                className="h-full rounded-full bg-[#14B8A6]"
+                style={{
+                  width: `${completedSteps * 20}%`,
+                }}
+              />
             </div>
           </div>
         </section>
+
 
         <section className="mt-6 space-y-3">
           {steps.map((step) => (
@@ -346,7 +469,9 @@ export default async function OperatorOnboardingPage({
               className="flex gap-4 rounded-2xl border border-[#DEE5E8] bg-white p-5 sm:items-center"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F1F5F4] text-sm font-semibold">
-                {step.completed ? "✓" : step.number}
+                {step.completed
+                  ? "✓"
+                  : step.number}
               </div>
 
               <div className="min-w-0 flex-1">
@@ -374,32 +499,62 @@ export default async function OperatorOnboardingPage({
           ))}
         </section>
 
-        <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-          <p className="text-sm font-semibold">
-            Prossimo passaggio
-          </p>
 
-          <h2 className="mt-2 text-xl font-semibold">
-            Dati aziendali e legali
-          </h2>
+        {!legalComplete ? (
+          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
+            <p className="text-sm font-semibold">
+              Prossimo passaggio
+            </p>
 
-          <p className="mt-2 text-sm leading-6 text-[#64748B]">
-            Nel prossimo checkpoint collegheremo questo step a
-            <code className="mx-1 rounded bg-[#F1F5F4] px-1.5 py-0.5">
-              operator_legal_profiles
-            </code>
-            con salvataggio server-side e ripresa automatica
-            dell&apos;onboarding.
-          </p>
+            <h2 className="mt-2 text-xl font-semibold">
+              Dati aziendali e legali
+            </h2>
 
-          <button
-            type="button"
-            disabled
-            className="mt-5 rounded-xl bg-[#DEE5E8] px-5 py-3 text-sm font-semibold text-[#64748B]"
-          >
-            Continua — disponibile in C7.3
-          </button>
-        </section>
+            <p className="mt-2 text-sm leading-6 text-[#64748B]">
+              Inserisci i dati societari, fiscali, la sede
+              legale e il rappresentante legale dell&apos;attività.
+            </p>
+
+            <Link
+              href={`/operator/onboarding/legal?operator=${selectedOperator.id}`}
+              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            >
+              Continua con i dati aziendali
+            </Link>
+          </section>
+        ) : (
+          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
+            <p className="text-sm font-semibold text-[#14B8A6]">
+              Passaggio 2 completato
+            </p>
+
+            <h2 className="mt-2 text-xl font-semibold">
+              Dati aziendali e legali salvati
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-[#64748B]">
+              Puoi correggere queste informazioni finché
+              l&apos;operatore rimane in stato DRAFT.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href={`/operator/onboarding/legal?operator=${selectedOperator.id}`}
+                className="rounded-xl border border-[#DEE5E8] bg-white px-5 py-3 text-sm font-semibold hover:bg-[#F1F5F4]"
+              >
+                Modifica dati
+              </Link>
+
+              <button
+                type="button"
+                disabled
+                className="rounded-xl bg-[#DEE5E8] px-5 py-3 text-sm font-semibold text-[#64748B]"
+              >
+                Continua con la sede — C7.4
+              </button>
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );
