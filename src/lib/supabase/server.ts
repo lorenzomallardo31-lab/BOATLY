@@ -12,17 +12,15 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
+
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
             });
           } catch {
-            /*
-             * Server Components cannot always write cookies.
-             * Session refresh will be handled by the Supabase
-             * proxy configuration when authentication is added.
-             */
+            // Server Components cannot always write cookies.
+            // The Next.js proxy refreshes the session when needed.
           }
         },
       },
