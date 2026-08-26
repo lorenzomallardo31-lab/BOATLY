@@ -5,84 +5,60 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function AccountPage() {
   const supabase = await createClient();
+  const { data, error } = await supabase.auth.getClaims();
 
-  const { data, error } =
-    await supabase.auth.getClaims();
-
-  if (error || !data?.claims) {
+  if (error || !data?.claims || typeof data.claims.sub !== "string") {
     redirect("/sign-in?next=/account");
   }
 
-  const email =
-    typeof data.claims.email === "string"
-      ? data.claims.email
-      : "Account Boatly";
+  const userId = data.claims.sub;
+  const email = typeof data.claims.email === "string" ? data.claims.email : "Account Boatly";
+
+  const [{ data: memberships }, { data: platformRoles }] = await Promise.all([
+    supabase.from("operator_members").select("operator_id, role, status").eq("user_id", userId).eq("status", "ACTIVE"),
+    supabase.from("platform_user_roles").select("role").eq("user_id", userId),
+  ]);
+
+  const operatorMembership = memberships?.[0];
+  const isPlatformUser = Boolean(platformRoles?.length);
 
   return (
     <main className="min-h-screen bg-[#FCFBF8] px-4 py-12 text-[#0B1F33]">
-      <div className="mx-auto max-w-2xl">
-        <Link
-          href="/"
-          className="text-2xl font-bold tracking-tight"
-        >
-          Boatly
-        </Link>
+      <div className="mx-auto max-w-4xl">
+        <Link href="/" className="text-2xl font-bold tracking-tight">Boatly</Link>
 
-        <div className="mt-10 rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-sm font-medium text-[#14B8A6]">
-            Account Boatly
-          </p>
+        <section className="mt-10 rounded-3xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-sm font-medium text-[#14B8A6]">Account Boatly</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Il tuo account</h1>
+          <p className="mt-4 text-[#64748B]">Sei autenticato come:</p>
+          <p className="mt-1 font-semibold">{email}</p>
 
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-            Il tuo account
-          </h1>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-[#DEE5E8] bg-[#F1F5F4] p-5">
+              <p className="font-semibold">Le tue prenotazioni</p>
+              <p className="mt-2 text-sm leading-6 text-[#64748B]">Consulta prenotazioni, dettagli economici e richieste di cancellazione.</p>
+              <Link href="/prenotazioni" className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white">Vai alle prenotazioni</Link>
+            </div>
 
-          <p className="mt-4 text-[#64748B]">
-            Sei autenticato come:
-          </p>
+            <div className="rounded-2xl border border-[#DEE5E8] bg-white p-5">
+              <p className="font-semibold">Area operatore</p>
+              <p className="mt-2 text-sm leading-6 text-[#64748B]">Dashboard, booking, CRM, calendario e flotta.</p>
+              <Link href={operatorMembership ? `/operator/dashboard?operator=${operatorMembership.operator_id}` : "/operator/onboarding"} className="mt-5 inline-flex rounded-xl border border-[#DEE5E8] px-5 py-3 text-sm font-semibold hover:bg-[#F1F5F4]">{operatorMembership ? "Apri dashboard" : "Avvia onboarding"}</Link>
+            </div>
 
-          <p className="mt-1 font-semibold">
-            {email}
-          </p>
-
-          <div className="mt-8 rounded-2xl bg-[#F1F5F4] p-5">
-            <p className="font-semibold">
-              Gestisci una flotta?
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Crea il tuo workspace operatore e inizia
-              l&apos;onboarding della tua attività di noleggio.
-            </p>
-
-            <Link
-              href="/operator/onboarding"
-              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-            >
-              Diventa operatore
-            </Link>
+            {isPlatformUser ? (
+              <div className="rounded-2xl border border-[#0B1F33] bg-[#0B1F33] p-5 text-white md:col-span-2">
+                <p className="font-semibold">Boatly Admin</p>
+                <p className="mt-2 text-sm leading-6 text-white/70">Accesso interno per verification, booking operations, finance, compliance e privacy.</p>
+                <Link href="/admin" className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#0B1F33]">Apri Admin</Link>
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-8 rounded-xl border border-[#DEE5E8] p-4 text-sm text-[#64748B]">
-            L&apos;area cliente completa verrà sviluppata nei
-            checkpoint dedicati. In questa fase l&apos;account
-            viene utilizzato anche come punto di ingresso per
-            l&apos;onboarding operatore.
-          </div>
-
-          <form
-            action="/auth/signout"
-            method="post"
-            className="mt-8"
-          >
-            <button
-              type="submit"
-              className="rounded-xl border border-[#DEE5E8] bg-white px-5 py-3 font-semibold transition hover:bg-[#F1F5F4]"
-            >
-              Esci
-            </button>
+          <form action="/auth/signout" method="post" className="mt-8">
+            <button type="submit" className="rounded-xl border border-[#DEE5E8] bg-white px-5 py-3 font-semibold transition hover:bg-[#F1F5F4]">Esci</button>
           </form>
-        </div>
+        </section>
       </div>
     </main>
   );
