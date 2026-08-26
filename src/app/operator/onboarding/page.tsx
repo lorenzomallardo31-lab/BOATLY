@@ -50,6 +50,15 @@ type OperatorLocationSummary = {
   is_active: boolean;
 };
 
+type VerificationStatusRow = {
+  verification_id: string | null;
+  verification_status: string | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  decision_note: string | null;
+  operator_status: string;
+};
+
 function getErrorMessage(
   error?: string,
 ) {
@@ -106,6 +115,30 @@ function isLocationComplete(
       location.is_public &&
       location.is_active,
   );
+}
+
+function verificationStepLabel(
+  status: string | null,
+) {
+  switch (status) {
+    case "PENDING":
+      return "Inviato";
+
+    case "IN_REVIEW":
+      return "In revisione";
+
+    case "NEEDS_CHANGES":
+      return "Modifiche richieste";
+
+    case "APPROVED":
+      return "Approvato";
+
+    case "REJECTED":
+      return "Respinto";
+
+    default:
+      return "Da completare";
+  }
 }
 
 export default async function OperatorOnboardingPage({
@@ -166,7 +199,9 @@ export default async function OperatorOnboardingPage({
   let operators:
     OperatorSummary[] = [];
 
-  if (operatorIds.length > 0) {
+  if (
+    operatorIds.length > 0
+  ) {
     const {
       data: operatorRows,
       error: operatorsError,
@@ -200,16 +235,26 @@ export default async function OperatorOnboardingPage({
         )
       : undefined;
 
-  const draftOperator =
+  const selectedOperator =
+    requestedOperator ||
+    operators.find(
+      (operator) =>
+        operator.status === "DRAFT",
+    ) ||
     operators.find(
       (operator) =>
         operator.status ===
-        "DRAFT",
-    );
-
-  const selectedOperator =
-    requestedOperator ||
-    draftOperator ||
+        "PENDING_VERIFICATION",
+    ) ||
+    operators.find(
+      (operator) =>
+        operator.status === "ACTIVE",
+    ) ||
+    operators.find(
+      (operator) =>
+        operator.status ===
+        "REJECTED",
+    ) ||
     operators[0] ||
     null;
 
@@ -221,9 +266,11 @@ export default async function OperatorOnboardingPage({
   if (!selectedOperator) {
     return (
       <main className="min-h-screen bg-[#FCFBF8] px-4 py-10 text-[#0B1F33] sm:py-14">
+
         <div className="mx-auto w-full max-w-3xl">
 
           <div className="flex items-center justify-between gap-4">
+
             <Link
               href="/"
               className="text-2xl font-bold tracking-tight"
@@ -237,11 +284,13 @@ export default async function OperatorOnboardingPage({
             >
               Torna al tuo account
             </Link>
+
           </div>
 
           <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
 
             <section>
+
               <p className="text-sm font-semibold text-[#14B8A6]">
                 Boatly per operatori
               </p>
@@ -254,6 +303,7 @@ export default async function OperatorOnboardingPage({
                 Crea il workspace della tua attività
                 e completa il processo di onboarding.
               </p>
+
             </section>
 
             <section className="rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
@@ -274,6 +324,7 @@ export default async function OperatorOnboardingPage({
                 }
                 className="mt-6 space-y-5"
               >
+
                 <input
                   name="name"
                   type="text"
@@ -289,12 +340,15 @@ export default async function OperatorOnboardingPage({
                 >
                   Crea workspace operatore
                 </button>
+
               </form>
 
             </section>
 
           </div>
+
         </div>
+
       </main>
     );
   }
@@ -475,11 +529,51 @@ export default async function OperatorOnboardingPage({
         ),
     );
 
+  const {
+    data: verificationRows,
+    error: verificationError,
+  } = await supabase.rpc(
+    "get_operator_onboarding_verification_status",
+    {
+      p_operator_id:
+        selectedOperator.id,
+    },
+  );
+
+  if (verificationError) {
+    throw new Error(
+      "Unable to load operator verification status.",
+    );
+  }
+
+  const verification =
+    Array.isArray(
+      verificationRows,
+    )
+      ? (
+          verificationRows[0] as
+            | VerificationStatusRow
+            | undefined
+        ) ?? null
+      : null;
+
+  const verificationStatus =
+    verification?.verification_status ??
+    null;
+
+  const needsChanges =
+    verificationStatus ===
+    "NEEDS_CHANGES";
+
   const verificationSubmitted =
-    selectedOperator.status ===
-      "PENDING_VERIFICATION" ||
-    selectedOperator.status ===
-      "ACTIVE";
+    verificationStatus ===
+      "PENDING" ||
+    verificationStatus ===
+      "IN_REVIEW" ||
+    verificationStatus ===
+      "APPROVED" ||
+    verificationStatus ===
+      "REJECTED";
 
   const completedSteps =
     verificationSubmitted
@@ -497,13 +591,20 @@ export default async function OperatorOnboardingPage({
       number: "01",
       title:
         "Workspace operatore",
-      completed: true,
+      status:
+        "Completato",
+      completed:
+        true,
     },
 
     {
       number: "02",
       title:
         "Dati aziendali e legali",
+      status:
+        legalComplete
+          ? "Completato"
+          : "Da completare",
       completed:
         legalComplete,
     },
@@ -512,6 +613,10 @@ export default async function OperatorOnboardingPage({
       number: "03",
       title:
         "Prima sede operativa",
+      status:
+        locationComplete
+          ? "Completato"
+          : "Da completare",
       completed:
         locationComplete,
     },
@@ -520,6 +625,10 @@ export default async function OperatorOnboardingPage({
       number: "04",
       title:
         "Documenti",
+      status:
+        documentsComplete
+          ? "Completato"
+          : "Da completare",
       completed:
         documentsComplete,
     },
@@ -528,6 +637,10 @@ export default async function OperatorOnboardingPage({
       number: "05",
       title:
         "Invio a Boatly",
+      status:
+        verificationStepLabel(
+          verificationStatus,
+        ),
       completed:
         verificationSubmitted,
     },
@@ -539,6 +652,7 @@ export default async function OperatorOnboardingPage({
       <div className="mx-auto max-w-5xl">
 
         <header className="flex items-center justify-between gap-4">
+
           <Link
             href="/"
             className="text-2xl font-bold"
@@ -552,6 +666,7 @@ export default async function OperatorOnboardingPage({
           >
             Il tuo account
           </Link>
+
         </header>
 
         {params.submitted ===
@@ -570,6 +685,7 @@ export default async function OperatorOnboardingPage({
           <div className="flex flex-wrap items-start justify-between gap-5">
 
             <div>
+
               <p className="text-sm font-semibold text-[#14B8A6]">
                 Onboarding operatore
               </p>
@@ -579,6 +695,7 @@ export default async function OperatorOnboardingPage({
                   selectedOperator.name
                 }
               </h1>
+
             </div>
 
             <div className="rounded-full bg-[#F1F5F4] px-4 py-2 text-xs font-semibold">
@@ -592,6 +709,7 @@ export default async function OperatorOnboardingPage({
           <div className="mt-8">
 
             <div className="flex justify-between text-sm">
+
               <span>
                 Avanzamento onboarding
               </span>
@@ -599,9 +717,11 @@ export default async function OperatorOnboardingPage({
               <span className="text-[#64748B]">
                 {completedSteps} di 5
               </span>
+
             </div>
 
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1F5F4]">
+
               <div
                 className="h-full rounded-full bg-[#14B8A6]"
                 style={{
@@ -609,9 +729,11 @@ export default async function OperatorOnboardingPage({
                     `${completedSteps * 20}%`,
                 }}
               />
+
             </div>
 
           </div>
+
         </section>
 
         <section className="mt-6 space-y-3">
@@ -625,13 +747,16 @@ export default async function OperatorOnboardingPage({
                 className="flex items-center gap-4 rounded-2xl border border-[#DEE5E8] bg-white p-5"
               >
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F5F4] font-semibold">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F1F5F4] font-semibold">
+
                   {step.completed
                     ? "✓"
                     : step.number}
+
                 </div>
 
                 <div className="flex-1">
+
                   <div className="flex justify-between gap-4">
 
                     <h2 className="font-semibold">
@@ -644,18 +769,20 @@ export default async function OperatorOnboardingPage({
                       className={
                         step.completed
                           ? "text-xs font-semibold text-[#14B8A6]"
-                          : "text-xs text-[#64748B]"
+                          : needsChanges &&
+                              step.number ===
+                                "05"
+                            ? "text-xs font-semibold text-amber-700"
+                            : "text-xs text-[#64748B]"
                       }
                     >
-                      {step.completed
-                        ? step.number ===
-                          "05"
-                          ? "Inviato"
-                          : "Completato"
-                        : "Da completare"}
+                      {
+                        step.status
+                      }
                     </span>
 
                   </div>
+
                 </div>
 
               </div>
@@ -715,24 +842,61 @@ export default async function OperatorOnboardingPage({
 
           </section>
 
-        ) : verificationSubmitted ? (
+        ) : needsChanges ? (
+
+          <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6">
+
+            <p className="text-sm font-semibold text-amber-700">
+              Modifiche richieste
+            </p>
+
+            <h2 className="mt-2 text-xl font-semibold">
+              Boatly richiede alcune correzioni
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-[#64748B]">
+              Consulta lo stato della verifica per
+              leggere la nota del team e sapere cosa
+              correggere prima del nuovo invio.
+            </p>
+
+            <Link
+              href={`/operator/onboarding/status?operator=${selectedOperator.id}`}
+              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
+            >
+              Vedi modifiche richieste
+            </Link>
+
+          </section>
+
+        ) : verification?.verification_id ? (
 
           <section className="mt-6 rounded-2xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-6">
 
             <p className="text-sm font-semibold text-[#14B8A6]">
-              Onboarding completato
+              Stato verifica
             </p>
 
             <h2 className="mt-2 text-xl font-semibold">
-              Richiesta di verifica inviata
+              {
+                verificationStepLabel(
+                  verificationStatus,
+                )
+              }
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Il workspace è ora in attesa
-              della verifica Boatly. I dati
-              inviati non sono modificabili
-              durante questa fase.
+              Consulta la pagina di stato per
+              seguire l&apos;avanzamento della
+              verifica Boatly.
             </p>
+
+            <Link
+              href={`/operator/onboarding/status?operator=${selectedOperator.id}`}
+              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
+            >
+              Vedi stato verifica
+            </Link>
 
           </section>
 
@@ -750,10 +914,9 @@ export default async function OperatorOnboardingPage({
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Tutti i dati necessari sono
-              presenti. Controlla il riepilogo
-              finale e invia il workspace
-              alla verifica.
+              Tutti i dati necessari sono presenti.
+              Controlla il riepilogo finale e invia
+              il workspace alla verifica.
             </p>
 
             <Link
@@ -787,6 +950,7 @@ export default async function OperatorOnboardingPage({
         )}
 
       </div>
+
     </main>
   );
 }
