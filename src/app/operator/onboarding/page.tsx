@@ -119,7 +119,6 @@ export default async function OperatorOnboardingPage({
     error: claimsError,
   } = await supabase.auth.getClaims();
 
-
   if (
     claimsError ||
     !claimsData?.claims ||
@@ -130,10 +129,8 @@ export default async function OperatorOnboardingPage({
     );
   }
 
-
   const userId =
     claimsData.claims.sub;
-
 
   const {
     data: memberships,
@@ -145,13 +142,11 @@ export default async function OperatorOnboardingPage({
     .eq("role", "OWNER")
     .eq("status", "ACTIVE");
 
-
   if (membershipsError) {
     throw new Error(
       "Unable to load operator memberships.",
     );
   }
-
 
   const operatorIds = Array.from(
     new Set(
@@ -162,9 +157,7 @@ export default async function OperatorOnboardingPage({
     ),
   );
 
-
   let operators: OperatorSummary[] = [];
-
 
   if (operatorIds.length > 0) {
     const {
@@ -175,18 +168,15 @@ export default async function OperatorOnboardingPage({
       .select("id, name, status")
       .in("id", operatorIds);
 
-
     if (operatorsError) {
       throw new Error(
         "Unable to load operator workspaces.",
       );
     }
 
-
     operators =
       (operatorRows ?? []) as OperatorSummary[];
   }
-
 
   const requestedOperator =
     params.operator
@@ -196,29 +186,24 @@ export default async function OperatorOnboardingPage({
         )
       : undefined;
 
-
   const draftOperator =
     operators.find(
       (operator) =>
         operator.status === "DRAFT",
     );
 
-
   const selectedOperator =
     requestedOperator ||
     draftOperator ||
     null;
 
-
   const errorMessage =
     getErrorMessage(params.error);
-
 
   if (!selectedOperator) {
     return (
       <main className="min-h-screen bg-[#FCFBF8] px-4 py-10 text-[#0B1F33] sm:py-14">
         <div className="mx-auto w-full max-w-3xl">
-
           <div className="flex items-center justify-between gap-4">
             <Link
               href="/"
@@ -235,9 +220,7 @@ export default async function OperatorOnboardingPage({
             </Link>
           </div>
 
-
           <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-
             <section>
               <p className="text-sm font-semibold text-[#14B8A6]">
                 Boatly per operatori
@@ -267,9 +250,7 @@ export default async function OperatorOnboardingPage({
               </div>
             </section>
 
-
             <section className="rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-
               <p className="text-sm font-medium text-[#14B8A6]">
                 Primo passaggio
               </p>
@@ -283,13 +264,11 @@ export default async function OperatorOnboardingPage({
                 attività di noleggio.
               </p>
 
-
               {errorMessage ? (
                 <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                   {errorMessage}
                 </div>
               ) : null}
-
 
               <form
                 action={createOperatorWorkspace}
@@ -329,13 +308,11 @@ export default async function OperatorOnboardingPage({
                 Prima sarà necessaria la verifica Boatly.
               </p>
             </section>
-
           </div>
         </div>
       </main>
     );
   }
-
 
   const {
     data: legalProfileRow,
@@ -361,21 +338,17 @@ export default async function OperatorOnboardingPage({
     )
     .maybeSingle();
 
-
   if (legalProfileError) {
     throw new Error(
       "Unable to load operator legal profile.",
     );
   }
 
-
   const legalProfile =
     legalProfileRow as LegalProfileSummary | null;
 
-
   const legalComplete =
     isLegalProfileComplete(legalProfile);
-
 
   const {
     data: locationRow,
@@ -405,30 +378,108 @@ export default async function OperatorOnboardingPage({
     )
     .maybeSingle();
 
-
   if (locationError) {
     throw new Error(
       "Unable to load operator primary location.",
     );
   }
 
-
   const primaryLocation =
     locationRow as OperatorLocationSummary | null;
-
 
   const locationComplete =
     legalComplete &&
     isLocationComplete(primaryLocation);
 
+  const {
+    data: requiredDocumentTypes,
+    error: requiredDocumentTypesError,
+  } = await supabase
+    .from("document_types")
+    .select("id")
+    .eq(
+      "subject_type",
+      "OPERATOR",
+    )
+    .eq(
+      "is_active",
+      true,
+    )
+    .in(
+      "code",
+      [
+        "COMPANY_REGISTRY_EXTRACT",
+        "LEGAL_REPRESENTATIVE_ID",
+      ],
+    );
+
+  if (requiredDocumentTypesError) {
+    throw new Error(
+      "Unable to load required onboarding documents.",
+    );
+  }
+
+  const requiredDocumentTypeIds =
+    (requiredDocumentTypes ?? []).map(
+      (documentType) =>
+        documentType.id,
+    );
+
+  const {
+    data: uploadedDocuments,
+    error: uploadedDocumentsError,
+  } =
+    requiredDocumentTypeIds.length === 2
+      ? await supabase
+          .from("operator_documents")
+          .select(
+            "document_type_id",
+          )
+          .eq(
+            "operator_id",
+            selectedOperator.id,
+          )
+          .in(
+            "document_type_id",
+            requiredDocumentTypeIds,
+          )
+      : {
+          data: [],
+          error: null,
+        };
+
+  if (uploadedDocumentsError) {
+    throw new Error(
+      "Unable to load onboarding documents.",
+    );
+  }
+
+  const uploadedDocumentTypeIds =
+    new Set(
+      (uploadedDocuments ?? []).map(
+        (document) =>
+          document.document_type_id,
+      ),
+    );
+
+  const documentsComplete =
+    locationComplete &&
+    requiredDocumentTypeIds.length === 2 &&
+    requiredDocumentTypeIds.every(
+      (documentTypeId) =>
+        uploadedDocumentTypeIds.has(
+          documentTypeId,
+        ),
+    );
 
   const completedSteps =
-    locationComplete
-      ? 3
-      : legalComplete
-        ? 2
-        : 1;
-
+    documentsComplete
+      ? 4
+      : locationComplete
+        ? 3
+        : legalComplete
+          ? 2
+          : 1;
 
   const steps = [
     {
@@ -474,9 +525,15 @@ export default async function OperatorOnboardingPage({
       number: "04",
       title: "Documenti",
       description:
-        "Caricheremo i documenti necessari alla verifica.",
-      status: "Da completare",
-      completed: false,
+        documentsComplete
+          ? "Tutti i documenti richiesti per l'onboarding sono stati caricati."
+          : "Carica i documenti necessari alla verifica Boatly.",
+      status:
+        documentsComplete
+          ? "Completato"
+          : "Da completare",
+      completed:
+        documentsComplete,
     },
 
     {
@@ -489,11 +546,9 @@ export default async function OperatorOnboardingPage({
     },
   ];
 
-
   return (
     <main className="min-h-screen bg-[#FCFBF8] px-4 py-8 text-[#0B1F33] sm:px-6 sm:py-10">
       <div className="mx-auto max-w-5xl">
-
         <header className="flex flex-wrap items-center justify-between gap-4">
           <Link
             href="/"
@@ -510,35 +565,35 @@ export default async function OperatorOnboardingPage({
           </Link>
         </header>
 
-
         {params.created === "1" ? (
           <div className="mt-8 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">
-            <strong>Workspace creato.</strong>{" "}
+            <strong>
+              Workspace creato.
+            </strong>{" "}
             Ora completiamo l&apos;onboarding della tua attività.
           </div>
         ) : null}
 
-
         {params.legalSaved === "1" ? (
           <div className="mt-8 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">
-            <strong>Dati aziendali salvati.</strong>{" "}
+            <strong>
+              Dati aziendali salvati.
+            </strong>{" "}
             Il passaggio 2 dell&apos;onboarding è completato.
           </div>
         ) : null}
 
-
         {params.locationSaved === "1" ? (
           <div className="mt-8 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">
-            <strong>Sede operativa salvata.</strong>{" "}
+            <strong>
+              Sede operativa salvata.
+            </strong>{" "}
             Il passaggio 3 dell&apos;onboarding è completato.
           </div>
         ) : null}
 
-
         <section className="mt-8 rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-
           <div className="flex flex-wrap items-start justify-between gap-5">
-
             <div>
               <p className="text-sm font-semibold text-[#14B8A6]">
                 Onboarding operatore
@@ -554,17 +609,13 @@ export default async function OperatorOnboardingPage({
               </p>
             </div>
 
-
             <div className="rounded-full bg-[#F1F5F4] px-4 py-2 text-xs font-semibold">
               {selectedOperator.status}
             </div>
-
           </div>
-
 
           <div className="mt-8">
             <div className="flex items-center justify-between text-sm">
-
               <span className="font-medium">
                 Avanzamento onboarding
               </span>
@@ -572,9 +623,7 @@ export default async function OperatorOnboardingPage({
               <span className="text-[#64748B]">
                 {completedSteps} di 5
               </span>
-
             </div>
-
 
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1F5F4]">
               <div
@@ -585,30 +634,23 @@ export default async function OperatorOnboardingPage({
                 }}
               />
             </div>
-
           </div>
         </section>
 
-
         <section className="mt-6 space-y-3">
-
           {steps.map((step) => (
             <div
               key={step.number}
               className="flex gap-4 rounded-2xl border border-[#DEE5E8] bg-white p-5 sm:items-center"
             >
-
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F1F5F4] text-sm font-semibold">
                 {step.completed
                   ? "✓"
                   : step.number}
               </div>
 
-
               <div className="min-w-0 flex-1">
-
                 <div className="flex flex-wrap items-center justify-between gap-2">
-
                   <h2 className="font-semibold">
                     {step.title}
                   </h2>
@@ -622,25 +664,18 @@ export default async function OperatorOnboardingPage({
                   >
                     {step.status}
                   </span>
-
                 </div>
-
 
                 <p className="mt-1 text-sm leading-6 text-[#64748B]">
                   {step.description}
                 </p>
-
               </div>
             </div>
           ))}
-
         </section>
 
-
         {!legalComplete ? (
-
           <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
             <p className="text-sm font-semibold">
               Prossimo passaggio
             </p>
@@ -660,13 +695,9 @@ export default async function OperatorOnboardingPage({
             >
               Continua con i dati aziendali
             </Link>
-
           </section>
-
         ) : !locationComplete ? (
-
           <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
             <p className="text-sm font-semibold">
               Prossimo passaggio
             </p>
@@ -681,7 +712,6 @@ export default async function OperatorOnboardingPage({
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3">
-
               <Link
                 href={`/operator/onboarding/legal?operator=${selectedOperator.id}`}
                 className="rounded-xl border border-[#DEE5E8] bg-white px-5 py-3 text-sm font-semibold hover:bg-[#F1F5F4]"
@@ -695,31 +725,25 @@ export default async function OperatorOnboardingPage({
               >
                 Continua con la sede
               </Link>
-
             </div>
-
           </section>
-
-        ) : (
-
+        ) : !documentsComplete ? (
           <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
-            <p className="text-sm font-semibold text-[#14B8A6]">
-              Passaggio 3 completato
+            <p className="text-sm font-semibold">
+              Prossimo passaggio
             </p>
 
             <h2 className="mt-2 text-xl font-semibold">
-              Prima sede operativa configurata
+              Documenti
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              La sede principale è pronta. Potrai aggiungere
-              ulteriori sedi e configurare gli orari nella
-              gestione operativa.
+              Carica i documenti necessari per la
+              verifica iniziale del tuo workspace
+              operatore.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3">
-
               <Link
                 href={`/operator/onboarding/location?operator=${selectedOperator.id}`}
                 className="rounded-xl border border-[#DEE5E8] bg-white px-5 py-3 text-sm font-semibold hover:bg-[#F1F5F4]"
@@ -727,20 +751,49 @@ export default async function OperatorOnboardingPage({
                 Modifica sede
               </Link>
 
+              <Link
+                href={`/operator/onboarding/documents?operator=${selectedOperator.id}`}
+                className="rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Continua con i documenti
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
+            <p className="text-sm font-semibold text-[#14B8A6]">
+              Passaggio 4 completato
+            </p>
+
+            <h2 className="mt-2 text-xl font-semibold">
+              Documenti caricati
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-[#64748B]">
+              Tutti i documenti richiesti per
+              l&apos;onboarding sono presenti. Il
+              prossimo passaggio sarà l&apos;invio
+              della richiesta di verifica a Boatly.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href={`/operator/onboarding/documents?operator=${selectedOperator.id}`}
+                className="rounded-xl border border-[#DEE5E8] bg-white px-5 py-3 text-sm font-semibold hover:bg-[#F1F5F4]"
+              >
+                Gestisci documenti
+              </Link>
+
               <button
                 type="button"
                 disabled
                 className="rounded-xl bg-[#DEE5E8] px-5 py-3 text-sm font-semibold text-[#64748B]"
               >
-                Continua con i documenti — C7.5
+                Invia a Boatly — C7.6
               </button>
-
             </div>
-
           </section>
-
         )}
-
       </div>
     </main>
   );
