@@ -26,7 +26,10 @@ export async function reviewOperatorVerification(formData: FormData) {
     p_note: note || null,
   });
 
-  if (error) redirect(`/admin/verifications?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    console.error("Unable to review operator verification.", error);
+    redirect("/admin/verifications?error=review-failed");
+  }
   revalidatePath("/admin");
   revalidatePath("/admin/operators");
   revalidatePath("/admin/verifications");
@@ -49,7 +52,10 @@ export async function reviewBoatPublication(formData: FormData) {
     p_note: note || null,
   });
 
-  if (error) redirect(`/admin/verifications?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    console.error("Unable to review boat publication.", error);
+    redirect("/admin/verifications?error=review-failed");
+  }
   revalidatePath("/admin");
   revalidatePath("/admin/verifications");
   redirect(`/admin/verifications?reviewed=${decision}`);

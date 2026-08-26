@@ -33,7 +33,7 @@ type MapboxApi = {
     extend: (point: [number, number]) => void;
   };
   Popup: new (options?: { offset?: number }) => {
-    setHTML: (html: string) => unknown;
+    setDOMContent: (node: Node) => unknown;
   };
   Marker: new (options: { element: HTMLElement }) => {
     setLngLat: (point: [number, number]) => {
@@ -98,9 +98,13 @@ export default function SearchMap({ boats, token }: SearchMapProps) {
         : "Boatly";
 
       const popup = new api.Popup({ offset: 18 });
-      popup.setHTML(
-        `<strong>${boat.name.replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</strong><br/><span>${(boat.city ?? "").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</span>`,
-      );
+      const popupContent = document.createElement("div");
+      const popupTitle = document.createElement("strong");
+      const popupCity = document.createElement("span");
+      popupTitle.textContent = boat.name;
+      popupCity.textContent = boat.city ?? "";
+      popupContent.append(popupTitle, document.createElement("br"), popupCity);
+      popup.setDOMContent(popupContent);
 
       new api.Marker({ element: markerElement })
         .setLngLat([boat.longitude!, boat.latitude!])

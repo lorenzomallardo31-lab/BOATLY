@@ -504,6 +504,7 @@ export default async function DocumentsPage({
                         <Link
                           href={`/operator/onboarding/documents/${currentDocument.id}/open`}
                           target="_blank"
+                          rel="noopener noreferrer"
                           className="rounded-xl border border-[#DEE5E8] bg-white px-4 py-2 text-sm font-semibold hover:bg-[#F1F5F4]"
                         >
                           Apri documento

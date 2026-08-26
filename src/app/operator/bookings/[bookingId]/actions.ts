@@ -35,7 +35,8 @@ export async function changeBookingStatus(formData: FormData) {
   });
 
   if (error) {
-    redirect(detailUrl(operatorId, bookingId, `error=${encodeURIComponent(error.message)}`));
+    console.error("Unable to change booking status.", error);
+    redirect(detailUrl(operatorId, bookingId, "error=status-change-failed"));
   }
 
   revalidatePath("/operator/dashboard");
@@ -62,7 +63,8 @@ export async function resolveCancellationRequest(formData: FormData) {
   });
 
   if (error) {
-    redirect(detailUrl(operatorId, bookingId, `error=${encodeURIComponent(error.message)}`));
+    console.error("Unable to resolve cancellation request.", error);
+    redirect(detailUrl(operatorId, bookingId, "error=cancellation-update-failed"));
   }
 
   revalidatePath("/operator/dashboard");

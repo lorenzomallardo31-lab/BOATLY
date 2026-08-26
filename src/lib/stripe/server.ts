@@ -77,7 +77,8 @@ export function stripeServerConfigured() {
   return Boolean(
     process.env.STRIPE_SECRET_KEY &&
       process.env.STRIPE_WEBHOOK_SECRET &&
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      (process.env.SUPABASE_SECRET_KEY ||
+        process.env.SUPABASE_SERVICE_ROLE_KEY),
   );
 }
 

@@ -26,7 +26,10 @@ export async function updatePlatformCase(formData: FormData) {
     p_resolution_summary: resolution || null,
   });
 
-  if (error) redirect(`/admin/cases?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    console.error("Unable to update platform case.", error);
+    redirect("/admin/cases?error=update-failed");
+  }
   revalidatePath("/admin");
   revalidatePath("/admin/cases");
   redirect("/admin/cases?updated=1");

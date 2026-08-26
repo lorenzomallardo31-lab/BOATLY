@@ -7,6 +7,7 @@ import MarketplaceHeader from "@/components/marketplace/marketplace-header";
 import { stripeServerConfigured } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
+import CheckoutPriceSummary from "./checkout-price-summary";
 import { startMarketplaceCheckout } from "./actions";
 
 type CheckoutPageProps = {
@@ -322,7 +323,7 @@ export default async function CheckoutStartPage({ searchParams }: CheckoutPagePr
             {checkout.extras.length > 0 ? (
               <section className="rounded-3xl border border-[#DEE5E8] bg-white p-6 shadow-sm">
                 <p className="text-sm font-semibold text-[#14B8A6]">2. Extra</p>
-                <h2 className="mt-2 text-xl font-semibold">Personalizza l&apos;esperienza</h2>
+                <h2 className="mt-2 text-xl font-semibold">Personalizza l’esperienza</h2>
 
                 <div className="mt-5 space-y-3">
                   {checkout.extras.map((extra) => (
@@ -432,13 +433,13 @@ export default async function CheckoutStartPage({ searchParams }: CheckoutPagePr
                     className="mt-1 h-4 w-4"
                   />
                   <span>
-                    Confermo di possedere l&apos;eventuale patente nautica richiesta dalla configurazione scelta.
+                    Confermo di possedere l’eventuale patente nautica richiesta dalla configurazione scelta.
                   </span>
                 </label>
               </div>
 
               <label className="mt-5 block text-sm font-medium">
-                Nota per l&apos;operatore
+                Nota per l’operatore
                 <textarea
                   name="customer_note"
                   rows={3}
@@ -469,7 +470,7 @@ export default async function CheckoutStartPage({ searchParams }: CheckoutPagePr
               </label>
 
               <p className="mt-4 text-xs leading-5 text-[#64748B]">
-                L&apos;accettazione viene registrata lato server insieme alla versione del documento. I requisiti di guida restano soggetti alle condizioni effettive dell&apos;unità e alla verifica dell&apos;operatore.
+                L’accettazione viene registrata lato server insieme alla versione del documento. I requisiti di guida restano soggetti alle condizioni effettive dell’unità e alla verifica dell’operatore.
               </p>
             </section>
           </div>
@@ -483,15 +484,21 @@ export default async function CheckoutStartPage({ searchParams }: CheckoutPagePr
               </p>
 
               {checkout.options[0] ? (
-                <div className="mt-5 border-t border-[#DEE5E8] pt-5">
-                  <p className="text-sm text-[#64748B]">Prezzo base dalla soluzione selezionata</p>
-                  <p className="mt-1 text-2xl font-semibold">
-                    da {money(checkout.options[0].rental_price_cents, checkout.options[0].currency)}
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-[#64748B]">
-                    Il totale definitivo viene ricalcolato dal database, inclusi gli extra, prima di creare il pagamento.
-                  </p>
-                </div>
+                <CheckoutPriceSummary
+                  options={checkout.options.map((option) => ({
+                    value: `${option.rate_plan_id}|${option.legal_offering_id}|${option.starts_at}|${option.ends_at}`,
+                    rentalPriceCents: option.rental_price_cents,
+                    durationMinutes: option.duration_minutes,
+                    currency: option.currency,
+                  }))}
+                  extras={checkout.extras.map((extra) => ({
+                    id: extra.extra_id,
+                    name: extra.name,
+                    priceCents: extra.price_cents,
+                    pricingUnit: extra.pricing_unit,
+                  }))}
+                  fallbackCurrency={checkout.boat.currency}
+                />
               ) : null}
 
               <button
