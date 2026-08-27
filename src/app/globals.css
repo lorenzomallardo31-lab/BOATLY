@@ -46,6 +46,7 @@
 
 html {
   background: var(--background);
+  overflow-x: hidden;
 }
 
 body {
@@ -58,6 +59,22 @@ body {
     Arial,
     Helvetica,
     sans-serif;
+  overflow-x: hidden;
+}
+
+main,
+section,
+article,
+div {
+  min-width: 0;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,

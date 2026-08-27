@@ -29,7 +29,7 @@ export default async function Home() {
     <main className="min-h-screen bg-[#FCFBF8] text-[#0B1F33]">
       <MarketplaceHeader />
 
-      <section className="relative overflow-hidden bg-[#0B1F33] px-4 py-20 text-white sm:px-6 lg:px-8 lg:py-28">
+      <section className="relative overflow-hidden bg-[#0B1F33] px-4 py-14 text-white sm:px-6 sm:py-20 lg:px-8 lg:py-28">
         <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_80%_20%,#14B8A6,transparent_35%),radial-gradient(circle_at_20%_80%,#2DD4BF,transparent_30%)]" />
 
         <div className="relative mx-auto max-w-7xl">
@@ -37,7 +37,7 @@ export default async function Home() {
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#5EEAD4]">
               Freedom, made simple.
             </p>
-            <h1 className="mt-5 text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
               Il mare è più vicino di quanto pensi.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/75 sm:text-xl">
@@ -45,16 +45,16 @@ export default async function Home() {
               in modo semplice. Boatly mette il noleggio nautico in un unico
               posto.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
               <Link
                 href="/demo-gestionale"
-                className="rounded-xl bg-[#14B8A6] px-6 py-3 text-sm font-semibold text-white"
+                className="rounded-xl bg-[#14B8A6] px-6 py-3 text-center text-sm font-semibold text-white"
               >
                 Guarda il gestionale demo
               </Link>
               <Link
                 href="/come-funziona"
-                className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white"
+                className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-center text-sm font-semibold text-white"
               >
                 Scopri la piattaforma
               </Link>
@@ -89,7 +89,7 @@ export default async function Home() {
               href="/demo-gestionale"
               className="mt-7 inline-flex rounded-xl bg-[#0B1F33] px-6 py-3 text-sm font-semibold text-white"
             >
-              Esplora il gestionale in sola lettura
+              Prova il gestionale interattivo
             </Link>
           </div>
 
@@ -220,9 +220,9 @@ export default async function Home() {
       </section>
 
       <footer className="border-t border-[#DEE5E8] bg-white px-4 py-8 text-sm text-[#64748B] sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+        <div className="mx-auto grid max-w-7xl gap-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
           <span>© 2026 Boatly</span>
-          <div className="flex gap-5">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-2 sm:flex">
             <Link href="/come-funziona">Come funziona</Link>
             <Link href="/operator/onboarding">Noleggiatori</Link>
             <Link href="/demo-gestionale">Gestionale demo</Link>

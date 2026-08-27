@@ -6,9 +6,16 @@ La beta è una superficie dimostrativa, non un servizio commerciale. Solo chi
 riceve il link di invito può aprire le pagine anonime, registrarsi e provare i
 flussi. Gli account già registrati possono continuare ad accedere dal login.
 
-Il gestionale commerciale è disponibile in sola lettura su
-`/demo-gestionale` con dati interamente sintetici. Non interroga né modifica
-dati di operatori, clienti, pagamenti o prenotazioni reali.
+Il gestionale commerciale interattivo è disponibile su `/demo-gestionale` con
+dati interamente sintetici. Ogni visitatore riceve un workspace separato,
+persistente soltanto nel `localStorage` del proprio browser. Può creare e
+gestire prenotazioni, modificare disponibilità e tariffe della flotta,
+aggiornare note CRM, analizzare ricavi e scaricare un CSV dimostrativo. Nessuna
+azione interroga o modifica operatori, clienti, pagamenti o prenotazioni reali.
+
+Il pulsante `Ripristina` elimina esclusivamente lo scenario demo del browser
+corrente e ricarica i dati sintetici iniziali. Le modifiche non sono condivise
+tra dispositivi, browser o invitati.
 
 ## Configurazione Vercel
 
@@ -79,9 +86,12 @@ ruolo valido in `platform_user_roles`.
 
 1. URL normale in finestra anonima → reindirizzamento ad `accesso-beta`.
 2. Link completo → apertura homepage e rimozione del token dall'indirizzo.
-3. `/demo-gestionale` → navigazione read-only tra tutte le viste.
+3. `/demo-gestionale` → creazione di una prenotazione e cambio stato; verificare
+   che dashboard, flotta, cliente e finanza si aggiornino.
 4. Registrazione → email di conferma → login.
 5. Account fondatore → card Admin → accesso `/admin` e `/operator`.
 6. `robots.txt` → `Disallow: /`.
 7. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
 8. Stripe → chiavi e pagamenti esclusivamente TEST.
+9. Telefono → barra gestionale inferiore, schede booking e modali utilizzabili
+   senza zoom o scorrimento orizzontale della pagina.

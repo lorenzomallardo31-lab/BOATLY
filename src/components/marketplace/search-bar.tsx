@@ -27,7 +27,7 @@ export default function SearchBar({
         <input
           name="q"
           defaultValue={defaultQuery}
-          className="mt-1 w-full bg-transparent text-sm font-medium outline-none"
+          className="mt-1 w-full bg-transparent text-base font-medium outline-none md:text-sm"
           placeholder="Napoli, Capri, Ischia..."
         />
       </label>
@@ -40,7 +40,7 @@ export default function SearchBar({
           name="date"
           type="date"
           defaultValue={defaultDate}
-          className="mt-1 w-full bg-transparent text-sm font-medium outline-none"
+          className="mt-1 w-full bg-transparent text-base font-medium outline-none md:text-sm"
         />
       </label>
 
@@ -54,7 +54,7 @@ export default function SearchBar({
           min={1}
           max={50}
           defaultValue={defaultPassengers}
-          className="mt-1 w-full bg-transparent text-sm font-medium outline-none"
+          className="mt-1 w-full bg-transparent text-base font-medium outline-none md:text-sm"
         />
       </label>
 
