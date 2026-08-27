@@ -142,12 +142,50 @@ function initialBrowserState() {
     const saved = window.localStorage.getItem(DEMO_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved) as DemoState;
-      if (parsed.version === 2) return parsed;
+      if (parsed.version === 3) return parsed;
     }
   } catch {
     window.localStorage.removeItem(DEMO_STORAGE_KEY);
   }
   return freshDemoState();
+}
+
+function WorkspaceSetup({ onContinue }: { onContinue: (name: string) => void }) {
+  const [name, setName] = useState("");
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalized = name.trim().replace(/\s+/g, " ");
+    if (normalized.length >= 2) onContinue(normalized);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#EAF3F1] px-4 py-8 text-[#0B1F33] sm:grid sm:place-items-center sm:px-6 sm:py-12">
+      <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-[#D5E2E1] bg-white shadow-xl lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="bg-[#0B1F33] p-7 text-white sm:p-10 lg:p-12">
+          <Link href="/" className="text-2xl font-bold tracking-tight">Boatly</Link>
+          <p className="mt-12 text-xs font-bold uppercase tracking-[0.14em] text-[#5EEAD4]">Gestionale interattivo</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Il centro operativo della tua attività.</h1>
+          <p className="mt-5 text-sm leading-7 text-white/70">Prenotazioni, flotta, clienti e guadagni in un unico workspace dimostrativo costruito intorno alla tua impresa.</p>
+          <div className="mt-8 grid gap-3 text-sm text-white/80">
+            <p>✓ Dati sintetici modificabili</p>
+            <p>✓ Nessun pagamento o cliente reale</p>
+            <p>✓ Modifiche salvate su questo dispositivo</p>
+          </div>
+        </div>
+        <div className="p-7 sm:p-10 lg:p-12">
+          <span className="inline-flex rounded-full bg-[#CCFBF1] px-3 py-1.5 text-xs font-bold text-[#0F766E]">Configurazione iniziale · 1 minuto</span>
+          <h2 className="mt-6 text-3xl font-semibold tracking-tight">Come si chiama la tua attività?</h2>
+          <p className="mt-3 text-sm leading-6 text-[#64748B]">Useremo questo nome per personalizzare il gestionale. Potrai provare liberamente tutti i flussi senza collegarti a dati reali.</p>
+          <form onSubmit={submit} className="mt-8 space-y-4">
+            <Field label="Nome dell’attività"><input autoFocus required minLength={2} maxLength={80} className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="Es. Charter Napoli" autoComplete="organization" /></Field>
+            <button className={`${buttonPrimary} w-full`} disabled={name.trim().length < 2}>Crea il mio workspace demo →</button>
+          </form>
+          <Link href="/" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#64748B]">← Torna a Boatly</Link>
+        </div>
+      </section>
+    </main>
+  );
 }
 
 function BookingForm({ state, onSave, onClose }: { state: DemoState; onSave: (booking: DemoBooking) => void; onClose: () => void }) {
@@ -298,11 +336,74 @@ function FleetView({ state, onEditBoat }: { state: DemoState; onEditBoat: (id: s
   );
 }
 
-function BoatEditor({ boat, onSave, onClose }: { boat: DemoBoat; onSave: (boat: DemoBoat) => void; onClose: () => void }) {
+function FleetWorkspace({ state, onEditBoat, onAddBoat }: { state: DemoState; onEditBoat: (id: string) => void; onAddBoat: () => void }) {
+  return (
+    <div className="space-y-4">
+      <section className="flex flex-col gap-4 rounded-3xl bg-[#0B1F33] p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Gestione inventario</p>
+          <h2 className="mt-1 text-xl font-semibold">{state.boats.length} {state.boats.length === 1 ? "imbarcazione" : "imbarcazioni"} nella flotta</h2>
+          <p className="mt-2 text-sm text-white/65">Aggiungi, rinomina o rimuovi le barche del workspace demo.</p>
+        </div>
+        <button className="min-h-11 shrink-0 rounded-xl bg-[#14B8A6] px-5 text-sm font-semibold text-white" onClick={onAddBoat}>+ Aggiungi barca</button>
+      </section>
+      {state.boats.length > 0 ? <FleetView state={state} onEditBoat={onEditBoat} /> : <section className="rounded-3xl border border-dashed border-[#CBD5D8] bg-white p-10 text-center"><p className="text-xl font-semibold">La flotta è vuota</p><p className="mt-2 text-sm text-[#64748B]">Aggiungi la prima imbarcazione per iniziare a gestire disponibilità e prenotazioni.</p><button className={`${buttonPrimary} mt-5`} onClick={onAddBoat}>Aggiungi la prima barca</button></section>}
+    </div>
+  );
+}
+
+function BoatEditorV3({ boat, bookingCount, onSave, onDelete, onClose }: { boat: DemoBoat; bookingCount: number; onSave: (boat: DemoBoat) => void; onDelete: () => void; onClose: () => void }) {
+  const [name, setName] = useState(boat.name);
+  const [type, setType] = useState(boat.type);
+  const [base, setBase] = useState(boat.base);
+  const [capacity, setCapacity] = useState(String(boat.capacity));
   const [status, setStatus] = useState(boat.status);
   const [price, setPrice] = useState(String(boat.dailyPriceCents / 100));
   const [note, setNote] = useState(boat.maintenanceNote);
-  return <div className="space-y-4"><div className="rounded-2xl bg-[#F4F7F6] p-4 text-sm"><p className="text-xs text-[#64748B]">Imbarcazione</p><p className="mt-1 font-semibold">{boat.name} · {boat.base}</p></div><Field label="Stato disponibilità"><select className={inputClass} value={status} onChange={(event) => setStatus(event.target.value as DemoBoatStatus)}>{Object.entries(BOAT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field><Field label="Tariffa giornaliera (€)"><input className={inputClass} type="number" min="0" step="10" value={price} onChange={(event) => setPrice(event.target.value)} /></Field><Field label="Nota operativa"><textarea className={`${inputClass} min-h-24 py-3`} placeholder="Motivo del blocco o attività di manutenzione…" value={note} onChange={(event) => setNote(event.target.value)} /></Field><div className="grid gap-2 pt-2 sm:grid-cols-2"><button className={buttonSecondary} onClick={onClose}>Chiudi</button><button className={buttonPrimary} onClick={() => onSave({ ...boat, status, dailyPriceCents: Math.max(0, Math.round(Number(price) * 100)), maintenanceNote: note })}>Aggiorna flotta</button></div></div>;
+  const valid = name.trim().length >= 2 && type.trim().length >= 2 && base.trim().length >= 2 && Number(capacity) > 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nome barca"><input required className={inputClass} value={name} onChange={(event) => setName(event.target.value)} /></Field>
+        <Field label="Tipologia"><input required className={inputClass} value={type} onChange={(event) => setType(event.target.value)} placeholder="Gozzo, Open, Yacht…" /></Field>
+        <Field label="Base di partenza"><input required className={inputClass} value={base} onChange={(event) => setBase(event.target.value)} /></Field>
+        <Field label="Capienza"><input required className={inputClass} type="number" min="1" max="100" value={capacity} onChange={(event) => setCapacity(event.target.value)} /></Field>
+        <Field label="Stato disponibilità"><select className={inputClass} value={status} onChange={(event) => setStatus(event.target.value as DemoBoatStatus)}>{Object.entries(BOAT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
+        <Field label="Tariffa giornaliera (€)"><input className={inputClass} type="number" min="0" step="10" value={price} onChange={(event) => setPrice(event.target.value)} /></Field>
+      </div>
+      <Field label="Nota operativa"><textarea className={`${inputClass} min-h-24 py-3`} placeholder="Motivo del blocco o attività di manutenzione…" value={note} onChange={(event) => setNote(event.target.value)} /></Field>
+      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button className={buttonSecondary} onClick={onClose}>Chiudi</button><button disabled={!valid} className={buttonPrimary} onClick={() => onSave({ ...boat, name: name.trim(), type: type.trim(), base: base.trim(), capacity: Math.max(1, Number(capacity)), status, dailyPriceCents: Math.max(0, Math.round(Number(price) * 100)), maintenanceNote: note })}>Salva modifiche</button></div>
+      <div className="border-t border-[#DEE5E8] pt-5"><button className="min-h-11 rounded-xl px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={onDelete}>Rimuovi barca{bookingCount ? ` e ${bookingCount} booking demo` : ""}</button></div>
+    </div>
+  );
+}
+
+function BoatCreateForm({ onSave, onClose }: { onSave: (boat: DemoBoat) => void; onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [type, setType] = useState("");
+  const [base, setBase] = useState("Napoli");
+  const [capacity, setCapacity] = useState("8");
+  const [price, setPrice] = useState("600");
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSave({ id: `boat-${Date.now()}`, name: name.trim(), type: type.trim(), base: base.trim(), capacity: Math.max(1, Number(capacity)), dailyPriceCents: Math.max(0, Math.round(Number(price) * 100)), status: "ACTIVE", maintenanceNote: "" });
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nome barca"><input autoFocus required minLength={2} className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="Es. Stella Marina 30" /></Field>
+        <Field label="Tipologia"><input required minLength={2} className={inputClass} value={type} onChange={(event) => setType(event.target.value)} placeholder="Gozzo, Open, Yacht…" /></Field>
+        <Field label="Base di partenza"><input required minLength={2} className={inputClass} value={base} onChange={(event) => setBase(event.target.value)} /></Field>
+        <Field label="Capienza"><input required className={inputClass} type="number" min="1" max="100" value={capacity} onChange={(event) => setCapacity(event.target.value)} /></Field>
+        <Field label="Tariffa giornaliera (€)"><input required className={inputClass} type="number" min="0" step="10" value={price} onChange={(event) => setPrice(event.target.value)} /></Field>
+      </div>
+      <p className="rounded-xl bg-[#F4F7F6] p-3 text-xs leading-5 text-[#64748B]">La nuova imbarcazione verrà aggiunta come attiva e sarà subito selezionabile nelle prenotazioni demo.</p>
+      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button type="button" className={buttonSecondary} onClick={onClose}>Annulla</button><button className={buttonPrimary}>Aggiungi alla flotta</button></div>
+    </form>
+  );
 }
 
 function CustomersView({ state, onOpenCustomer }: { state: DemoState; onOpenCustomer: (id: string) => void }) {
@@ -341,6 +442,7 @@ export default function DemoManagementApp() {
   const [state, setState] = useState<DemoState>(initialBrowserState);
   const [view, setView] = useState<DemoView>("dashboard");
   const [newBookingOpen, setNewBookingOpen] = useState(false);
+  const [newBoatOpen, setNewBoatOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -370,6 +472,25 @@ export default function DemoManagementApp() {
     setNewBookingOpen(false); setToast("Prenotazione aggiunta al workspace demo"); setView("prenotazioni");
   }
 
+  function enterWorkspace(name: string) {
+    setState((current) => ({
+      ...current,
+      workspaceName: name,
+      activity: withActivity(current, "Workspace configurato", name),
+    }));
+  }
+
+  function addBoat(boat: DemoBoat) {
+    setState((current) => ({
+      ...current,
+      boats: [boat, ...current.boats],
+      activity: withActivity(current, "Barca aggiunta", `${boat.name} · ${boat.base}`),
+    }));
+    setNewBoatOpen(false);
+    setToast("Imbarcazione aggiunta alla flotta");
+    setView("flotta");
+  }
+
   function updateBooking(status: DemoBookingStatus, notes: string) {
     if (!selectedBooking) return;
     setState((current) => ({ ...current, bookings: current.bookings.map((item) => item.id === selectedBooking.id ? { ...item, status, notes } : item), activity: withActivity(current, "Prenotazione aggiornata", `${selectedBooking.reference} · ${BOOKING_LABELS[status]}`) }));
@@ -379,6 +500,24 @@ export default function DemoManagementApp() {
   function updateBoat(boat: DemoBoat) {
     setState((current) => ({ ...current, boats: current.boats.map((item) => item.id === boat.id ? boat : item), activity: withActivity(current, "Flotta aggiornata", `${boat.name} · ${BOAT_LABELS[boat.status]}`) }));
     setSelectedBoatId(null); setToast("Disponibilità della flotta aggiornata");
+  }
+
+  function deleteSelectedBoat() {
+    if (!selectedBoat) return;
+    const bookingCount = state.bookings.filter((item) => item.boatId === selectedBoat.id).length;
+    const message = bookingCount
+      ? `Rimuovere ${selectedBoat.name}? Verranno eliminate anche ${bookingCount} prenotazioni demo associate.`
+      : `Rimuovere ${selectedBoat.name} dalla flotta demo?`;
+    if (!window.confirm(message)) return;
+
+    setState((current) => ({
+      ...current,
+      boats: current.boats.filter((item) => item.id !== selectedBoat.id),
+      bookings: current.bookings.filter((item) => item.boatId !== selectedBoat.id),
+      activity: withActivity(current, "Barca rimossa", selectedBoat.name),
+    }));
+    setSelectedBoatId(null);
+    setToast("Imbarcazione rimossa dal workspace demo");
   }
 
   function updateCustomer(notes: string) {
@@ -396,24 +535,28 @@ export default function DemoManagementApp() {
     return <main className="grid min-h-screen place-items-center bg-[#EEF3F2] px-6 text-center text-[#0B1F33]"><div><p className="text-sm font-semibold text-[#14B8A6]">Boatly gestionale</p><h1 className="mt-2 text-2xl font-semibold">Preparazione workspace demo…</h1></div></main>;
   }
 
+  if (!state.workspaceName) {
+    return <WorkspaceSetup onContinue={enterWorkspace} />;
+  }
+
   return (
     <main className="min-h-screen bg-[#EEF3F2] pb-24 text-[#0B1F33] lg:pb-0">
       <header className="sticky top-0 z-30 border-b border-[#DEE5E8] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="min-w-0"><Link href="/" className="text-xl font-bold tracking-tight">Boatly</Link><p className="truncate text-[11px] text-[#64748B]">Gestionale interattivo · MareVivo Charter</p></div>
+          <div className="min-w-0"><Link href="/" className="text-xl font-bold tracking-tight">Boatly</Link><p className="truncate text-[11px] text-[#64748B]">Gestionale interattivo · {state.workspaceName}</p></div>
           <div className="flex items-center gap-2"><span className="hidden rounded-full bg-[#CCFBF1] px-3 py-1.5 text-xs font-semibold text-[#0F766E] sm:inline-flex">Demo isolata · modifiche locali</span><button className="min-h-11 rounded-xl px-3 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F4]" onClick={resetDemo}>Ripristina</button><Link href="/" className="grid min-h-11 place-items-center rounded-xl bg-[#0B1F33] px-3 text-xs font-semibold text-white sm:px-4 sm:text-sm">Esci</Link></div>
         </div>
       </header>
 
       <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[248px_1fr]">
-        <aside className="hidden min-h-[calc(100vh-69px)] border-r border-[#DEE5E8] bg-white p-5 lg:block"><div className="rounded-2xl bg-[#0B1F33] p-4 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Workspace demo</p><p className="mt-2 font-semibold">MareVivo Charter</p><p className="mt-1 text-xs text-white/60">Napoli · {state.boats.length} imbarcazioni</p></div><nav className="mt-5 space-y-1" aria-label="Sezioni gestionale">{VIEWS.map((item) => <button key={item.id} onClick={() => setView(item.id)} aria-current={view === item.id ? "page" : undefined} className={classNames("w-full rounded-xl px-4 py-3 text-left transition", view === item.id ? "bg-[#CCFBF1] text-[#0F766E]" : "text-[#475569] hover:bg-[#F1F5F4]")}><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-xs opacity-70">{item.note}</span></button>)}</nav><div className="mt-6 rounded-2xl border border-[#DEE5E8] p-4 text-xs leading-5 text-[#64748B]"><strong className="text-[#0B1F33]">Circuito chiuso.</strong><br />Le modifiche restano solo su questo browser e non raggiungono dati, clienti o pagamenti reali.</div></aside>
+        <aside className="hidden min-h-[calc(100vh-69px)] border-r border-[#DEE5E8] bg-white p-5 lg:block"><div className="rounded-2xl bg-[#0B1F33] p-4 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Workspace demo</p><p className="mt-2 truncate font-semibold">{state.workspaceName}</p><p className="mt-1 text-xs text-white/60">{state.boats.length} {state.boats.length === 1 ? "imbarcazione" : "imbarcazioni"}</p></div><nav className="mt-5 space-y-1" aria-label="Sezioni gestionale">{VIEWS.map((item) => <button key={item.id} onClick={() => setView(item.id)} aria-current={view === item.id ? "page" : undefined} className={classNames("w-full rounded-xl px-4 py-3 text-left transition", view === item.id ? "bg-[#CCFBF1] text-[#0F766E]" : "text-[#475569] hover:bg-[#F1F5F4]")}><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-xs opacity-70">{item.note}</span></button>)}</nav><div className="mt-6 rounded-2xl border border-[#DEE5E8] p-4 text-xs leading-5 text-[#64748B]"><strong className="text-[#0B1F33]">Circuito chiuso.</strong><br />Le modifiche restano solo su questo browser e non raggiungono dati, clienti o pagamenti reali.</div></aside>
 
         <div className="min-w-0 p-4 sm:p-6 lg:p-8">
           <section className="mb-5 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold text-[#14B8A6]">{selectedView.note}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{selectedView.label}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748B]">Prova le operazioni quotidiane: ogni modifica aggiorna tutte le sezioni del gestionale.</p></div><div className="rounded-2xl border border-[#DEE5E8] bg-white px-4 py-3 text-xs text-[#64748B] sm:text-sm"><span className="inline-block h-2 w-2 rounded-full bg-[#14B8A6]" /> <strong className="ml-1 text-[#0B1F33]">Dati salvati sul dispositivo</strong></div></section>
 
           {view === "dashboard" ? <DashboardView state={state} onNavigate={setView} onNewBooking={() => setNewBookingOpen(true)} onOpenBooking={setSelectedBookingId} /> : null}
           {view === "prenotazioni" ? <BookingsView state={state} onNewBooking={() => setNewBookingOpen(true)} onOpenBooking={setSelectedBookingId} /> : null}
-          {view === "flotta" ? <FleetView state={state} onEditBoat={setSelectedBoatId} /> : null}
+          {view === "flotta" ? <FleetWorkspace state={state} onEditBoat={setSelectedBoatId} onAddBoat={() => setNewBoatOpen(true)} /> : null}
           {view === "clienti" ? <CustomersView state={state} onOpenCustomer={setSelectedCustomerId} /> : null}
           {view === "finanza" ? <FinanceView state={state} onOpenBooking={setSelectedBookingId} /> : null}
         </div>
@@ -422,8 +565,9 @@ export default function DemoManagementApp() {
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#D7E0E2] bg-white/95 px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur lg:hidden" aria-label="Navigazione mobile gestionale">{VIEWS.map((item) => <button key={item.id} onClick={() => setView(item.id)} className={classNames("min-h-14 rounded-xl px-1 text-[10px] font-semibold", view === item.id ? "bg-[#CCFBF1] text-[#0F766E]" : "text-[#64748B]")}><span className="mx-auto mb-1 block h-1.5 w-1.5 rounded-full bg-current" />{item.short}</button>)}</nav>
 
       {newBookingOpen ? <Modal title="Nuova prenotazione" eyebrow="Agenda operativa" onClose={() => setNewBookingOpen(false)} wide><BookingForm state={state} onSave={addBooking} onClose={() => setNewBookingOpen(false)} /></Modal> : null}
+      {newBoatOpen ? <Modal title="Aggiungi una barca" eyebrow="Gestione flotta" onClose={() => setNewBoatOpen(false)} wide><BoatCreateForm onSave={addBoat} onClose={() => setNewBoatOpen(false)} /></Modal> : null}
       {selectedBooking ? <Modal title={selectedBooking.reference} eyebrow="Dettaglio prenotazione" onClose={() => setSelectedBookingId(null)}><BookingDetail booking={selectedBooking} boat={state.boats.find((item) => item.id === selectedBooking.boatId)} customer={state.customers.find((item) => item.id === selectedBooking.customerId)} onUpdate={updateBooking} onClose={() => setSelectedBookingId(null)} /></Modal> : null}
-      {selectedBoat ? <Modal title={selectedBoat.name} eyebrow="Gestione flotta" onClose={() => setSelectedBoatId(null)}><BoatEditor boat={selectedBoat} onSave={updateBoat} onClose={() => setSelectedBoatId(null)} /></Modal> : null}
+      {selectedBoat ? <Modal title={selectedBoat.name} eyebrow="Gestione flotta" onClose={() => setSelectedBoatId(null)} wide><BoatEditorV3 boat={selectedBoat} bookingCount={state.bookings.filter((item) => item.boatId === selectedBoat.id).length} onSave={updateBoat} onDelete={deleteSelectedBoat} onClose={() => setSelectedBoatId(null)} /></Modal> : null}
       {selectedCustomer ? <Modal title={selectedCustomer.name} eyebrow="Scheda cliente" onClose={() => setSelectedCustomerId(null)} wide><CustomerDetail customer={selectedCustomer} state={state} onSave={updateCustomer} onOpenBooking={(id) => { setSelectedCustomerId(null); setSelectedBookingId(id); }} onClose={() => setSelectedCustomerId(null)} /></Modal> : null}
       {toast ? <Toast message={toast} /> : null}
     </main>

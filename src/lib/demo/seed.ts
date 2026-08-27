@@ -1,9 +1,10 @@
 import type { DemoState } from "@/lib/demo/types";
 
-export const DEMO_STORAGE_KEY = "boatly:management-demo:v2";
+export const DEMO_STORAGE_KEY = "boatly:management-demo:v3";
 
 export const DEMO_SEED: DemoState = {
-  version: 2,
+  version: 3,
+  workspaceName: "",
   boats: [
     { id: "boat-gozzo", name: "Gozzo Positano 32", type: "Gozzo", base: "Napoli", capacity: 10, dailyPriceCents: 78000, status: "ACTIVE", maintenanceNote: "" },
     { id: "boat-blu", name: "Blu Mediterraneo", type: "Open", base: "Napoli", capacity: 8, dailyPriceCents: 54000, status: "ACTIVE", maintenanceNote: "" },
@@ -34,4 +35,3 @@ export const DEMO_SEED: DemoState = {
 export function freshDemoState(): DemoState {
   return structuredClone(DEMO_SEED);
 }
-

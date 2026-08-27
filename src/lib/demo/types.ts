@@ -57,10 +57,10 @@ export type DemoActivity = {
 };
 
 export type DemoState = {
-  version: 2;
+  version: 3;
+  workspaceName: string;
   bookings: DemoBooking[];
   boats: DemoBoat[];
   customers: DemoCustomer[];
   activity: DemoActivity[];
 };
-

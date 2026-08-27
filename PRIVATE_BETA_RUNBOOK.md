@@ -8,10 +8,17 @@ flussi. Gli account già registrati possono continuare ad accedere dal login.
 
 Il gestionale commerciale interattivo è disponibile su `/demo-gestionale` con
 dati interamente sintetici. Ogni visitatore riceve un workspace separato,
+personalizzato al primo ingresso con il nome della propria attività e
 persistente soltanto nel `localStorage` del proprio browser. Può creare e
-gestire prenotazioni, modificare disponibilità e tariffe della flotta,
-aggiornare note CRM, analizzare ricavi e scaricare un CSV dimostrativo. Nessuna
-azione interroga o modifica operatori, clienti, pagamenti o prenotazioni reali.
+gestire prenotazioni, aggiungere, rinominare, modificare o rimuovere le barche
+della flotta, aggiornare note CRM, analizzare ricavi e scaricare un CSV
+dimostrativo. Nessuna azione interroga o modifica operatori, clienti, pagamenti
+o prenotazioni reali.
+
+Quando una barca viene rimossa, la demo chiede conferma e indica quante
+prenotazioni sintetiche sono associate. Confermando, elimina dal solo workspace
+locale sia la barca sia quelle prenotazioni, mantenendo coerenti agenda,
+dashboard, CRM e finanza.
 
 Il pulsante `Ripristina` elimina esclusivamente lo scenario demo del browser
 corrente e ricarica i dati sintetici iniziali. Le modifiche non sono condivise
@@ -86,12 +93,17 @@ ruolo valido in `platform_user_roles`.
 
 1. URL normale in finestra anonima → reindirizzamento ad `accesso-beta`.
 2. Link completo → apertura homepage e rimozione del token dall'indirizzo.
-3. `/demo-gestionale` → creazione di una prenotazione e cambio stato; verificare
-   che dashboard, flotta, cliente e finanza si aggiornino.
-4. Registrazione → email di conferma → login.
-5. Account fondatore → card Admin → accesso `/admin` e `/operator`.
-6. `robots.txt` → `Disallow: /`.
-7. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
-8. Stripe → chiavi e pagamenti esclusivamente TEST.
-9. Telefono → barra gestionale inferiore, schede booking e modali utilizzabili
+3. `/demo-gestionale` → inserimento del nome attività; verificare che compaia
+   nell'intestazione e resti presente dopo un ricaricamento.
+4. Flotta demo → aggiungere una barca, modificarne nome e disponibilità,
+   rimuoverla dopo la conferma e verificare la coerenza delle prenotazioni.
+5. Prenotazioni demo → creazione e cambio stato; verificare che dashboard,
+   flotta, cliente e finanza si aggiornino.
+6. Registrazione → email di conferma → login.
+7. Account fondatore → card Admin → accesso `/admin` e `/operator`.
+8. `robots.txt` → `Disallow: /`.
+9. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
+10. Stripe → chiavi e pagamenti esclusivamente TEST.
+11. Telefono → configurazione iniziale, barra gestionale inferiore, schede
+   booking e modali della flotta utilizzabili
    senza zoom o scorrimento orizzontale della pagina.
