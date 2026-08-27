@@ -23,12 +23,15 @@ export default async function MarketplaceHeader() {
           <Link href="/come-funziona" className="hover:text-[#0B1F33]">
             Come funziona
           </Link>
+          <Link href="/demo-gestionale" className="font-semibold text-[#0F766E] hover:text-[#0B1F33]">
+            Gestionale demo
+          </Link>
           {signedIn ? (
             <Link href="/prenotazioni" className="hover:text-[#0B1F33]">
               Le mie prenotazioni
             </Link>
           ) : null}
-          <Link href="/operator/onboarding" className="hover:text-[#0B1F33]">
+          <Link href="/operator/onboarding" className="hidden hover:text-[#0B1F33] lg:inline">
             Diventa noleggiatore
           </Link>
         </nav>

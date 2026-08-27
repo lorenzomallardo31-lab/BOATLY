@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import MarketplaceHeader from "@/components/marketplace/marketplace-header";
 
 const STEPS = [
@@ -35,6 +37,37 @@ export default function HowItWorksPage() {
             </article>
           ))}
         </div>
+
+        <section className="mt-16 overflow-hidden rounded-[2rem] bg-[#0B1F33] text-white">
+          <div className="grid gap-8 p-8 lg:grid-cols-[0.9fr_1.1fr] lg:p-12">
+            <div>
+              <p className="text-sm font-semibold text-[#5EEAD4]">Per chi noleggia</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+                Il marketplace acquisisce clienti. Il gestionale governa il lavoro.
+              </h2>
+              <p className="mt-4 leading-7 text-white/70">
+                Le prenotazioni Boatly e quelle dirette confluiscono in un solo
+                workspace insieme a disponibilità, flotta, CRM e movimenti economici.
+              </p>
+              <Link href="/demo-gestionale" className="mt-7 inline-flex rounded-xl bg-[#14B8A6] px-6 py-3 text-sm font-semibold text-white">
+                Apri la demo gestionale
+              </Link>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ["Dashboard", "Priorità, partenze e indicatori del giorno."],
+                ["Booking", "Marketplace e vendite dirette insieme."],
+                ["Flotta e CRM", "Disponibilità, clienti e storico."],
+                ["Finanza", "Pagamenti e rimborsi riconciliati."],
+              ].map(([title, description]) => (
+                <article key={title} className="rounded-2xl border border-white/15 bg-white/5 p-5">
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-white/60">{description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
       </section>
     </main>
   );

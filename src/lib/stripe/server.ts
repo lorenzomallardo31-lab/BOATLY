@@ -4,6 +4,8 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
+import { privateBetaEnabled } from "@/lib/beta-access";
+
 type CheckoutSession = {
   id: string;
   object: "checkout.session";
@@ -77,6 +79,10 @@ function stripeWebhookSecret() {
 function assertStripeRefundModeAllowed() {
   const key = stripeSecretKey();
   const isLiveKey = key.includes("_live_");
+
+  if (isLiveKey && privateBetaEnabled()) {
+    throw new Error("Live Stripe operations are disabled in private beta mode.");
+  }
 
   if (
     isLiveKey &&
@@ -164,6 +170,10 @@ export async function createStripeCheckoutSession(input: {
   connectedAccountId: string;
   checkoutRequestId: string;
 }) {
+  if (privateBetaEnabled() && stripeSecretKey().includes("_live_")) {
+    throw new Error("Live Stripe operations are disabled in private beta mode.");
+  }
+
   const baseUrl = appBaseUrl();
   const params = new URLSearchParams();
 
