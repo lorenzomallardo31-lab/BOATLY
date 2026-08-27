@@ -1,4 +1,5 @@
 import {
+  createHash,
   createHmac,
   timingSafeEqual,
 } from "node:crypto";
@@ -24,6 +25,19 @@ type StripeErrorResponse = {
   };
 };
 
+export type StripeRefund = {
+  id: string;
+  object: "refund";
+  amount: number;
+  currency: string;
+  payment_intent: string | null;
+  charge: string | null;
+  status: string | null;
+  reason: string | null;
+  failure_reason?: string | null;
+  metadata?: Record<string, string>;
+};
+
 export type StripeWebhookEvent = {
   id: string;
   type: string;
@@ -37,6 +51,7 @@ export type StripeWebhookEvent = {
 };
 
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
+const STRIPE_API_VERSION = "2026-07-29.dahlia";
 const WEBHOOK_TOLERANCE_SECONDS = 300;
 
 function stripeSecretKey() {
@@ -57,6 +72,20 @@ function stripeWebhookSecret() {
   }
 
   return value;
+}
+
+function assertStripeRefundModeAllowed() {
+  const key = stripeSecretKey();
+  const isLiveKey = key.includes("_live_");
+
+  if (
+    isLiveKey &&
+    process.env.STRIPE_LIVE_REFUNDS_ENABLED !== "true"
+  ) {
+    throw new Error(
+      "Live Stripe refunds are disabled until STRIPE_LIVE_REFUNDS_ENABLED=true.",
+    );
+  }
 }
 
 export function appBaseUrl() {
@@ -92,6 +121,7 @@ async function stripePost<T>(
     headers: {
       Authorization: `Bearer ${stripeSecretKey()}`,
       "Content-Type": "application/x-www-form-urlencoded",
+      "Stripe-Version": STRIPE_API_VERSION,
       ...(idempotencyKey
         ? { "Idempotency-Key": idempotencyKey }
         : {}),
@@ -110,6 +140,17 @@ async function stripePost<T>(
   }
 
   return payload;
+}
+
+function integrationIdentifier(seed: string) {
+  const digest = createHash("sha256").update(seed).digest();
+  let suffix = "";
+
+  for (let index = 0; index < 8; index += 1) {
+    suffix += String.fromCharCode(97 + (digest[index] % 26));
+  }
+
+  return `boatly_checkout_${suffix}`;
 }
 
 export async function createStripeCheckoutSession(input: {
@@ -138,7 +179,10 @@ export async function createStripeCheckoutSession(input: {
   params.set("client_reference_id", input.bookingId);
   params.set("expires_at", String(Math.floor(Date.now() / 1000) + 32 * 60));
   params.set("locale", "it");
-  params.set("payment_method_types[0]", "card");
+  params.set(
+    "integration_identifier",
+    integrationIdentifier(input.checkoutRequestId),
+  );
 
   if (input.customerEmail) {
     params.set("customer_email", input.customerEmail);
@@ -187,6 +231,40 @@ export async function createStripeCheckoutSession(input: {
     "/checkout/sessions",
     params,
     `booking:${input.bookingId}:checkout:${input.checkoutRequestId}`,
+  );
+}
+
+export async function createStripeRefund(input: {
+  refundId: string;
+  bookingId: string;
+  bookingReference: string | null;
+  paymentId: string;
+  paymentIntentId: string;
+  amountCents: number;
+  reason: string;
+  idempotencyKey: string;
+}) {
+  assertStripeRefundModeAllowed();
+
+  const params = new URLSearchParams();
+
+  params.set("payment_intent", input.paymentIntentId);
+  params.set("amount", String(input.amountCents));
+  params.set("reverse_transfer", "true");
+  params.set("refund_application_fee", "true");
+  params.set("metadata[refund_id]", input.refundId);
+  params.set("metadata[booking_id]", input.bookingId);
+  params.set("metadata[payment_id]", input.paymentId);
+  params.set("metadata[boatly_reason]", input.reason.slice(0, 500));
+
+  if (input.bookingReference) {
+    params.set("metadata[booking_reference]", input.bookingReference);
+  }
+
+  return stripePost<StripeRefund>(
+    "/refunds",
+    params,
+    input.idempotencyKey,
   );
 }
 

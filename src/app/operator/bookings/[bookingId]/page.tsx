@@ -34,10 +34,16 @@ export default async function OperatorBookingDetailPage({ params, searchParams }
 
   if (bookingError || !booking) redirect(`/operator/bookings?operator=${operator.id}`);
 
-  const [{ data: events }, { data: requests }, { data: payments }] = await Promise.all([
+  const [
+    { data: events },
+    { data: requests },
+    { data: payments },
+    { data: refunds },
+  ] = await Promise.all([
     supabase.from("booking_events").select("id, event_type, actor_type, from_status, to_status, message, occurred_at").eq("booking_id", bookingId).order("occurred_at", { ascending: false }).limit(20),
     supabase.from("booking_cancellation_requests").select("id, status, reason, estimated_refund_cents, currency, requested_at, resolution_note").eq("booking_id", bookingId).order("requested_at", { ascending: false }),
     supabase.from("payments").select("id, status, amount_cents, amount_received_cents, amount_refunded_cents, platform_fee_cents, reconciliation_status, created_at").eq("booking_id", bookingId).order("created_at", { ascending: false }),
+    supabase.from("refunds").select("id, amount_cents, currency, status, reconciliation_status, created_at").eq("booking_id", bookingId).order("created_at", { ascending: false }),
   ]);
 
   const customer = (booking.customer_snapshot ?? {}) as { display_name?: string; email?: string; phone?: string };
@@ -101,6 +107,20 @@ export default async function OperatorBookingDetailPage({ params, searchParams }
                 <div className="flex justify-between"><span>Quota operatore</span><strong>{money(booking.operator_amount_cents_snapshot, booking.currency_snapshot ?? operator.currency)}</strong></div>
               </div>
               {(payments ?? []).map((payment) => <div key={payment.id} className="mt-4 rounded-2xl bg-[#F1F5F4] p-4 text-xs"><p><strong>Stripe:</strong> {payment.status}</p><p className="mt-1">Reconciliation: {payment.reconciliation_status}</p></div>)}
+              {(refunds ?? []).map((refund) => (
+                <div
+                  key={refund.id}
+                  className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs"
+                >
+                  <p>
+                    <strong>Rimborso:</strong>{" "}
+                    {money(refund.amount_cents, refund.currency)} · {refund.status}
+                  </p>
+                  <p className="mt-1">
+                    Reconciliation: {refund.reconciliation_status}
+                  </p>
+                </div>
+              ))}
             </section>
 
             {pendingRequest && canManageCancellation ? (

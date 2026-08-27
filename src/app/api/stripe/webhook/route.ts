@@ -86,8 +86,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: false }, { status: 500 });
   }
 
+  const processor = event.type.startsWith("refund.")
+    ? "process_marketplace_refund_event"
+    : "process_marketplace_stripe_event";
+
   const { data: result, error: processError } = await admin.rpc(
-    "process_marketplace_stripe_event",
+    processor,
     {
       p_stripe_event_row_id: eventRowId,
     },

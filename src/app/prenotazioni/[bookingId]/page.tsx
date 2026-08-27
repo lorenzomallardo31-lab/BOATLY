@@ -72,6 +72,16 @@ type BookingDetail = {
   can_request_cancellation: boolean;
 };
 
+type BookingRefund = {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  created_at: string;
+  succeeded_at?: string | null;
+  failed_at?: string | null;
+};
+
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("it-IT", {
     style: "currency",
@@ -137,15 +147,30 @@ export default async function BookingDetailPage({
     redirect(`/sign-in?next=${encodeURIComponent(`/prenotazioni/${bookingId}`)}`);
   }
 
-  const { data, error } = await supabase.rpc("customer_booking_detail", {
-    p_booking_id: bookingId,
-  });
+  const [
+    { data, error },
+    { data: refundData, error: refundError },
+  ] = await Promise.all([
+    supabase.rpc("customer_booking_detail", {
+      p_booking_id: bookingId,
+    }),
+    supabase.rpc("customer_booking_refunds", {
+      p_booking_id: bookingId,
+    }),
+  ]);
 
-  if (error || !data || typeof data !== "object") {
+  if (
+    error ||
+    refundError ||
+    !data ||
+    typeof data !== "object" ||
+    !Array.isArray(refundData)
+  ) {
     redirect("/prenotazioni");
   }
 
   const booking = data as BookingDetail;
+  const refunds = refundData as BookingRefund[];
   const boatName =
     typeof booking.boat.name === "string" ? booking.boat.name : "Barca";
   const boatSlug =
@@ -277,6 +302,41 @@ export default async function BookingDetailPage({
                 </p>
                 <p className="mt-2 text-xs leading-5 text-amber-950/70">
                   La cifra è una stima basata sullo snapshot della politica applicata alla prenotazione. Eventuali diritti inderogabili, condizioni meteo/sicurezza o altre eccezioni sono gestiti separatamente.
+                </p>
+              </section>
+            ) : null}
+
+            {refunds.length > 0 ? (
+              <section className="rounded-3xl border border-[#DEE5E8] bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-semibold">Rimborsi</h2>
+                <div className="mt-4 space-y-3">
+                  {refunds.map((refund) => (
+                    <div
+                      key={refund.id}
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#F1F5F4] p-4"
+                    >
+                      <div>
+                        <p className="font-semibold">
+                          {money(refund.amount_cents, refund.currency)}
+                        </p>
+                        <p className="mt-1 text-xs text-[#64748B]">
+                          Richiesto il {dateTime(refund.created_at)}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-2 text-xs font-semibold">
+                        {refund.status === "SUCCEEDED"
+                          ? "Rimborsato"
+                          : refund.status === "FAILED"
+                            ? "Da verificare"
+                            : "In elaborazione"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs leading-5 text-[#64748B]">
+                  Dopo la conferma possono essere necessari alcuni giorni
+                  lavorativi perché l&apos;importo sia visibile sul metodo di
+                  pagamento originario.
                 </p>
               </section>
             ) : null}
