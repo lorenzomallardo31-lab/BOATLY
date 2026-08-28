@@ -50,7 +50,7 @@ export default async function Home() {
                 href="/demo-gestionale"
                 className="rounded-xl bg-[#14B8A6] px-6 py-3 text-center text-sm font-semibold text-white"
               >
-                Guarda il gestionale demo
+                Area noleggiatore
               </Link>
               <Link
                 href="/come-funziona"
@@ -89,7 +89,7 @@ export default async function Home() {
               href="/demo-gestionale"
               className="mt-7 inline-flex rounded-xl bg-[#0B1F33] px-6 py-3 text-sm font-semibold text-white"
             >
-              Prova il gestionale interattivo
+              Apri l’area noleggiatore
             </Link>
           </div>
 
@@ -206,7 +206,7 @@ export default async function Home() {
                 href="/demo-gestionale"
                 className="rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white"
               >
-                Guarda la demo
+                Area noleggiatore
               </Link>
               <Link
                 href="/operator/onboarding"
@@ -225,7 +225,7 @@ export default async function Home() {
           <div className="grid grid-cols-2 gap-x-5 gap-y-2 sm:flex">
             <Link href="/come-funziona">Come funziona</Link>
             <Link href="/operator/onboarding">Noleggiatori</Link>
-            <Link href="/demo-gestionale">Gestionale demo</Link>
+            <Link href="/demo-gestionale">Area noleggiatore</Link>
             <Link href="/account">Account</Link>
           </div>
         </div>

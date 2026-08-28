@@ -1,5 +1,6 @@
 export type DemoView =
   | "dashboard"
+  | "calendario"
   | "prenotazioni"
   | "flotta"
   | "clienti"
@@ -13,6 +14,21 @@ export type DemoBookingStatus =
   | "CANCELLED";
 
 export type DemoBoatStatus = "ACTIVE" | "MAINTENANCE" | "UNAVAILABLE";
+
+export type DemoExtraPricingUnit =
+  | "FIXED"
+  | "PER_PERSON"
+  | "PER_DAY"
+  | "PER_UNIT";
+
+export type DemoBoatExtra = {
+  id: string;
+  name: string;
+  description: string;
+  pricingUnit: DemoExtraPricingUnit;
+  priceCents: number;
+  maxQuantity: number | null;
+};
 
 export type DemoBooking = {
   id: string;
@@ -34,10 +50,28 @@ export type DemoBoat = {
   name: string;
   type: string;
   base: string;
-  capacity: number;
+  shortDescription: string;
+  description: string;
+  manufacturer: string;
+  model: string;
+  manufactureYear: number | null;
+  lengthMeters: number | null;
+  beamMeters: number | null;
+  capacity: number | null;
+  cabins: number | null;
+  berths: number | null;
+  bathrooms: number | null;
+  engineCount: number | null;
+  engineManufacturer: string;
+  engineModel: string;
+  fuelType: string;
+  horsepower: number;
+  maxSpeedKnots: number | null;
+  licenseRequired: boolean;
   dailyPriceCents: number;
   status: DemoBoatStatus;
   maintenanceNote: string;
+  extras: DemoBoatExtra[];
 };
 
 export type DemoCustomer = {
@@ -56,9 +90,21 @@ export type DemoActivity = {
   occurredAt: string;
 };
 
+export type DemoLocation = {
+  id: string;
+  label: string;
+  fullName: string;
+  city: string;
+  region: string;
+  countryCode: "IT";
+  longitude: number;
+  latitude: number;
+};
+
 export type DemoState = {
-  version: 3;
+  version: 4;
   workspaceName: string;
+  workspaceLocation: DemoLocation | null;
   bookings: DemoBooking[];
   boats: DemoBoat[];
   customers: DemoCustomer[];

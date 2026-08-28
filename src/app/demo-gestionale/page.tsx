@@ -3,12 +3,11 @@ import type { Metadata } from "next";
 import DemoManagementApp from "@/components/demo/demo-management-app";
 
 export const metadata: Metadata = {
-  title: "Gestionale interattivo demo",
+  title: "Boatly Ops — area noleggiatore",
   description:
-    "Prova il gestionale Boatly in un ambiente dimostrativo isolato, con dati sintetici modificabili.",
+    "Area operativa Boatly per calendario, prenotazioni, flotta, clienti e controllo economico.",
 };
 
 export default function ManagementDemoPage() {
   return <DemoManagementApp />;
 }
-

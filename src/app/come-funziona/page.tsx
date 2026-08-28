@@ -50,7 +50,7 @@ export default function HowItWorksPage() {
                 workspace insieme a disponibilità, flotta, CRM e movimenti economici.
               </p>
               <Link href="/demo-gestionale" className="mt-7 inline-flex rounded-xl bg-[#14B8A6] px-6 py-3 text-sm font-semibold text-white">
-                Apri la demo gestionale
+                Area noleggiatore
               </Link>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

@@ -7,7 +7,7 @@ export default function BetaBanner() {
         <strong>Anteprima privata Boatly</strong>
         <span className="text-[#0F766E]">Demo · pagamenti TEST · nessun servizio reale</span>
         <Link href="/demo-gestionale" className="font-semibold underline underline-offset-4">
-          Apri il gestionale demo
+          Area noleggiatore
         </Link>
       </div>
     </div>

@@ -24,7 +24,7 @@ export default async function MarketplaceHeader() {
             Come funziona
           </Link>
           <Link href="/demo-gestionale" className="font-semibold text-[#0F766E] hover:text-[#0B1F33]">
-            Gestionale demo
+            Area noleggiatore
           </Link>
           {signedIn ? (
             <Link href="/prenotazioni" className="hover:text-[#0B1F33]">
@@ -72,7 +72,7 @@ export default async function MarketplaceHeader() {
       </div>
       <nav className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-3 pb-2 text-xs font-semibold text-[#64748B] md:hidden" aria-label="Navigazione mobile marketplace">
         <Link href="/cerca" className="shrink-0 rounded-xl px-3 py-2 hover:bg-[#F1F5F4]">Cerca barche</Link>
-        <Link href="/demo-gestionale" className="shrink-0 rounded-xl bg-[#CCFBF1] px-3 py-2 text-[#0F766E]">Gestionale demo</Link>
+        <Link href="/demo-gestionale" className="shrink-0 rounded-xl bg-[#EDE9FE] px-3 py-2 text-[#5B4FD6]">Area noleggiatore</Link>
         <Link href="/come-funziona" className="shrink-0 rounded-xl px-3 py-2 hover:bg-[#F1F5F4]">Come funziona</Link>
       </nav>
     </header>

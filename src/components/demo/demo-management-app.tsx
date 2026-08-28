@@ -10,6 +10,10 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { DemoBoatForm } from "@/components/demo/demo-boat-form";
+import { DemoCalendarView } from "@/components/demo/demo-calendar-view";
+import { DemoCustomerForm } from "@/components/demo/demo-customer-form";
+import { DemoWorkspaceSetup } from "@/components/demo/demo-workspace-setup";
 import { DEMO_STORAGE_KEY, freshDemoState } from "@/lib/demo/seed";
 import type {
   DemoActivity,
@@ -18,12 +22,14 @@ import type {
   DemoBooking,
   DemoBookingStatus,
   DemoCustomer,
+  DemoLocation,
   DemoState,
   DemoView,
 } from "@/lib/demo/types";
 
 const VIEWS: Array<{ id: DemoView; label: string; short: string; note: string }> = [
   { id: "dashboard", label: "Dashboard", short: "Home", note: "Controllo giornaliero" },
+  { id: "calendario", label: "Calendario", short: "Agenda", note: "Disponibilità e operazioni" },
   { id: "prenotazioni", label: "Prenotazioni", short: "Booking", note: "Agenda e operazioni" },
   { id: "flotta", label: "Flotta", short: "Flotta", note: "Barche e disponibilità" },
   { id: "clienti", label: "Clienti", short: "Clienti", note: "CRM e storico" },
@@ -68,19 +74,12 @@ function dateTime(value: string) {
   }).format(new Date(value));
 }
 
-function compactDate(value: Date) {
-  return new Intl.DateTimeFormat("it-IT", {
-    weekday: "short",
-    day: "numeric",
-  }).format(value);
-}
-
 function classNames(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
 
 function MetricCard({ label, value, note, tone = "teal" }: { label: string; value: string; note: string; tone?: "teal" | "amber" | "slate" }) {
-  const noteColor = tone === "amber" ? "text-amber-700" : tone === "slate" ? "text-[#64748B]" : "text-[#0F766E]";
+  const noteColor = tone === "amber" ? "text-amber-700" : tone === "slate" ? "text-[#676B80]" : "text-[#5B4FD6]";
   return (
     <article className="rounded-2xl border border-[#DEE5E8] bg-white p-4 shadow-sm sm:p-5">
       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#64748B]">{label}</p>
@@ -96,7 +95,7 @@ function StatusBadge({ kind, children }: { kind: DemoBookingStatus | DemoBoatSta
   return (
     <span className={classNames(
       "inline-flex w-fit rounded-full px-2.5 py-1 text-[11px] font-bold",
-      positive && "bg-[#CCFBF1] text-[#0F766E]",
+      positive && "bg-[#EDE9FE] text-[#4C3FC2]",
       negative && "bg-rose-50 text-rose-700",
       !positive && !negative && "bg-amber-50 text-amber-800",
     )}>
@@ -107,18 +106,18 @@ function StatusBadge({ kind, children }: { kind: DemoBookingStatus | DemoBoatSta
 
 function Modal({ title, eyebrow, onClose, children, wide = false }: { title: string; eyebrow: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#071525]/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#111322]/65 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
       <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Chiudi finestra" />
       <section className={classNames(
         "relative z-10 max-h-[92dvh] w-full overflow-y-auto rounded-t-[1.75rem] bg-white p-5 shadow-2xl sm:rounded-[1.75rem] sm:p-7",
-        wide ? "sm:max-w-3xl" : "sm:max-w-xl",
+        wide ? "sm:max-w-5xl" : "sm:max-w-xl",
       )}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#14B8A6]">{eyebrow}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6D5DFB]">{eyebrow}</p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h2>
           </div>
-          <button onClick={onClose} className="grid min-h-11 min-w-11 place-items-center rounded-full bg-[#F1F5F4] text-xl" aria-label="Chiudi">×</button>
+          <button onClick={onClose} className="grid min-h-11 min-w-11 place-items-center rounded-full bg-[#F4F2FA] text-xl" aria-label="Chiudi">×</button>
         </div>
         <div className="mt-6">{children}</div>
       </section>
@@ -130,9 +129,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="grid gap-1.5 text-sm font-semibold text-[#334155]">{label}{children}</label>;
 }
 
-const inputClass = "min-h-11 w-full rounded-xl border border-[#CBD5D8] bg-white px-3 text-base text-[#0B1F33] outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/15 sm:text-sm";
-const buttonPrimary = "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0B1F33] px-4 text-sm font-semibold text-white transition hover:bg-[#12314d] disabled:cursor-not-allowed disabled:opacity-45";
-const buttonSecondary = "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#CBD5D8] bg-white px-4 text-sm font-semibold text-[#0B1F33] transition hover:bg-[#F1F5F4]";
+const inputClass = "min-h-11 w-full rounded-xl border border-[#D8D5E5] bg-white px-3 text-base text-[#171A2B] outline-none transition focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/15 sm:text-sm";
+const buttonPrimary = "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#171A2B] px-4 text-sm font-semibold text-white transition hover:bg-[#292D45] disabled:cursor-not-allowed disabled:opacity-45";
+const buttonSecondary = "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#D8D5E5] bg-white px-4 text-sm font-semibold text-[#171A2B] transition hover:bg-[#F4F2FA]";
 
 const subscribeToBrowser = () => () => undefined;
 
@@ -142,7 +141,7 @@ function initialBrowserState() {
     const saved = window.localStorage.getItem(DEMO_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved) as DemoState;
-      if (parsed.version === 3) return parsed;
+      if (parsed.version === 4) return parsed;
     }
   } catch {
     window.localStorage.removeItem(DEMO_STORAGE_KEY);
@@ -150,49 +149,11 @@ function initialBrowserState() {
   return freshDemoState();
 }
 
-function WorkspaceSetup({ onContinue }: { onContinue: (name: string) => void }) {
-  const [name, setName] = useState("");
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const normalized = name.trim().replace(/\s+/g, " ");
-    if (normalized.length >= 2) onContinue(normalized);
-  }
-
-  return (
-    <main className="min-h-screen bg-[#EAF3F1] px-4 py-8 text-[#0B1F33] sm:grid sm:place-items-center sm:px-6 sm:py-12">
-      <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-[#D5E2E1] bg-white shadow-xl lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="bg-[#0B1F33] p-7 text-white sm:p-10 lg:p-12">
-          <Link href="/" className="text-2xl font-bold tracking-tight">Boatly</Link>
-          <p className="mt-12 text-xs font-bold uppercase tracking-[0.14em] text-[#5EEAD4]">Gestionale interattivo</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Il centro operativo della tua attività.</h1>
-          <p className="mt-5 text-sm leading-7 text-white/70">Prenotazioni, flotta, clienti e guadagni in un unico workspace dimostrativo costruito intorno alla tua impresa.</p>
-          <div className="mt-8 grid gap-3 text-sm text-white/80">
-            <p>✓ Dati sintetici modificabili</p>
-            <p>✓ Nessun pagamento o cliente reale</p>
-            <p>✓ Modifiche salvate su questo dispositivo</p>
-          </div>
-        </div>
-        <div className="p-7 sm:p-10 lg:p-12">
-          <span className="inline-flex rounded-full bg-[#CCFBF1] px-3 py-1.5 text-xs font-bold text-[#0F766E]">Configurazione iniziale · 1 minuto</span>
-          <h2 className="mt-6 text-3xl font-semibold tracking-tight">Come si chiama la tua attività?</h2>
-          <p className="mt-3 text-sm leading-6 text-[#64748B]">Useremo questo nome per personalizzare il gestionale. Potrai provare liberamente tutti i flussi senza collegarti a dati reali.</p>
-          <form onSubmit={submit} className="mt-8 space-y-4">
-            <Field label="Nome dell’attività"><input autoFocus required minLength={2} maxLength={80} className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="Es. Charter Napoli" autoComplete="organization" /></Field>
-            <button className={`${buttonPrimary} w-full`} disabled={name.trim().length < 2}>Crea il mio workspace demo →</button>
-          </form>
-          <Link href="/" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#64748B]">← Torna a Boatly</Link>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function BookingForm({ state, onSave, onClose }: { state: DemoState; onSave: (booking: DemoBooking) => void; onClose: () => void }) {
+function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave, onClose }: { state: DemoState; initialDate?: string; initialBoatId?: string; onSave: (booking: DemoBooking) => void; onClose: () => void }) {
   const activeBoats = state.boats.filter((boat) => boat.status === "ACTIVE");
-  const [boatId, setBoatId] = useState(activeBoats[0]?.id ?? state.boats[0]?.id ?? "");
+  const [boatId, setBoatId] = useState(initialBoatId && state.boats.some((boat) => boat.id === initialBoatId) ? initialBoatId : activeBoats[0]?.id ?? state.boats[0]?.id ?? "");
   const [customerId, setCustomerId] = useState(state.customers[0]?.id ?? "");
-  const [date, setDate] = useState("2026-09-02");
+  const [date, setDate] = useState(initialDate);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("17:00");
   const [source, setSource] = useState<DemoBooking["source"]>("DIRECT");
@@ -242,27 +203,42 @@ function BookingForm({ state, onSave, onClose }: { state: DemoState; onSave: (bo
         <Field label="Valore (€)"><input required min="0" step="10" type="number" className={inputClass} value={amount} onChange={(event) => setAmount(event.target.value)} /></Field>
       </div>
       <Field label="Note operative"><textarea className={`${inputClass} min-h-24 py-3`} placeholder="Itinerario, skipper, richieste del cliente…" value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>
-      {selectedBoat && selectedBoat.status !== "ACTIVE" ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">La barca selezionata risulta {BOAT_LABELS[selectedBoat.status].toLowerCase()}. La demo permette comunque di salvare per mostrare il controllo operativo.</p> : null}
-      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Annulla</button><button className={buttonPrimary}>Salva prenotazione</button></div>
+      {selectedBoat && selectedBoat.status !== "ACTIVE" ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">La barca selezionata risulta {BOAT_LABELS[selectedBoat.status].toLowerCase()}. Il workspace locale permette comunque di salvare per mostrare il controllo operativo.</p> : null}
+      {state.boats.length === 0 ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Prima di creare una prenotazione devi aggiungere almeno una barca alla flotta.</p> : null}
+      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Annulla</button><button disabled={!boatId || !customerId} className={buttonPrimary}>Salva prenotazione</button></div>
     </form>
   );
 }
 
-function BookingDetail({ booking, boat, customer, onUpdate, onClose }: { booking: DemoBooking; boat?: DemoBoat; customer?: DemoCustomer; onUpdate: (status: DemoBookingStatus, notes: string) => void; onClose: () => void }) {
+function BookingDetail({ booking, state, onSave, onDelete, onClose }: { booking: DemoBooking; state: DemoState; onSave: (booking: DemoBooking) => void; onDelete: () => void; onClose: () => void }) {
+  const [boatId, setBoatId] = useState(booking.boatId);
+  const [customerId, setCustomerId] = useState(booking.customerId);
+  const [date, setDate] = useState(booking.startAt.slice(0, 10));
+  const [start, setStart] = useState(booking.startAt.slice(11, 16));
+  const [end, setEnd] = useState(booking.endAt.slice(11, 16));
+  const [source, setSource] = useState(booking.source);
   const [status, setStatus] = useState(booking.status);
+  const [passengers, setPassengers] = useState(String(booking.passengers));
+  const [amount, setAmount] = useState(String(booking.amountCents / 100));
   const [notes, setNotes] = useState(booking.notes);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 rounded-2xl bg-[#F4F7F6] p-4 text-sm">
-        <div><p className="text-xs text-[#64748B]">Imbarcazione</p><p className="mt-1 font-semibold">{boat?.name}</p></div>
-        <div><p className="text-xs text-[#64748B]">Cliente</p><p className="mt-1 font-semibold">{customer?.name}</p></div>
-        <div><p className="text-xs text-[#64748B]">Partenza</p><p className="mt-1 font-semibold">{dateTime(booking.startAt)}</p></div>
-        <div><p className="text-xs text-[#64748B]">Valore</p><p className="mt-1 font-semibold">{money(booking.amountCents)}</p></div>
+      <div className="rounded-2xl bg-[#F4F2FA] p-4 text-sm"><p className="text-xs text-[#676B80]">Riferimento</p><p className="mt-1 font-semibold">{booking.reference}</p></div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Imbarcazione"><select className={inputClass} value={boatId} onChange={(event) => setBoatId(event.target.value)}>{state.boats.map((boat) => <option key={boat.id} value={boat.id}>{boat.name}</option>)}</select></Field>
+        <Field label="Cliente"><select className={inputClass} value={customerId} onChange={(event) => setCustomerId(event.target.value)}>{state.customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></Field>
+        <Field label="Data"><input type="date" className={inputClass} value={date} onChange={(event) => setDate(event.target.value)} /></Field>
+        <Field label="Origine"><select className={inputClass} value={source} onChange={(event) => setSource(event.target.value as DemoBooking["source"])}><option value="DIRECT">Prenotazione diretta</option><option value="MARKETPLACE">Marketplace</option></select></Field>
+        <Field label="Partenza"><input type="time" className={inputClass} value={start} onChange={(event) => setStart(event.target.value)} /></Field>
+        <Field label="Rientro"><input type="time" className={inputClass} value={end} onChange={(event) => setEnd(event.target.value)} /></Field>
+        <Field label="Passeggeri"><input type="number" min="1" className={inputClass} value={passengers} onChange={(event) => setPassengers(event.target.value)} /></Field>
+        <Field label="Valore (€)"><input type="number" min="0" step="10" className={inputClass} value={amount} onChange={(event) => setAmount(event.target.value)} /></Field>
+        <div className="sm:col-span-2"><Field label="Stato operativo"><select className={inputClass} value={status} onChange={(event) => setStatus(event.target.value as DemoBookingStatus)}>{Object.entries(BOOKING_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field></div>
       </div>
-      <Field label="Stato operativo"><select className={inputClass} value={status} onChange={(event) => setStatus(event.target.value as DemoBookingStatus)}>{Object.entries(BOOKING_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
       <Field label="Note interne"><textarea className={`${inputClass} min-h-28 py-3`} value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>
-      <p className="text-xs leading-5 text-[#64748B]">In questa demo il cambio di stato aggiorna subito dashboard, disponibilità della flotta e riepilogo finanziario, senza inviare email o movimenti reali.</p>
-      <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Chiudi</button><button type="button" onClick={() => onUpdate(status, notes)} className={buttonPrimary}>Salva modifiche</button></div>
+      <p className="text-xs leading-5 text-[#676B80]">Il cambio di stato aggiorna subito dashboard, calendario, disponibilità e riepilogo finanziario, senza inviare email o movimenti reali.</p>
+      <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Chiudi</button><button type="button" disabled={!boatId || !customerId || !date || !start || !end} onClick={() => onSave({ ...booking, boatId, customerId, startAt: `${date}T${start}`, endAt: `${date}T${end}`, source, status, passengers: Math.max(1, Number(passengers)), amountCents: Math.max(0, Math.round(Number(amount) * 100)), notes })} className={buttonPrimary}>Salva tutte le modifiche</button></div>
+      <div className="border-t border-[#E2DFEB] pt-4"><button type="button" onClick={onDelete} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50">Rimuovi prenotazione</button></div>
     </div>
   );
 }
@@ -275,7 +251,7 @@ function DashboardView({ state, onNavigate, onNewBooking, onOpenBooking }: { sta
   return (
     <div className="space-y-5 sm:space-y-6">
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <MetricCard label="Valore gestito" value={money(confirmedValue)} note="scenario demo" />
+        <MetricCard label="Valore gestito" value={money(confirmedValue)} note="scenario locale" />
         <MetricCard label="Booking attivi" value={String(active.length)} note={`${state.bookings.filter((b) => b.status === "CONFIRMED").length} confermati`} />
         <MetricCard label="Flotta operativa" value={`${state.boats.filter((b) => b.status === "ACTIVE").length}/${state.boats.length}`} note="barche disponibili" />
         <MetricCard label="Da gestire" value={String(attention.length)} note="richieste e preparazione" tone={attention.length ? "amber" : "teal"} />
@@ -283,20 +259,20 @@ function DashboardView({ state, onNavigate, onNewBooking, onOpenBooking }: { sta
 
       <section className="grid gap-5 xl:grid-cols-[1.5fr_0.75fr]">
         <article className="rounded-3xl border border-[#DEE5E8] bg-white p-4 shadow-sm sm:p-6">
-          <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#14B8A6]">Agenda operativa</p><h2 className="mt-1 text-xl font-semibold">Prossime partenze</h2></div><button className={buttonPrimary} onClick={onNewBooking}>+ <span className="hidden sm:inline">Nuova prenotazione</span><span className="sm:hidden">Nuova</span></button></div>
+          <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6D5DFB]">Agenda operativa</p><h2 className="mt-1 text-xl font-semibold">Prossime partenze</h2></div><button className={buttonPrimary} onClick={onNewBooking}>+ <span className="hidden sm:inline">Nuova prenotazione</span><span className="sm:hidden">Nuova</span></button></div>
           <div className="mt-5 space-y-3">
             {sorted.slice(0, 4).map((booking) => {
               const boat = state.boats.find((item) => item.id === booking.boatId);
               const customer = state.customers.find((item) => item.id === booking.customerId);
-              return <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className="grid w-full gap-3 rounded-2xl border border-[#DEE5E8] p-4 text-left transition hover:border-[#14B8A6] sm:grid-cols-[1.25fr_0.8fr_auto] sm:items-center"><div><p className="font-semibold">{boat?.name}</p><p className="mt-1 text-xs text-[#64748B]">{booking.reference} · {customer?.name}</p></div><div><p className="text-sm font-medium">{dateTime(booking.startAt)}</p><p className="mt-1 text-xs text-[#64748B]">{booking.source === "DIRECT" ? "Diretta" : "Marketplace"}</p></div><StatusBadge kind={booking.status}>{BOOKING_LABELS[booking.status]}</StatusBadge></button>;
+              return <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className="grid w-full gap-3 rounded-2xl border border-[#E2DFEB] p-4 text-left transition hover:border-[#6D5DFB] sm:grid-cols-[1.25fr_0.8fr_auto] sm:items-center"><div><p className="font-semibold">{boat?.name}</p><p className="mt-1 text-xs text-[#676B80]">{booking.reference} · {customer?.name}</p></div><div><p className="text-sm font-medium">{dateTime(booking.startAt)}</p><p className="mt-1 text-xs text-[#676B80]">{booking.source === "DIRECT" ? "Diretta" : "Marketplace"}</p></div><StatusBadge kind={booking.status}>{BOOKING_LABELS[booking.status]}</StatusBadge></button>;
             })}
           </div>
-          <button className="mt-4 min-h-11 text-sm font-semibold text-[#0F766E]" onClick={() => onNavigate("prenotazioni")}>Apri tutte le prenotazioni →</button>
+          <button className="mt-4 min-h-11 text-sm font-semibold text-[#5B4FD6]" onClick={() => onNavigate("prenotazioni")}>Apri tutte le prenotazioni →</button>
         </article>
 
         <div className="space-y-5">
-          <article className="rounded-3xl bg-[#0B1F33] p-5 text-white sm:p-6"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Azioni rapide</p><h2 className="mt-2 text-xl font-semibold">Gestisci la giornata</h2><div className="mt-5 grid gap-2"><button onClick={onNewBooking} className="min-h-11 rounded-xl bg-[#14B8A6] px-4 text-left text-sm font-semibold">Aggiungi prenotazione</button><button onClick={() => onNavigate("flotta")} className="min-h-11 rounded-xl border border-white/15 px-4 text-left text-sm font-semibold">Controlla disponibilità</button><button onClick={() => onNavigate("finanza")} className="min-h-11 rounded-xl border border-white/15 px-4 text-left text-sm font-semibold">Apri riepilogo ricavi</button></div></article>
-          <article className="rounded-3xl border border-[#DEE5E8] bg-white p-5 sm:p-6"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#64748B]">Attività recente</p><div className="mt-4 space-y-4">{state.activity.slice(0, 3).map((item) => <div key={item.id} className="border-l-2 border-[#5EEAD4] pl-3"><p className="text-sm font-semibold">{item.label}</p><p className="mt-1 text-xs leading-5 text-[#64748B]">{item.detail}</p></div>)}</div></article>
+          <article className="rounded-3xl bg-[#171A2B] p-5 text-white sm:p-6"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#FDBA74]">Azioni rapide</p><h2 className="mt-2 text-xl font-semibold">Gestisci la giornata</h2><div className="mt-5 grid gap-2"><button onClick={onNewBooking} className="min-h-11 rounded-xl bg-[#6D5DFB] px-4 text-left text-sm font-semibold">Aggiungi prenotazione</button><button onClick={() => onNavigate("calendario")} className="min-h-11 rounded-xl border border-white/15 px-4 text-left text-sm font-semibold">Apri calendario operativo</button><button onClick={() => onNavigate("flotta")} className="min-h-11 rounded-xl border border-white/15 px-4 text-left text-sm font-semibold">Gestisci flotta</button><button onClick={() => onNavigate("finanza")} className="min-h-11 rounded-xl border border-white/15 px-4 text-left text-sm font-semibold">Apri riepilogo ricavi</button></div></article>
+          <article className="rounded-3xl border border-[#E2DFEB] bg-white p-5 sm:p-6"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#676B80]">Attività recente</p><div className="mt-4 space-y-4">{state.activity.slice(0, 3).map((item) => <div key={item.id} className="border-l-2 border-[#6D5DFB] pl-3"><p className="text-sm font-semibold">{item.label}</p><p className="mt-1 text-xs leading-5 text-[#676B80]">{item.detail}</p></div>)}</div></article>
         </div>
       </section>
     </div>
@@ -315,7 +291,7 @@ function BookingsView({ state, onNewBooking, onOpenBooking }: { state: DemoState
   }), [filter, query, state]);
   return (
     <section className="rounded-3xl border border-[#DEE5E8] bg-white p-4 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#14B8A6]">Booking control</p><h2 className="mt-1 text-xl font-semibold">Prenotazioni marketplace e dirette</h2></div><button className={buttonPrimary} onClick={onNewBooking}>+ Nuova prenotazione</button></div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6D5DFB]">Booking control</p><h2 className="mt-1 text-xl font-semibold">Prenotazioni marketplace e dirette</h2></div><button className={buttonPrimary} onClick={onNewBooking}>+ Nuova prenotazione</button></div>
       <div className="mt-5 grid gap-3 md:grid-cols-[1fr_220px]"><input className={inputClass} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca cliente, barca o codice…" aria-label="Cerca prenotazione" /><select className={inputClass} value={filter} onChange={(event) => setFilter(event.target.value as "ALL" | DemoBookingStatus)} aria-label="Filtra stato"><option value="ALL">Tutti gli stati</option>{Object.entries(BOOKING_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
 
       <div className="mt-5 hidden overflow-x-auto md:block"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b border-[#DEE5E8] text-xs uppercase tracking-wide text-[#64748B]"><th className="pb-3 font-semibold">Prenotazione</th><th className="pb-3 font-semibold">Cliente</th><th className="pb-3 font-semibold">Partenza</th><th className="pb-3 font-semibold">Valore</th><th className="pb-3 font-semibold">Stato</th><th className="pb-3"><span className="sr-only">Apri</span></th></tr></thead><tbody>{bookings.map((booking) => { const boat = state.boats.find((item) => item.id === booking.boatId); const customer = state.customers.find((item) => item.id === booking.customerId); return <tr key={booking.id} className="border-b border-[#EEF2F3] last:border-0"><td className="py-4"><p className="font-semibold">{boat?.name}</p><p className="mt-1 text-xs text-[#64748B]">{booking.reference} · {booking.source === "DIRECT" ? "Diretta" : "Marketplace"}</p></td><td className="py-4">{customer?.name}</td><td className="py-4">{dateTime(booking.startAt)}</td><td className="py-4 font-semibold">{money(booking.amountCents)}</td><td className="py-4"><StatusBadge kind={booking.status}>{BOOKING_LABELS[booking.status]}</StatusBadge></td><td className="py-4 text-right"><button onClick={() => onOpenBooking(booking.id)} className="min-h-11 rounded-xl px-3 font-semibold text-[#0F766E] hover:bg-[#F1F5F4]">Gestisci</button></td></tr>; })}</tbody></table></div>
@@ -327,95 +303,31 @@ function BookingsView({ state, onNewBooking, onOpenBooking }: { state: DemoState
 }
 
 function FleetView({ state, onEditBoat }: { state: DemoState; onEditBoat: (id: string) => void }) {
-  const days = Array.from({ length: 7 }, (_, index) => { const date = new Date("2026-08-28T12:00:00"); date.setDate(date.getDate() + index); return date; });
   return (
-    <div className="space-y-5">
-      <section className="rounded-3xl border border-[#DEE5E8] bg-white p-4 shadow-sm sm:p-6"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#14B8A6]">Planning settimanale</p><h2 className="mt-1 text-xl font-semibold">Disponibilità flotta</h2></div><div className="mt-5 overflow-x-auto"><div className="min-w-[720px]"><div className="grid grid-cols-[180px_repeat(7,1fr)] gap-1 text-center text-xs text-[#64748B]"><span />{days.map((day) => <span key={day.toISOString()} className="py-2 capitalize">{compactDate(day)}</span>)}</div>{state.boats.map((boat) => <div key={boat.id} className="mt-1 grid grid-cols-[180px_repeat(7,1fr)] gap-1"><button onClick={() => onEditBoat(boat.id)} className="truncate rounded-lg px-2 py-3 text-left text-sm font-semibold hover:bg-[#F1F5F4]">{boat.name}</button>{days.map((day) => { const iso = day.toISOString().slice(0, 10); const booking = state.bookings.find((item) => item.boatId === boat.id && item.startAt.startsWith(iso) && item.status !== "CANCELLED"); const blocked = boat.status !== "ACTIVE"; return <div key={iso} title={booking?.reference ?? (blocked ? BOAT_LABELS[boat.status] : "Disponibile")} className={classNames("grid min-h-11 place-items-center rounded-lg text-[10px] font-bold", booking ? "bg-[#0B1F33] text-white" : blocked ? "bg-amber-100 text-amber-800" : "bg-[#E6F8F4] text-[#0F766E]")}>{booking ? "BOOKED" : blocked ? "BLOCCO" : "LIBERA"}</div>; })}</div>)}</div></div><div className="mt-4 flex flex-wrap gap-4 text-xs text-[#64748B]"><span>● <b className="text-[#0B1F33]">Prenotata</b></span><span>● <b className="text-[#0F766E]">Disponibile</b></span><span>● <b className="text-amber-700">Bloccata</b></span></div></section>
-      <section className="grid gap-4 md:grid-cols-2">{state.boats.map((boat) => { const bookings = state.bookings.filter((item) => item.boatId === boat.id && item.status !== "CANCELLED"); const occupied = Math.min(95, 38 + bookings.length * 9); return <article key={boat.id} className="rounded-3xl border border-[#DEE5E8] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#14B8A6]">{boat.type} · {boat.base}</p><h3 className="mt-2 text-xl font-semibold">{boat.name}</h3></div><StatusBadge kind={boat.status}>{BOAT_LABELS[boat.status]}</StatusBadge></div><div className="mt-6 grid grid-cols-3 gap-3 border-t border-[#DEE5E8] pt-5 text-sm"><div><p className="text-xs text-[#64748B]">Capienza</p><p className="mt-1 font-semibold">{boat.capacity} pax</p></div><div><p className="text-xs text-[#64748B]">Tariffa</p><p className="mt-1 font-semibold">{money(boat.dailyPriceCents)}</p></div><div><p className="text-xs text-[#64748B]">Booking</p><p className="mt-1 font-semibold">{bookings.length}</p></div></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-[#E8EFEE]"><div className="h-full rounded-full bg-[#14B8A6]" style={{ width: `${occupied}%` }} /></div><button onClick={() => onEditBoat(boat.id)} className={`${buttonSecondary} mt-5 w-full`}>Gestisci disponibilità</button></article>; })}</section>
-    </div>
+    <section className="grid gap-4 md:grid-cols-2">{state.boats.map((boat) => { const bookings = state.bookings.filter((item) => item.boatId === boat.id && item.status !== "CANCELLED"); return <article key={boat.id} className="rounded-3xl border border-[#E2DFEB] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6D5DFB]">{boat.type || "Tipologia da definire"} · {boat.base || "Base da definire"}</p><h3 className="mt-2 text-xl font-semibold">{boat.name}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-[#676B80]">{boat.shortDescription || "Completa la presentazione per preparare questa barca al marketplace."}</p></div><StatusBadge kind={boat.status}>{BOAT_LABELS[boat.status]}</StatusBadge></div><div className="mt-6 grid grid-cols-2 gap-3 border-t border-[#E2DFEB] pt-5 text-sm sm:grid-cols-4"><div><p className="text-xs text-[#676B80]">Potenza</p><p className="mt-1 font-semibold">{boat.horsepower} CV</p></div><div><p className="text-xs text-[#676B80]">Capienza</p><p className="mt-1 font-semibold">{boat.capacity ? `${boat.capacity} pax` : "—"}</p></div><div><p className="text-xs text-[#676B80]">Optional</p><p className="mt-1 font-semibold">{boat.extras.length}</p></div><div><p className="text-xs text-[#676B80]">Booking</p><p className="mt-1 font-semibold">{bookings.length}</p></div></div><button onClick={() => onEditBoat(boat.id)} className={`${buttonSecondary} mt-5 w-full`}>Apri scheda completa</button></article>; })}</section>
   );
 }
 
 function FleetWorkspace({ state, onEditBoat, onAddBoat }: { state: DemoState; onEditBoat: (id: string) => void; onAddBoat: () => void }) {
   return (
     <div className="space-y-4">
-      <section className="flex flex-col gap-4 rounded-3xl bg-[#0B1F33] p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <section className="flex flex-col gap-4 rounded-3xl bg-[#171A2B] p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Gestione inventario</p>
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#FDBA74]">Gestione inventario</p>
           <h2 className="mt-1 text-xl font-semibold">{state.boats.length} {state.boats.length === 1 ? "imbarcazione" : "imbarcazioni"} nella flotta</h2>
-          <p className="mt-2 text-sm text-white/65">Aggiungi, rinomina o rimuovi le barche del workspace demo.</p>
+          <p className="mt-2 text-sm text-white/65">Aggiungi, completa o rimuovi le barche del workspace locale.</p>
         </div>
-        <button className="min-h-11 shrink-0 rounded-xl bg-[#14B8A6] px-5 text-sm font-semibold text-white" onClick={onAddBoat}>+ Aggiungi barca</button>
+        <button className="min-h-11 shrink-0 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white" onClick={onAddBoat}>+ Aggiungi barca</button>
       </section>
       {state.boats.length > 0 ? <FleetView state={state} onEditBoat={onEditBoat} /> : <section className="rounded-3xl border border-dashed border-[#CBD5D8] bg-white p-10 text-center"><p className="text-xl font-semibold">La flotta è vuota</p><p className="mt-2 text-sm text-[#64748B]">Aggiungi la prima imbarcazione per iniziare a gestire disponibilità e prenotazioni.</p><button className={`${buttonPrimary} mt-5`} onClick={onAddBoat}>Aggiungi la prima barca</button></section>}
     </div>
   );
 }
 
-function BoatEditorV3({ boat, bookingCount, onSave, onDelete, onClose }: { boat: DemoBoat; bookingCount: number; onSave: (boat: DemoBoat) => void; onDelete: () => void; onClose: () => void }) {
-  const [name, setName] = useState(boat.name);
-  const [type, setType] = useState(boat.type);
-  const [base, setBase] = useState(boat.base);
-  const [capacity, setCapacity] = useState(String(boat.capacity));
-  const [status, setStatus] = useState(boat.status);
-  const [price, setPrice] = useState(String(boat.dailyPriceCents / 100));
-  const [note, setNote] = useState(boat.maintenanceNote);
-  const valid = name.trim().length >= 2 && type.trim().length >= 2 && base.trim().length >= 2 && Number(capacity) > 0;
-
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome barca"><input required className={inputClass} value={name} onChange={(event) => setName(event.target.value)} /></Field>
-        <Field label="Tipologia"><input required className={inputClass} value={type} onChange={(event) => setType(event.target.value)} placeholder="Gozzo, Open, Yacht…" /></Field>
-        <Field label="Base di partenza"><input required className={inputClass} value={base} onChange={(event) => setBase(event.target.value)} /></Field>
-        <Field label="Capienza"><input required className={inputClass} type="number" min="1" max="100" value={capacity} onChange={(event) => setCapacity(event.target.value)} /></Field>
-        <Field label="Stato disponibilità"><select className={inputClass} value={status} onChange={(event) => setStatus(event.target.value as DemoBoatStatus)}>{Object.entries(BOAT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-        <Field label="Tariffa giornaliera (€)"><input className={inputClass} type="number" min="0" step="10" value={price} onChange={(event) => setPrice(event.target.value)} /></Field>
-      </div>
-      <Field label="Nota operativa"><textarea className={`${inputClass} min-h-24 py-3`} placeholder="Motivo del blocco o attività di manutenzione…" value={note} onChange={(event) => setNote(event.target.value)} /></Field>
-      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button className={buttonSecondary} onClick={onClose}>Chiudi</button><button disabled={!valid} className={buttonPrimary} onClick={() => onSave({ ...boat, name: name.trim(), type: type.trim(), base: base.trim(), capacity: Math.max(1, Number(capacity)), status, dailyPriceCents: Math.max(0, Math.round(Number(price) * 100)), maintenanceNote: note })}>Salva modifiche</button></div>
-      <div className="border-t border-[#DEE5E8] pt-5"><button className="min-h-11 rounded-xl px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={onDelete}>Rimuovi barca{bookingCount ? ` e ${bookingCount} booking demo` : ""}</button></div>
-    </div>
-  );
-}
-
-function BoatCreateForm({ onSave, onClose }: { onSave: (boat: DemoBoat) => void; onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
-  const [base, setBase] = useState("Napoli");
-  const [capacity, setCapacity] = useState("8");
-  const [price, setPrice] = useState("600");
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    onSave({ id: `boat-${Date.now()}`, name: name.trim(), type: type.trim(), base: base.trim(), capacity: Math.max(1, Number(capacity)), dailyPriceCents: Math.max(0, Math.round(Number(price) * 100)), status: "ACTIVE", maintenanceNote: "" });
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome barca"><input autoFocus required minLength={2} className={inputClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="Es. Stella Marina 30" /></Field>
-        <Field label="Tipologia"><input required minLength={2} className={inputClass} value={type} onChange={(event) => setType(event.target.value)} placeholder="Gozzo, Open, Yacht…" /></Field>
-        <Field label="Base di partenza"><input required minLength={2} className={inputClass} value={base} onChange={(event) => setBase(event.target.value)} /></Field>
-        <Field label="Capienza"><input required className={inputClass} type="number" min="1" max="100" value={capacity} onChange={(event) => setCapacity(event.target.value)} /></Field>
-        <Field label="Tariffa giornaliera (€)"><input required className={inputClass} type="number" min="0" step="10" value={price} onChange={(event) => setPrice(event.target.value)} /></Field>
-      </div>
-      <p className="rounded-xl bg-[#F4F7F6] p-3 text-xs leading-5 text-[#64748B]">La nuova imbarcazione verrà aggiunta come attiva e sarà subito selezionabile nelle prenotazioni demo.</p>
-      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button type="button" className={buttonSecondary} onClick={onClose}>Annulla</button><button className={buttonPrimary}>Aggiungi alla flotta</button></div>
-    </form>
-  );
-}
-
-function CustomersView({ state, onOpenCustomer }: { state: DemoState; onOpenCustomer: (id: string) => void }) {
+function CustomersView({ state, onOpenCustomer, onNewCustomer }: { state: DemoState; onOpenCustomer: (id: string) => void; onNewCustomer: () => void }) {
   const [query, setQuery] = useState("");
   const customers = state.customers.filter((customer) => `${customer.name} ${customer.email} ${customer.phone}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]"><section className="rounded-3xl border border-[#DEE5E8] bg-white p-4 shadow-sm sm:p-6"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#14B8A6]">CRM clienti</p><h2 className="mt-1 text-xl font-semibold">Relazioni e storico centralizzati</h2><input className={`${inputClass} mt-5`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca nome, email o telefono…" aria-label="Cerca cliente" /><div className="mt-4 space-y-3">{customers.map((customer) => { const bookings = state.bookings.filter((item) => item.customerId === customer.id && item.status !== "CANCELLED"); const spent = bookings.filter((item) => ["COMPLETED", "CONFIRMED", "PREPARING"].includes(item.status)).reduce((sum, item) => sum + item.amountCents, 0); return <button key={customer.id} onClick={() => onOpenCustomer(customer.id)} className="grid w-full gap-3 rounded-2xl border border-[#DEE5E8] p-4 text-left transition hover:border-[#14B8A6] sm:grid-cols-[1.2fr_0.6fr_0.7fr_auto] sm:items-center"><div><p className="font-semibold">{customer.name}</p><p className="mt-1 truncate text-xs text-[#64748B]">{customer.email}</p></div><p className="text-sm"><b>{bookings.length}</b> booking</p><p className="text-sm font-semibold">{money(spent)}</p><span className="w-fit rounded-full bg-[#F1F5F4] px-3 py-1 text-xs font-semibold text-[#475569]">{SEGMENT_LABELS[customer.segment]}</span></button>; })}</div></section><aside className="space-y-4"><MetricCard label="Clienti demo" value={String(state.customers.length)} note="profili centralizzati" /><MetricCard label="Clienti ricorrenti" value={String(state.customers.filter((item) => ["RICORRENTE", "ALTO_VALORE"].includes(item.segment)).length)} note="priorità commerciale" /><article className="rounded-3xl bg-[#0B1F33] p-6 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Suggerimento</p><p className="mt-3 font-semibold">Apri un cliente</p><p className="mt-2 text-sm leading-6 text-white/65">Consulta storico, valore e prenotazioni, poi aggiorna le note interne come in un vero CRM.</p></article></aside></div>;
-}
-
-function CustomerDetail({ customer, state, onSave, onOpenBooking, onClose }: { customer: DemoCustomer; state: DemoState; onSave: (notes: string) => void; onOpenBooking: (id: string) => void; onClose: () => void }) {
-  const [notes, setNotes] = useState(customer.notes);
-  const bookings = state.bookings.filter((item) => item.customerId === customer.id).sort((a, b) => b.startAt.localeCompare(a.startAt));
-  return <div className="space-y-5"><div className="grid gap-3 rounded-2xl bg-[#F4F7F6] p-4 text-sm sm:grid-cols-2"><div><p className="text-xs text-[#64748B]">Email</p><p className="mt-1 break-all font-semibold">{customer.email}</p></div><div><p className="text-xs text-[#64748B]">Telefono</p><p className="mt-1 font-semibold">{customer.phone}</p></div></div><div><p className="text-sm font-semibold">Storico prenotazioni</p><div className="mt-3 space-y-2">{bookings.map((booking) => <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-[#DEE5E8] px-3 text-left text-sm"><span><b>{booking.reference}</b><span className="ml-2 text-[#64748B]">{dateTime(booking.startAt)}</span></span><span className="font-semibold">{money(booking.amountCents)}</span></button>)}</div></div><Field label="Note CRM"><textarea className={`${inputClass} min-h-28 py-3`} value={notes} onChange={(event) => setNotes(event.target.value)} /></Field><div className="grid gap-2 sm:grid-cols-2"><button className={buttonSecondary} onClick={onClose}>Chiudi</button><button className={buttonPrimary} onClick={() => onSave(notes)}>Salva note</button></div></div>;
+  return <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]"><section className="rounded-3xl border border-[#E2DFEB] bg-white p-4 shadow-sm sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6D5DFB]">CRM clienti</p><h2 className="mt-1 text-xl font-semibold">Relazioni e storico centralizzati</h2></div><button className={buttonPrimary} onClick={onNewCustomer}>+ Nuovo cliente</button></div><input className={`${inputClass} mt-5`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca nome, email o telefono…" aria-label="Cerca cliente" /><div className="mt-4 space-y-3">{customers.map((customer) => { const bookings = state.bookings.filter((item) => item.customerId === customer.id && item.status !== "CANCELLED"); const spent = bookings.filter((item) => ["COMPLETED", "CONFIRMED", "PREPARING"].includes(item.status)).reduce((sum, item) => sum + item.amountCents, 0); return <button key={customer.id} onClick={() => onOpenCustomer(customer.id)} className="grid w-full gap-3 rounded-2xl border border-[#E2DFEB] p-4 text-left transition hover:border-[#6D5DFB] sm:grid-cols-[1.2fr_0.6fr_0.7fr_auto] sm:items-center"><div><p className="font-semibold">{customer.name}</p><p className="mt-1 truncate text-xs text-[#676B80]">{customer.email || "Email da inserire"}</p></div><p className="text-sm"><b>{bookings.length}</b> booking</p><p className="text-sm font-semibold">{money(spent)}</p><span className="w-fit rounded-full bg-[#F4F2FA] px-3 py-1 text-xs font-semibold text-[#555A70]">{SEGMENT_LABELS[customer.segment]}</span></button>; })}</div></section><aside className="space-y-4"><MetricCard label="Clienti" value={String(state.customers.length)} note="profili centralizzati" /><MetricCard label="Clienti ricorrenti" value={String(state.customers.filter((item) => ["RICORRENTE", "ALTO_VALORE"].includes(item.segment)).length)} note="priorità commerciale" /><article className="rounded-3xl bg-[#171A2B] p-6 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#FDBA74]">CRM operativo</p><p className="mt-3 font-semibold">Ogni scheda è modificabile</p><p className="mt-2 text-sm leading-6 text-white/65">Aggiorna contatti, segmento e note; le prenotazioni collegate restano sempre raggiungibili.</p></article></aside></div>;
 }
 
 function FinanceView({ state, onOpenBooking }: { state: DemoState; onOpenBooking: (id: string) => void }) {
@@ -430,11 +342,28 @@ function FinanceView({ state, onOpenBooking }: { state: DemoState; onOpenBooking
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = "boatly-demo-finanza.csv"; anchor.click(); URL.revokeObjectURL(url);
   }
-  return <div className="space-y-5"><section className="grid grid-cols-2 gap-3 xl:grid-cols-4"><MetricCard label="Valore lordo" value={money(gross)} note="booking attivi e completati" /><MetricCard label="Quota operatore" value={money(operatorNet)} note="netto stimato" /><MetricCard label="Commissioni" value={money(fees)} note="8% solo marketplace" /><MetricCard label="Da riconciliare" value={money(0)} note="tutto allineato" /></section><section className="rounded-3xl border border-[#DEE5E8] bg-white p-4 shadow-sm sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#14B8A6]">Controllo finanziario</p><h2 className="mt-1 text-xl font-semibold">Dettaglio guadagni e commissioni</h2></div><button className={buttonSecondary} onClick={exportCsv}>Esporta CSV</button></div><div className="mt-5 space-y-3">{paid.sort((a, b) => b.startAt.localeCompare(a.startAt)).map((booking) => { const fee = booking.source === "MARKETPLACE" ? Math.round(booking.amountCents * 0.08) : 0; const boat = state.boats.find((item) => item.id === booking.boatId); return <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className="grid w-full gap-3 rounded-2xl border border-[#DEE5E8] p-4 text-left transition hover:border-[#14B8A6] sm:grid-cols-[1.1fr_0.8fr_0.7fr_auto] sm:items-center"><div><p className="font-semibold">{booking.reference}</p><p className="mt-1 text-xs text-[#64748B]">{boat?.name} · {booking.source === "MARKETPLACE" ? "Marketplace" : "Diretta"}</p></div><div><p className="text-xs text-[#64748B]">Lordo</p><p className="mt-1 font-semibold">{money(booking.amountCents)}</p></div><div><p className="text-xs text-[#64748B]">Commissione</p><p className="mt-1 font-semibold">{money(fee)}</p></div><StatusBadge kind="MATCHED">MATCHED</StatusBadge></button>; })}</div></section><section className="grid gap-4 md:grid-cols-2"><article className="rounded-3xl bg-[#0B1F33] p-6 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Composizione</p><div className="mt-5 flex items-end justify-between"><p className="text-3xl font-semibold">{gross ? Math.round((operatorNet / gross) * 100) : 0}%</p><p className="text-sm text-white/60">all&apos;operatore</p></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-[#2DD4BF]" style={{ width: `${gross ? (operatorNet / gross) * 100 : 0}%` }} /></div></article><article className="rounded-3xl border border-[#DEE5E8] bg-white p-6"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#64748B]">Circuito demo</p><p className="mt-3 font-semibold">Nessun movimento bancario</p><p className="mt-2 text-sm leading-6 text-[#64748B]">I valori reagiscono agli stati delle prenotazioni, ma non chiamano Stripe e non generano payout reali.</p></article></section></div>;
+  return (
+    <div className="space-y-5">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricCard label="Valore lordo" value={money(gross)} note="booking attivi e completati" />
+        <MetricCard label="Quota operatore" value={money(operatorNet)} note="netto stimato" />
+        <MetricCard label="Commissioni" value={money(fees)} note="8% solo marketplace" />
+        <MetricCard label="Da riconciliare" value={money(0)} note="tutto allineato" />
+      </section>
+      <section className="rounded-3xl border border-[#E2DFEB] bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6D5DFB]">Controllo finanziario</p><h2 className="mt-1 text-xl font-semibold">Dettaglio guadagni e commissioni</h2><p className="mt-2 text-sm text-[#676B80]">Apri una riga per modificare la prenotazione che genera il valore.</p></div><button className={buttonSecondary} onClick={exportCsv}>Esporta CSV</button></div>
+        <div className="mt-5 space-y-3">{paid.sort((a, b) => b.startAt.localeCompare(a.startAt)).map((booking) => { const fee = booking.source === "MARKETPLACE" ? Math.round(booking.amountCents * 0.08) : 0; const boat = state.boats.find((item) => item.id === booking.boatId); return <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className="grid w-full gap-3 rounded-2xl border border-[#E2DFEB] p-4 text-left transition hover:border-[#6D5DFB] sm:grid-cols-[1.1fr_0.8fr_0.7fr_auto] sm:items-center"><div><p className="font-semibold">{booking.reference}</p><p className="mt-1 text-xs text-[#676B80]">{boat?.name} · {booking.source === "MARKETPLACE" ? "Marketplace" : "Diretta"}</p></div><div><p className="text-xs text-[#676B80]">Lordo</p><p className="mt-1 font-semibold">{money(booking.amountCents)}</p></div><div><p className="text-xs text-[#676B80]">Commissione</p><p className="mt-1 font-semibold">{money(fee)}</p></div><StatusBadge kind="MATCHED">MATCHED</StatusBadge></button>; })}</div>
+      </section>
+      <section className="grid gap-4 md:grid-cols-2">
+        <article className="rounded-3xl bg-[#171A2B] p-6 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#FDBA74]">Composizione</p><div className="mt-5 flex items-end justify-between"><p className="text-3xl font-semibold">{gross ? Math.round((operatorNet / gross) * 100) : 0}%</p><p className="text-sm text-white/60">all&apos;operatore</p></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-[#6D5DFB]" style={{ width: `${gross ? (operatorNet / gross) * 100 : 0}%` }} /></div></article>
+        <article className="rounded-3xl border border-[#E2DFEB] bg-white p-6"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#676B80]">Circuito locale</p><p className="mt-3 font-semibold">Nessun movimento bancario</p><p className="mt-2 text-sm leading-6 text-[#676B80]">I valori reagiscono agli stati delle prenotazioni, ma non chiamano Stripe e non generano payout reali.</p></article>
+      </section>
+    </div>
+  );
 }
 
 function Toast({ message }: { message: string }) {
-  return <div className="fixed bottom-24 left-1/2 z-[60] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl bg-[#0B1F33] px-4 py-3 text-center text-sm font-semibold text-white shadow-xl sm:bottom-6">{message}</div>;
+  return <div className="fixed bottom-24 left-1/2 z-[60] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl bg-[#171A2B] px-4 py-3 text-center text-sm font-semibold text-white shadow-xl sm:bottom-6">{message}</div>;
 }
 
 export default function DemoManagementApp() {
@@ -442,7 +371,9 @@ export default function DemoManagementApp() {
   const [state, setState] = useState<DemoState>(initialBrowserState);
   const [view, setView] = useState<DemoView>("dashboard");
   const [newBookingOpen, setNewBookingOpen] = useState(false);
+  const [bookingDefaults, setBookingDefaults] = useState<{ date: string; boatId?: string }>({ date: "2026-09-02" });
   const [newBoatOpen, setNewBoatOpen] = useState(false);
+  const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -469,32 +400,52 @@ export default function DemoManagementApp() {
 
   function addBooking(booking: DemoBooking) {
     setState((current) => ({ ...current, bookings: [booking, ...current.bookings], activity: withActivity(current, "Prenotazione creata", `${booking.reference} · ${money(booking.amountCents)}`) }));
-    setNewBookingOpen(false); setToast("Prenotazione aggiunta al workspace demo"); setView("prenotazioni");
+    setNewBookingOpen(false); setToast("Prenotazione aggiunta al workspace locale"); setView("prenotazioni");
   }
 
-  function enterWorkspace(name: string) {
+  function openNewBooking(date = "2026-09-02", boatId?: string) {
+    setBookingDefaults({ date, boatId });
+    setNewBookingOpen(true);
+  }
+
+  function enterWorkspace(name: string, location: DemoLocation) {
     setState((current) => ({
       ...current,
       workspaceName: name,
-      activity: withActivity(current, "Workspace configurato", name),
+      workspaceLocation: location,
+      activity: withActivity(current, "Workspace configurato", `${name} · ${location.fullName}`),
     }));
+  }
+
+  function reconfigureWorkspace() {
+    setState((current) => ({ ...current, workspaceName: "", workspaceLocation: null }));
   }
 
   function addBoat(boat: DemoBoat) {
     setState((current) => ({
       ...current,
       boats: [boat, ...current.boats],
-      activity: withActivity(current, "Barca aggiunta", `${boat.name} · ${boat.base}`),
+      activity: withActivity(current, "Barca aggiunta", boat.base ? `${boat.name} · ${boat.base}` : boat.name),
     }));
     setNewBoatOpen(false);
     setToast("Imbarcazione aggiunta alla flotta");
     setView("flotta");
   }
 
-  function updateBooking(status: DemoBookingStatus, notes: string) {
-    if (!selectedBooking) return;
-    setState((current) => ({ ...current, bookings: current.bookings.map((item) => item.id === selectedBooking.id ? { ...item, status, notes } : item), activity: withActivity(current, "Prenotazione aggiornata", `${selectedBooking.reference} · ${BOOKING_LABELS[status]}`) }));
+  function updateBooking(booking: DemoBooking) {
+    setState((current) => ({ ...current, bookings: current.bookings.map((item) => item.id === booking.id ? booking : item), activity: withActivity(current, "Prenotazione aggiornata", `${booking.reference} · ${BOOKING_LABELS[booking.status]}`) }));
     setSelectedBookingId(null); setToast("Stato, agenda e finanza aggiornati");
+  }
+
+  function deleteSelectedBooking() {
+    if (!selectedBooking || !window.confirm(`Rimuovere ${selectedBooking.reference} dal workspace locale?`)) return;
+    setState((current) => ({
+      ...current,
+      bookings: current.bookings.filter((item) => item.id !== selectedBooking.id),
+      activity: withActivity(current, "Prenotazione rimossa", selectedBooking.reference),
+    }));
+    setSelectedBookingId(null);
+    setToast("Prenotazione rimossa");
   }
 
   function updateBoat(boat: DemoBoat) {
@@ -506,8 +457,8 @@ export default function DemoManagementApp() {
     if (!selectedBoat) return;
     const bookingCount = state.bookings.filter((item) => item.boatId === selectedBoat.id).length;
     const message = bookingCount
-      ? `Rimuovere ${selectedBoat.name}? Verranno eliminate anche ${bookingCount} prenotazioni demo associate.`
-      : `Rimuovere ${selectedBoat.name} dalla flotta demo?`;
+      ? `Rimuovere ${selectedBoat.name}? Verranno eliminate anche ${bookingCount} prenotazioni sintetiche associate.`
+      : `Rimuovere ${selectedBoat.name} dalla flotta locale?`;
     if (!window.confirm(message)) return;
 
     setState((current) => ({
@@ -517,58 +468,79 @@ export default function DemoManagementApp() {
       activity: withActivity(current, "Barca rimossa", selectedBoat.name),
     }));
     setSelectedBoatId(null);
-    setToast("Imbarcazione rimossa dal workspace demo");
+    setToast("Imbarcazione rimossa dal workspace locale");
   }
 
-  function updateCustomer(notes: string) {
+  function addCustomer(customer: DemoCustomer) {
+    setState((current) => ({ ...current, customers: [customer, ...current.customers], activity: withActivity(current, "Cliente aggiunto", customer.name) }));
+    setNewCustomerOpen(false);
+    setToast("Cliente aggiunto al CRM locale");
+  }
+
+  function updateCustomer(customer: DemoCustomer) {
+    setState((current) => ({ ...current, customers: current.customers.map((item) => item.id === customer.id ? customer : item), activity: withActivity(current, "CRM aggiornato", customer.name) }));
+    setSelectedCustomerId(null); setToast("Scheda cliente aggiornata");
+  }
+
+  function deleteSelectedCustomer() {
     if (!selectedCustomer) return;
-    setState((current) => ({ ...current, customers: current.customers.map((item) => item.id === selectedCustomer.id ? { ...item, notes } : item), activity: withActivity(current, "CRM aggiornato", selectedCustomer.name) }));
-    setSelectedCustomerId(null); setToast("Note cliente salvate");
+    const bookingCount = state.bookings.filter((item) => item.customerId === selectedCustomer.id).length;
+    if (!window.confirm(`Rimuovere ${selectedCustomer.name}? Verranno eliminate anche ${bookingCount} prenotazioni sintetiche associate.`)) return;
+    setState((current) => ({
+      ...current,
+      customers: current.customers.filter((item) => item.id !== selectedCustomer.id),
+      bookings: current.bookings.filter((item) => item.customerId !== selectedCustomer.id),
+      activity: withActivity(current, "Cliente rimosso", selectedCustomer.name),
+    }));
+    setSelectedCustomerId(null);
+    setToast("Cliente rimosso dal CRM locale");
   }
 
   function resetDemo() {
-    if (!window.confirm("Ripristinare tutti i dati iniziali della demo? Le modifiche fatte su questo dispositivo verranno eliminate.")) return;
-    setState(freshDemoState()); setView("dashboard"); setToast("Workspace demo ripristinato");
+    if (!window.confirm("Ripristinare tutti i dati iniziali? Le modifiche fatte su questo dispositivo verranno eliminate.")) return;
+    setState(freshDemoState()); setView("dashboard"); setToast("Workspace locale ripristinato");
   }
 
   if (!mounted) {
-    return <main className="grid min-h-screen place-items-center bg-[#EEF3F2] px-6 text-center text-[#0B1F33]"><div><p className="text-sm font-semibold text-[#14B8A6]">Boatly gestionale</p><h1 className="mt-2 text-2xl font-semibold">Preparazione workspace demo…</h1></div></main>;
+    return <main className="grid min-h-screen place-items-center bg-[#F4F3FA] px-6 text-center text-[#171A2B]"><div><p className="text-sm font-semibold text-[#6D5DFB]">Boatly Ops</p><h1 className="mt-2 text-2xl font-semibold">Preparazione area noleggiatore…</h1></div></main>;
   }
 
-  if (!state.workspaceName) {
-    return <WorkspaceSetup onContinue={enterWorkspace} />;
+  if (!state.workspaceName || !state.workspaceLocation) {
+    return <DemoWorkspaceSetup token={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""} onContinue={enterWorkspace} />;
   }
 
   return (
-    <main className="min-h-screen bg-[#EEF3F2] pb-24 text-[#0B1F33] lg:pb-0">
-      <header className="sticky top-0 z-30 border-b border-[#DEE5E8] bg-white/95 backdrop-blur">
+    <main className="min-h-screen bg-[#F4F3FA] pb-24 text-[#171A2B] lg:pb-0">
+      <header className="sticky top-0 z-30 border-b border-[#D8D5E5] bg-white/95 shadow-sm backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="min-w-0"><Link href="/" className="text-xl font-bold tracking-tight">Boatly</Link><p className="truncate text-[11px] text-[#64748B]">Gestionale interattivo · {state.workspaceName}</p></div>
-          <div className="flex items-center gap-2"><span className="hidden rounded-full bg-[#CCFBF1] px-3 py-1.5 text-xs font-semibold text-[#0F766E] sm:inline-flex">Demo isolata · modifiche locali</span><button className="min-h-11 rounded-xl px-3 text-xs font-semibold text-[#64748B] hover:bg-[#F1F5F4]" onClick={resetDemo}>Ripristina</button><Link href="/" className="grid min-h-11 place-items-center rounded-xl bg-[#0B1F33] px-3 text-xs font-semibold text-white sm:px-4 sm:text-sm">Esci</Link></div>
+          <div className="min-w-0"><Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#6D5DFB] text-sm text-white">B</span>Boatly Ops</Link><p className="truncate text-[11px] text-[#676B80]">{state.workspaceName} · {state.workspaceLocation.city}</p></div>
+          <div className="flex items-center gap-1 sm:gap-2"><span className="hidden rounded-full bg-[#EDE9FE] px-3 py-1.5 text-xs font-semibold text-[#5B4FD6] md:inline-flex">Area noleggiatore · dati locali</span><button className="min-h-11 rounded-xl px-2 text-xs font-semibold text-[#676B80] hover:bg-[#F4F2FA] sm:px-3" onClick={reconfigureWorkspace}>Attività</button><button className="min-h-11 rounded-xl px-2 text-xs font-semibold text-[#676B80] hover:bg-[#F4F2FA] sm:px-3" onClick={resetDemo}>Ripristina</button><Link href="/" className="grid min-h-11 place-items-center rounded-xl bg-[#171A2B] px-3 text-xs font-semibold text-white sm:px-4 sm:text-sm">Marketplace</Link></div>
         </div>
       </header>
 
       <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[248px_1fr]">
-        <aside className="hidden min-h-[calc(100vh-69px)] border-r border-[#DEE5E8] bg-white p-5 lg:block"><div className="rounded-2xl bg-[#0B1F33] p-4 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5EEAD4]">Workspace demo</p><p className="mt-2 truncate font-semibold">{state.workspaceName}</p><p className="mt-1 text-xs text-white/60">{state.boats.length} {state.boats.length === 1 ? "imbarcazione" : "imbarcazioni"}</p></div><nav className="mt-5 space-y-1" aria-label="Sezioni gestionale">{VIEWS.map((item) => <button key={item.id} onClick={() => setView(item.id)} aria-current={view === item.id ? "page" : undefined} className={classNames("w-full rounded-xl px-4 py-3 text-left transition", view === item.id ? "bg-[#CCFBF1] text-[#0F766E]" : "text-[#475569] hover:bg-[#F1F5F4]")}><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-xs opacity-70">{item.note}</span></button>)}</nav><div className="mt-6 rounded-2xl border border-[#DEE5E8] p-4 text-xs leading-5 text-[#64748B]"><strong className="text-[#0B1F33]">Circuito chiuso.</strong><br />Le modifiche restano solo su questo browser e non raggiungono dati, clienti o pagamenti reali.</div></aside>
+        <aside className="hidden min-h-[calc(100vh-69px)] border-r border-[#E2DFEB] bg-[#FBFAFE] p-5 lg:block"><div className="rounded-2xl bg-[#171A2B] p-4 text-white"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#FDBA74]">Area noleggiatore</p><p className="mt-2 truncate font-semibold">{state.workspaceName}</p><p className="mt-1 text-xs text-white/60">{state.workspaceLocation.fullName}</p><p className="mt-3 text-xs text-white/60">{state.boats.length} {state.boats.length === 1 ? "imbarcazione" : "imbarcazioni"}</p></div><nav className="mt-5 space-y-1" aria-label="Sezioni gestionale">{VIEWS.map((item) => <button key={item.id} onClick={() => setView(item.id)} aria-current={view === item.id ? "page" : undefined} className={classNames("w-full rounded-xl border-l-4 px-4 py-3 text-left transition", view === item.id ? "border-[#6D5DFB] bg-[#EDE9FE] text-[#4C3FC2]" : "border-transparent text-[#555A70] hover:bg-[#F4F2FA]")}><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-xs opacity-70">{item.note}</span></button>)}</nav><div className="mt-6 rounded-2xl border border-[#E2DFEB] bg-white p-4 text-xs leading-5 text-[#676B80]"><strong className="text-[#171A2B]">Circuito chiuso.</strong><br />Le modifiche restano su questo browser e non raggiungono dati, clienti o pagamenti reali.</div></aside>
 
         <div className="min-w-0 p-4 sm:p-6 lg:p-8">
-          <section className="mb-5 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold text-[#14B8A6]">{selectedView.note}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{selectedView.label}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748B]">Prova le operazioni quotidiane: ogni modifica aggiorna tutte le sezioni del gestionale.</p></div><div className="rounded-2xl border border-[#DEE5E8] bg-white px-4 py-3 text-xs text-[#64748B] sm:text-sm"><span className="inline-block h-2 w-2 rounded-full bg-[#14B8A6]" /> <strong className="ml-1 text-[#0B1F33]">Dati salvati sul dispositivo</strong></div></section>
+          <section className="mb-5 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold text-[#6D5DFB]">{selectedView.note}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{selectedView.label}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#676B80]">Azioni e dati della sezione sono collegati in tempo reale a tutto il workspace locale.</p></div><div className="rounded-2xl border border-[#E2DFEB] bg-white px-4 py-3 text-xs text-[#676B80] sm:text-sm"><span className="inline-block h-2 w-2 rounded-full bg-[#6D5DFB]" /> <strong className="ml-1 text-[#171A2B]">Modifiche salvate sul dispositivo</strong></div></section>
 
-          {view === "dashboard" ? <DashboardView state={state} onNavigate={setView} onNewBooking={() => setNewBookingOpen(true)} onOpenBooking={setSelectedBookingId} /> : null}
-          {view === "prenotazioni" ? <BookingsView state={state} onNewBooking={() => setNewBookingOpen(true)} onOpenBooking={setSelectedBookingId} /> : null}
+          {view === "dashboard" ? <DashboardView state={state} onNavigate={setView} onNewBooking={() => openNewBooking()} onOpenBooking={setSelectedBookingId} /> : null}
+          {view === "calendario" ? <DemoCalendarView state={state} onOpenBooking={setSelectedBookingId} onOpenBoat={setSelectedBoatId} onNewBooking={openNewBooking} onAddBoat={() => setNewBoatOpen(true)} /> : null}
+          {view === "prenotazioni" ? <BookingsView state={state} onNewBooking={() => openNewBooking()} onOpenBooking={setSelectedBookingId} /> : null}
           {view === "flotta" ? <FleetWorkspace state={state} onEditBoat={setSelectedBoatId} onAddBoat={() => setNewBoatOpen(true)} /> : null}
-          {view === "clienti" ? <CustomersView state={state} onOpenCustomer={setSelectedCustomerId} /> : null}
+          {view === "clienti" ? <CustomersView state={state} onOpenCustomer={setSelectedCustomerId} onNewCustomer={() => setNewCustomerOpen(true)} /> : null}
           {view === "finanza" ? <FinanceView state={state} onOpenBooking={setSelectedBookingId} /> : null}
         </div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#D7E0E2] bg-white/95 px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur lg:hidden" aria-label="Navigazione mobile gestionale">{VIEWS.map((item) => <button key={item.id} onClick={() => setView(item.id)} className={classNames("min-h-14 rounded-xl px-1 text-[10px] font-semibold", view === item.id ? "bg-[#CCFBF1] text-[#0F766E]" : "text-[#64748B]")}><span className="mx-auto mb-1 block h-1.5 w-1.5 rounded-full bg-current" />{item.short}</button>)}</nav>
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-[#D8D5E5] bg-white/95 px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur lg:hidden" aria-label="Navigazione mobile gestionale">{VIEWS.map((item) => <button key={item.id} onClick={() => setView(item.id)} className={classNames("min-h-14 rounded-xl px-0.5 text-[9px] font-semibold sm:text-[10px]", view === item.id ? "bg-[#EDE9FE] text-[#4C3FC2]" : "text-[#676B80]")}><span className="mx-auto mb-1 block h-1.5 w-1.5 rounded-full bg-current" />{item.short}</button>)}</nav>
 
-      {newBookingOpen ? <Modal title="Nuova prenotazione" eyebrow="Agenda operativa" onClose={() => setNewBookingOpen(false)} wide><BookingForm state={state} onSave={addBooking} onClose={() => setNewBookingOpen(false)} /></Modal> : null}
-      {newBoatOpen ? <Modal title="Aggiungi una barca" eyebrow="Gestione flotta" onClose={() => setNewBoatOpen(false)} wide><BoatCreateForm onSave={addBoat} onClose={() => setNewBoatOpen(false)} /></Modal> : null}
-      {selectedBooking ? <Modal title={selectedBooking.reference} eyebrow="Dettaglio prenotazione" onClose={() => setSelectedBookingId(null)}><BookingDetail booking={selectedBooking} boat={state.boats.find((item) => item.id === selectedBooking.boatId)} customer={state.customers.find((item) => item.id === selectedBooking.customerId)} onUpdate={updateBooking} onClose={() => setSelectedBookingId(null)} /></Modal> : null}
-      {selectedBoat ? <Modal title={selectedBoat.name} eyebrow="Gestione flotta" onClose={() => setSelectedBoatId(null)} wide><BoatEditorV3 boat={selectedBoat} bookingCount={state.bookings.filter((item) => item.boatId === selectedBoat.id).length} onSave={updateBoat} onDelete={deleteSelectedBoat} onClose={() => setSelectedBoatId(null)} /></Modal> : null}
-      {selectedCustomer ? <Modal title={selectedCustomer.name} eyebrow="Scheda cliente" onClose={() => setSelectedCustomerId(null)} wide><CustomerDetail customer={selectedCustomer} state={state} onSave={updateCustomer} onOpenBooking={(id) => { setSelectedCustomerId(null); setSelectedBookingId(id); }} onClose={() => setSelectedCustomerId(null)} /></Modal> : null}
+      {newBookingOpen ? <Modal title="Nuova prenotazione" eyebrow="Agenda operativa" onClose={() => setNewBookingOpen(false)} wide><BookingForm key={`${bookingDefaults.date}-${bookingDefaults.boatId ?? "all"}`} state={state} initialDate={bookingDefaults.date} initialBoatId={bookingDefaults.boatId} onSave={addBooking} onClose={() => setNewBookingOpen(false)} /></Modal> : null}
+      {newBoatOpen ? <Modal title="Aggiungi una barca" eyebrow="Scheda marketplace e flotta" onClose={() => setNewBoatOpen(false)} wide><DemoBoatForm defaultBase={state.workspaceLocation.city} onSave={addBoat} onClose={() => setNewBoatOpen(false)} /></Modal> : null}
+      {newCustomerOpen ? <Modal title="Nuovo cliente" eyebrow="CRM operativo" onClose={() => setNewCustomerOpen(false)}><DemoCustomerForm onSave={addCustomer} onClose={() => setNewCustomerOpen(false)} /></Modal> : null}
+      {selectedBooking ? <Modal title={selectedBooking.reference} eyebrow="Dettaglio prenotazione" onClose={() => setSelectedBookingId(null)} wide><BookingDetail booking={selectedBooking} state={state} onSave={updateBooking} onDelete={deleteSelectedBooking} onClose={() => setSelectedBookingId(null)} /></Modal> : null}
+      {selectedBoat ? <Modal title={selectedBoat.name} eyebrow="Scheda marketplace e flotta" onClose={() => setSelectedBoatId(null)} wide><DemoBoatForm boat={selectedBoat} bookingCount={state.bookings.filter((item) => item.boatId === selectedBoat.id).length} onSave={updateBoat} onDelete={deleteSelectedBoat} onClose={() => setSelectedBoatId(null)} /></Modal> : null}
+      {selectedCustomer ? <Modal title={selectedCustomer.name} eyebrow="Scheda cliente" onClose={() => setSelectedCustomerId(null)} wide><div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]"><DemoCustomerForm customer={selectedCustomer} bookingCount={state.bookings.filter((item) => item.customerId === selectedCustomer.id).length} onSave={updateCustomer} onDelete={deleteSelectedCustomer} onClose={() => setSelectedCustomerId(null)} /><section className="rounded-2xl bg-[#F4F2FA] p-4"><p className="text-sm font-semibold">Prenotazioni collegate</p><div className="mt-3 space-y-2">{state.bookings.filter((item) => item.customerId === selectedCustomer.id).map((booking) => <button key={booking.id} onClick={() => { setSelectedCustomerId(null); setSelectedBookingId(booking.id); }} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl bg-white px-3 text-left text-sm"><span><b>{booking.reference}</b><span className="ml-2 text-[#676B80]">{dateTime(booking.startAt)}</span></span><span className="font-semibold">{money(booking.amountCents)}</span></button>)}{state.bookings.every((item) => item.customerId !== selectedCustomer.id) ? <p className="text-sm text-[#676B80]">Nessuna prenotazione collegata.</p> : null}</div></section></div></Modal> : null}
       {toast ? <Toast message={toast} /> : null}
     </main>
   );
