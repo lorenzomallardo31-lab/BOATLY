@@ -149,10 +149,14 @@ function initialBrowserState() {
   return freshDemoState();
 }
 
-function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave, onClose }: { state: DemoState; initialDate?: string; initialBoatId?: string; onSave: (booking: DemoBooking) => void; onClose: () => void }) {
+function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave, onClose }: { state: DemoState; initialDate?: string; initialBoatId?: string; onSave: (booking: DemoBooking, newCustomer?: DemoCustomer) => void; onClose: () => void }) {
   const activeBoats = state.boats.filter((boat) => boat.status === "ACTIVE");
   const [boatId, setBoatId] = useState(initialBoatId && state.boats.some((boat) => boat.id === initialBoatId) ? initialBoatId : activeBoats[0]?.id ?? state.boats[0]?.id ?? "");
+  const [customerMode, setCustomerMode] = useState<"EXISTING" | "NEW">(state.customers.length ? "EXISTING" : "NEW");
   const [customerId, setCustomerId] = useState(state.customers[0]?.id ?? "");
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [date, setDate] = useState(initialDate);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("17:00");
@@ -170,15 +174,29 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const customer = state.customers.find((item) => item.id === customerId);
     const boat = state.boats.find((item) => item.id === boatId);
-    if (!customer || !boat) return;
+    const existingCustomer = state.customers.find((item) => item.id === customerId);
+    const customerName = newCustomerName.trim();
+    if (!boat || (customerMode === "EXISTING" && !existingCustomer) || (customerMode === "NEW" && !customerName)) return;
+
+    const createdAt = new Date().toISOString();
+    const resolvedCustomerId = customerMode === "NEW" ? `customer-${Date.now()}` : existingCustomer!.id;
     const suffix = Math.random().toString(16).slice(2, 6).toUpperCase();
+    const reference = `${source === "DIRECT" ? "MAN" : "BTY"}-${date.slice(5).replace("-", "")}-${suffix}`;
+    const newCustomer: DemoCustomer | undefined = customerMode === "NEW" ? {
+      id: resolvedCustomerId,
+      name: customerName,
+      email: newCustomerEmail.trim(),
+      phone: newCustomerPhone.trim(),
+      segment: source === "DIRECT" ? "DIRETTO" : "NUOVO",
+      notes: `Creato automaticamente dalla prenotazione ${reference}.`,
+    } : undefined;
+
     onSave({
       id: `booking-${Date.now()}`,
-      reference: `${source === "DIRECT" ? "MAN" : "BTY"}-${date.slice(5).replace("-", "")}-${suffix}`,
+      reference,
       boatId,
-      customerId,
+      customerId: resolvedCustomerId,
       startAt: `${date}T${start}`,
       endAt: `${date}T${end}`,
       source,
@@ -186,15 +204,31 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
       amountCents: Math.max(0, Math.round(Number(amount) * 100)),
       passengers: Math.max(1, Number(passengers)),
       notes,
-      createdAt: new Date().toISOString(),
-    });
+      createdAt,
+    }, newCustomer);
   }
 
   return (
     <form onSubmit={submit} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Imbarcazione"><select required className={inputClass} value={boatId} onChange={(event) => changeBoat(event.target.value)}>{state.boats.map((boat) => <option key={boat.id} value={boat.id}>{boat.name}{boat.status !== "ACTIVE" ? ` · ${BOAT_LABELS[boat.status]}` : ""}</option>)}</select></Field>
-        <Field label="Cliente"><select required className={inputClass} value={customerId} onChange={(event) => setCustomerId(event.target.value)}>{state.customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></Field>
+        <div className="grid gap-1.5 text-sm font-semibold text-[#334155]">
+          Cliente
+          <div className="grid min-h-11 grid-cols-2 rounded-xl border border-[#D8D5E5] bg-[#F4F2FA] p-1">
+            <button type="button" onClick={() => setCustomerMode("EXISTING")} disabled={state.customers.length === 0} className={classNames("rounded-lg px-3 text-xs font-semibold transition", customerMode === "EXISTING" ? "bg-white text-[#4C3FC2] shadow-sm" : "text-[#676B80]", state.customers.length === 0 && "cursor-not-allowed opacity-40")}>Già esistente</button>
+            <button type="button" onClick={() => setCustomerMode("NEW")} className={classNames("rounded-lg px-3 text-xs font-semibold transition", customerMode === "NEW" ? "bg-white text-[#4C3FC2] shadow-sm" : "text-[#676B80]")}>Nuovo cliente</button>
+          </div>
+        </div>
+        {customerMode === "EXISTING" ? (
+          <div className="sm:col-span-2"><Field label="Seleziona cliente"><select required className={inputClass} value={customerId} onChange={(event) => setCustomerId(event.target.value)}>{state.customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></Field></div>
+        ) : (
+          <div className="grid gap-4 sm:col-span-2 sm:grid-cols-3">
+            <Field label="Nome cliente *"><input required className={inputClass} value={newCustomerName} onChange={(event) => setNewCustomerName(event.target.value)} placeholder="Es. Mario Rossi" /></Field>
+            <Field label="Email (facoltativa)"><input type="email" className={inputClass} value={newCustomerEmail} onChange={(event) => setNewCustomerEmail(event.target.value)} placeholder="cliente@email.it" /></Field>
+            <Field label="Telefono (facoltativo)"><input type="tel" className={inputClass} value={newCustomerPhone} onChange={(event) => setNewCustomerPhone(event.target.value)} placeholder="+39 333 000 0000" /></Field>
+            <p className="rounded-xl bg-[#EDE9FE] p-3 text-xs leading-5 text-[#4C3FC2] sm:col-span-3">Salvando la prenotazione, Boatly Ops creerà automaticamente anche la scheda del cliente nel CRM.</p>
+          </div>
+        )}
         <Field label="Data"><input required type="date" className={inputClass} value={date} onChange={(event) => setDate(event.target.value)} /></Field>
         <Field label="Origine"><select className={inputClass} value={source} onChange={(event) => setSource(event.target.value as DemoBooking["source"])}><option value="DIRECT">Prenotazione diretta</option><option value="MARKETPLACE">Marketplace</option></select></Field>
         <Field label="Ora di partenza"><input required type="time" className={inputClass} value={start} onChange={(event) => setStart(event.target.value)} /></Field>
@@ -205,7 +239,7 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
       <Field label="Note operative"><textarea className={`${inputClass} min-h-24 py-3`} placeholder="Itinerario, skipper, richieste del cliente…" value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>
       {selectedBoat && selectedBoat.status !== "ACTIVE" ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">La barca selezionata risulta {BOAT_LABELS[selectedBoat.status].toLowerCase()}. Il workspace locale permette comunque di salvare per mostrare il controllo operativo.</p> : null}
       {state.boats.length === 0 ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Prima di creare una prenotazione devi aggiungere almeno una barca alla flotta.</p> : null}
-      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Annulla</button><button disabled={!boatId || !customerId} className={buttonPrimary}>Salva prenotazione</button></div>
+      <div className="grid gap-2 pt-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Annulla</button><button disabled={!boatId || (customerMode === "EXISTING" ? !customerId : !newCustomerName.trim())} className={buttonPrimary}>Salva prenotazione</button></div>
     </form>
   );
 }
@@ -398,9 +432,22 @@ export default function DemoManagementApp() {
     return [{ id: `activity-${Date.now()}`, label, detail, occurredAt: new Date().toISOString() }, ...current.activity].slice(0, 12);
   }
 
-  function addBooking(booking: DemoBooking) {
-    setState((current) => ({ ...current, bookings: [booking, ...current.bookings], activity: withActivity(current, "Prenotazione creata", `${booking.reference} · ${money(booking.amountCents)}`) }));
-    setNewBookingOpen(false); setToast("Prenotazione aggiunta al workspace locale"); setView("prenotazioni");
+  function addBooking(booking: DemoBooking, newCustomer?: DemoCustomer) {
+    setState((current) => {
+      const customers = newCustomer ? [newCustomer, ...current.customers] : current.customers;
+      const activityLabel = newCustomer ? "Prenotazione e cliente creati" : "Prenotazione creata";
+      const activityDetail = newCustomer
+        ? `${booking.reference} · ${newCustomer.name} aggiunto al CRM`
+        : `${booking.reference} · ${money(booking.amountCents)}`;
+      return {
+        ...current,
+        customers,
+        bookings: [booking, ...current.bookings],
+        activity: withActivity(current, activityLabel, activityDetail),
+      };
+    });
+    setNewBookingOpen(false);
+    setToast(newCustomer ? `Prenotazione salvata e ${newCustomer.name} aggiunto al CRM` : "Prenotazione aggiunta al workspace locale");
   }
 
   function openNewBooking(date = "2026-09-02", boatId?: string) {

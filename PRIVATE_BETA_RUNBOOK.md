@@ -15,6 +15,11 @@ della flotta, aggiornare note CRM, analizzare ricavi e scaricare un CSV
 dimostrativo. Nessuna azione interroga o modifica operatori, clienti, pagamenti
 o prenotazioni reali.
 
+Il modulo di nuova prenotazione accetta sia clienti già presenti sia un nuovo
+nominativo inserito manualmente. In quest'ultimo caso nome, email e telefono
+vengono trasformati automaticamente in una nuova scheda CRM collegata al
+booking; il nome è obbligatorio, mentre i contatti restano facoltativi.
+
 La sede viene selezionata dai suggerimenti Mapbox limitati all'Italia e salvata
 insieme a coordinate, comune e regione. Il gestionale richiede quindi anche la
 variabile pubblica `NEXT_PUBLIC_MAPBOX_TOKEN`. Il visitatore non può confermare
