@@ -6,6 +6,7 @@ import {
   type ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -13,6 +14,7 @@ import {
 import { DemoBoatForm } from "@/components/demo/demo-boat-form";
 import { DemoCalendarView } from "@/components/demo/demo-calendar-view";
 import { DemoCustomerForm } from "@/components/demo/demo-customer-form";
+import { DemoValidationSummary } from "@/components/demo/demo-validation-summary";
 import { DemoWorkspaceSetup } from "@/components/demo/demo-workspace-setup";
 import { DEMO_STORAGE_KEY, freshDemoState } from "@/lib/demo/seed";
 import type {
@@ -26,6 +28,14 @@ import type {
   DemoState,
   DemoView,
 } from "@/lib/demo/types";
+import {
+  auditDemoState,
+  type DemoValidationIssue,
+  validateBoat,
+  validateBoatOperationalConstraints,
+  validateBooking,
+  validateCustomer,
+} from "@/lib/demo/validation";
 
 const VIEWS: Array<{ id: DemoView; label: string; short: string; note: string }> = [
   { id: "dashboard", label: "Dashboard", short: "Home", note: "Controllo giornaliero" },
@@ -149,9 +159,9 @@ function initialBrowserState() {
   return freshDemoState();
 }
 
-function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave, onClose }: { state: DemoState; initialDate?: string; initialBoatId?: string; onSave: (booking: DemoBooking, newCustomer?: DemoCustomer) => void; onClose: () => void }) {
+function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave, onClose }: { state: DemoState; initialDate?: string; initialBoatId?: string; onSave: (booking: DemoBooking, newCustomer?: DemoCustomer) => DemoValidationIssue[]; onClose: () => void }) {
   const activeBoats = state.boats.filter((boat) => boat.status === "ACTIVE");
-  const [boatId, setBoatId] = useState(initialBoatId && state.boats.some((boat) => boat.id === initialBoatId) ? initialBoatId : activeBoats[0]?.id ?? state.boats[0]?.id ?? "");
+  const [boatId, setBoatId] = useState(initialBoatId && activeBoats.some((boat) => boat.id === initialBoatId) ? initialBoatId : activeBoats[0]?.id ?? "");
   const [customerMode, setCustomerMode] = useState<"EXISTING" | "NEW">(state.customers.length ? "EXISTING" : "NEW");
   const [customerId, setCustomerId] = useState(state.customers[0]?.id ?? "");
   const [newCustomerName, setNewCustomerName] = useState("");
@@ -165,6 +175,8 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
   const selectedBoat = state.boats.find((boat) => boat.id === boatId);
   const [amount, setAmount] = useState(String((selectedBoat?.dailyPriceCents ?? 50000) / 100));
   const [notes, setNotes] = useState("");
+  const [issues, setIssues] = useState<DemoValidationIssue[]>([]);
+  const submittingRef = useRef(false);
 
   function changeBoat(value: string) {
     setBoatId(value);
@@ -174,6 +186,7 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     const boat = state.boats.find((item) => item.id === boatId);
     const existingCustomer = state.customers.find((item) => item.id === customerId);
     const customerName = newCustomerName.trim();
@@ -192,7 +205,8 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
       notes: `Creato automaticamente dalla prenotazione ${reference}.`,
     } : undefined;
 
-    onSave({
+    submittingRef.current = true;
+    const validationIssues = onSave({
       id: `booking-${Date.now()}`,
       reference,
       boatId,
@@ -201,17 +215,19 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
       endAt: `${date}T${end}`,
       source,
       status: source === "DIRECT" ? "CONFIRMED" : "REQUESTED",
-      amountCents: Math.max(0, Math.round(Number(amount) * 100)),
-      passengers: Math.max(1, Number(passengers)),
+      amountCents: Math.round(Number(amount) * 100),
+      passengers: Number(passengers),
       notes,
       createdAt,
     }, newCustomer);
+    setIssues(validationIssues);
+    if (validationIssues.length > 0) submittingRef.current = false;
   }
 
   return (
     <form onSubmit={submit} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Imbarcazione"><select required className={inputClass} value={boatId} onChange={(event) => changeBoat(event.target.value)}>{state.boats.map((boat) => <option key={boat.id} value={boat.id}>{boat.name}{boat.status !== "ACTIVE" ? ` · ${BOAT_LABELS[boat.status]}` : ""}</option>)}</select></Field>
+        <Field label="Imbarcazione"><select required className={inputClass} value={boatId} onChange={(event) => changeBoat(event.target.value)}>{activeBoats.map((boat) => <option key={boat.id} value={boat.id}>{boat.name}</option>)}</select></Field>
         <div className="grid gap-1.5 text-sm font-semibold text-[#334155]">
           Cliente
           <div className="grid min-h-11 grid-cols-2 rounded-xl border border-[#D8D5E5] bg-[#F4F2FA] p-1">
@@ -237,14 +253,14 @@ function BookingForm({ state, initialDate = "2026-09-02", initialBoatId, onSave,
         <Field label="Valore (€)"><input required min="0" step="10" type="number" className={inputClass} value={amount} onChange={(event) => setAmount(event.target.value)} /></Field>
       </div>
       <Field label="Note operative"><textarea className={`${inputClass} min-h-24 py-3`} placeholder="Itinerario, skipper, richieste del cliente…" value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>
-      {selectedBoat && selectedBoat.status !== "ACTIVE" ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">La barca selezionata risulta {BOAT_LABELS[selectedBoat.status].toLowerCase()}. Il workspace locale permette comunque di salvare per mostrare il controllo operativo.</p> : null}
-      {state.boats.length === 0 ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Prima di creare una prenotazione devi aggiungere almeno una barca alla flotta.</p> : null}
+      {activeBoats.length === 0 ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Non ci sono barche attive prenotabili. Aggiungi una barca oppure riattivane una dalla flotta.</p> : null}
+      <DemoValidationSummary issues={issues} />
       <div className="grid gap-2 pt-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Annulla</button><button disabled={!boatId || (customerMode === "EXISTING" ? !customerId : !newCustomerName.trim())} className={buttonPrimary}>Salva prenotazione</button></div>
     </form>
   );
 }
 
-function BookingDetail({ booking, state, onSave, onDelete, onClose }: { booking: DemoBooking; state: DemoState; onSave: (booking: DemoBooking) => void; onDelete: () => void; onClose: () => void }) {
+function BookingDetail({ booking, state, onSave, onDelete, onClose }: { booking: DemoBooking; state: DemoState; onSave: (booking: DemoBooking) => DemoValidationIssue[]; onDelete: () => void; onClose: () => void }) {
   const [boatId, setBoatId] = useState(booking.boatId);
   const [customerId, setCustomerId] = useState(booking.customerId);
   const [date, setDate] = useState(booking.startAt.slice(0, 10));
@@ -255,6 +271,28 @@ function BookingDetail({ booking, state, onSave, onDelete, onClose }: { booking:
   const [passengers, setPassengers] = useState(String(booking.passengers));
   const [amount, setAmount] = useState(String(booking.amountCents / 100));
   const [notes, setNotes] = useState(booking.notes);
+  const [issues, setIssues] = useState<DemoValidationIssue[]>([]);
+  const submittingRef = useRef(false);
+
+  function save() {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    const validationIssues = onSave({
+      ...booking,
+      boatId,
+      customerId,
+      startAt: `${date}T${start}`,
+      endAt: `${date}T${end}`,
+      source,
+      status,
+      passengers: Number(passengers),
+      amountCents: Math.round(Number(amount) * 100),
+      notes,
+    });
+    setIssues(validationIssues);
+    if (validationIssues.length > 0) submittingRef.current = false;
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl bg-[#F4F2FA] p-4 text-sm"><p className="text-xs text-[#676B80]">Riferimento</p><p className="mt-1 font-semibold">{booking.reference}</p></div>
@@ -271,7 +309,8 @@ function BookingDetail({ booking, state, onSave, onDelete, onClose }: { booking:
       </div>
       <Field label="Note interne"><textarea className={`${inputClass} min-h-28 py-3`} value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>
       <p className="text-xs leading-5 text-[#676B80]">Il cambio di stato aggiorna subito dashboard, calendario, disponibilità e riepilogo finanziario, senza inviare email o movimenti reali.</p>
-      <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Chiudi</button><button type="button" disabled={!boatId || !customerId || !date || !start || !end} onClick={() => onSave({ ...booking, boatId, customerId, startAt: `${date}T${start}`, endAt: `${date}T${end}`, source, status, passengers: Math.max(1, Number(passengers)), amountCents: Math.max(0, Math.round(Number(amount) * 100)), notes })} className={buttonPrimary}>Salva tutte le modifiche</button></div>
+      <DemoValidationSummary issues={issues} />
+      <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={onClose} className={buttonSecondary}>Chiudi</button><button type="button" disabled={!boatId || !customerId || !date || !start || !end} onClick={save} className={buttonPrimary}>Salva tutte le modifiche</button></div>
       <div className="border-t border-[#E2DFEB] pt-4"><button type="button" onClick={onDelete} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50">Rimuovi prenotazione</button></div>
     </div>
   );
@@ -316,6 +355,11 @@ function DashboardView({ state, onNavigate, onNewBooking, onOpenBooking }: { sta
 function BookingsView({ state, onNewBooking, onOpenBooking }: { state: DemoState; onNewBooking: () => void; onOpenBooking: (id: string) => void }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"ALL" | DemoBookingStatus>("ALL");
+  const conflictingBookingIds = useMemo(() => new Set(
+    state.bookings
+      .filter((booking) => validateBooking(booking, state, booking.id).length > 0)
+      .map((booking) => booking.id),
+  ), [state]);
   const bookings = useMemo(() => [...state.bookings].sort((a, b) => b.startAt.localeCompare(a.startAt)).filter((booking) => {
     const boat = state.boats.find((item) => item.id === booking.boatId);
     const customer = state.customers.find((item) => item.id === booking.customerId);
@@ -328,9 +372,9 @@ function BookingsView({ state, onNewBooking, onOpenBooking }: { state: DemoState
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6D5DFB]">Booking control</p><h2 className="mt-1 text-xl font-semibold">Prenotazioni marketplace e dirette</h2></div><button className={buttonPrimary} onClick={onNewBooking}>+ Nuova prenotazione</button></div>
       <div className="mt-5 grid gap-3 md:grid-cols-[1fr_220px]"><input className={inputClass} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca cliente, barca o codice…" aria-label="Cerca prenotazione" /><select className={inputClass} value={filter} onChange={(event) => setFilter(event.target.value as "ALL" | DemoBookingStatus)} aria-label="Filtra stato"><option value="ALL">Tutti gli stati</option>{Object.entries(BOOKING_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
 
-      <div className="mt-5 hidden overflow-x-auto md:block"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b border-[#DEE5E8] text-xs uppercase tracking-wide text-[#64748B]"><th className="pb-3 font-semibold">Prenotazione</th><th className="pb-3 font-semibold">Cliente</th><th className="pb-3 font-semibold">Partenza</th><th className="pb-3 font-semibold">Valore</th><th className="pb-3 font-semibold">Stato</th><th className="pb-3"><span className="sr-only">Apri</span></th></tr></thead><tbody>{bookings.map((booking) => { const boat = state.boats.find((item) => item.id === booking.boatId); const customer = state.customers.find((item) => item.id === booking.customerId); return <tr key={booking.id} className="border-b border-[#EEF2F3] last:border-0"><td className="py-4"><p className="font-semibold">{boat?.name}</p><p className="mt-1 text-xs text-[#64748B]">{booking.reference} · {booking.source === "DIRECT" ? "Diretta" : "Marketplace"}</p></td><td className="py-4">{customer?.name}</td><td className="py-4">{dateTime(booking.startAt)}</td><td className="py-4 font-semibold">{money(booking.amountCents)}</td><td className="py-4"><StatusBadge kind={booking.status}>{BOOKING_LABELS[booking.status]}</StatusBadge></td><td className="py-4 text-right"><button onClick={() => onOpenBooking(booking.id)} className="min-h-11 rounded-xl px-3 font-semibold text-[#0F766E] hover:bg-[#F1F5F4]">Gestisci</button></td></tr>; })}</tbody></table></div>
+      <div className="mt-5 hidden overflow-x-auto md:block"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b border-[#DEE5E8] text-xs uppercase tracking-wide text-[#64748B]"><th className="pb-3 font-semibold">Prenotazione</th><th className="pb-3 font-semibold">Cliente</th><th className="pb-3 font-semibold">Partenza</th><th className="pb-3 font-semibold">Valore</th><th className="pb-3 font-semibold">Stato</th><th className="pb-3"><span className="sr-only">Apri</span></th></tr></thead><tbody>{bookings.map((booking) => { const boat = state.boats.find((item) => item.id === booking.boatId); const customer = state.customers.find((item) => item.id === booking.customerId); const hasConflict = conflictingBookingIds.has(booking.id); return <tr key={booking.id} className={classNames("border-b last:border-0", hasConflict ? "border-rose-200 bg-rose-50/50" : "border-[#EEF2F3]")}><td className="py-4"><p className="font-semibold">{boat?.name}</p><p className="mt-1 text-xs text-[#64748B]">{booking.reference} · {booking.source === "DIRECT" ? "Diretta" : "Marketplace"}</p></td><td className="py-4">{customer?.name}</td><td className="py-4">{dateTime(booking.startAt)}</td><td className="py-4 font-semibold">{money(booking.amountCents)}</td><td className="py-4"><div className="flex flex-col items-start gap-1"><StatusBadge kind={booking.status}>{BOOKING_LABELS[booking.status]}</StatusBadge>{hasConflict ? <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-bold text-rose-700">CONFLITTO</span> : null}</div></td><td className="py-4 text-right"><button onClick={() => onOpenBooking(booking.id)} className="min-h-11 rounded-xl px-3 font-semibold text-[#0F766E] hover:bg-[#F1F5F4]">Gestisci</button></td></tr>; })}</tbody></table></div>
 
-      <div className="mt-5 space-y-3 md:hidden">{bookings.map((booking) => { const boat = state.boats.find((item) => item.id === booking.boatId); const customer = state.customers.find((item) => item.id === booking.customerId); return <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className="w-full rounded-2xl border border-[#DEE5E8] p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{boat?.name}</p><p className="mt-1 text-xs text-[#64748B]">{booking.reference}</p></div><StatusBadge kind={booking.status}>{BOOKING_LABELS[booking.status]}</StatusBadge></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-[#64748B]">Cliente</p><p className="mt-1 font-medium">{customer?.name}</p></div><div><p className="text-xs text-[#64748B]">Valore</p><p className="mt-1 font-semibold">{money(booking.amountCents)}</p></div><div className="col-span-2"><p className="text-xs text-[#64748B]">Partenza</p><p className="mt-1 font-medium">{dateTime(booking.startAt)}</p></div></div></button>; })}</div>
+      <div className="mt-5 space-y-3 md:hidden">{bookings.map((booking) => { const boat = state.boats.find((item) => item.id === booking.boatId); const customer = state.customers.find((item) => item.id === booking.customerId); const hasConflict = conflictingBookingIds.has(booking.id); return <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className={classNames("w-full rounded-2xl border p-4 text-left", hasConflict ? "border-rose-300 bg-rose-50/60" : "border-[#DEE5E8]")}><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{boat?.name}</p><p className="mt-1 text-xs text-[#64748B]">{booking.reference}</p>{hasConflict ? <span className="mt-2 inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-bold text-rose-700">CONFLITTO</span> : null}</div><StatusBadge kind={booking.status}>{BOOKING_LABELS[booking.status]}</StatusBadge></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-[#64748B]">Cliente</p><p className="mt-1 font-medium">{customer?.name}</p></div><div><p className="text-xs text-[#64748B]">Valore</p><p className="mt-1 font-semibold">{money(booking.amountCents)}</p></div><div className="col-span-2"><p className="text-xs text-[#64748B]">Partenza</p><p className="mt-1 font-medium">{dateTime(booking.startAt)}</p></div></div></button>; })}</div>
       {bookings.length === 0 ? <p className="mt-8 rounded-2xl bg-[#F4F7F6] p-8 text-center text-sm text-[#64748B]">Nessuna prenotazione corrisponde ai filtri.</p> : null}
     </section>
   );
@@ -427,12 +471,23 @@ export default function DemoManagementApp() {
   const selectedBoat = state.boats.find((item) => item.id === selectedBoatId);
   const selectedCustomer = state.customers.find((item) => item.id === selectedCustomerId);
   const selectedView = VIEWS.find((item) => item.id === view) ?? VIEWS[0];
+  const integrityIssues = useMemo(() => auditDemoState(state), [state]);
 
   function withActivity(current: DemoState, label: string, detail: string): DemoActivity[] {
     return [{ id: `activity-${Date.now()}`, label, detail, occurredAt: new Date().toISOString() }, ...current.activity].slice(0, 12);
   }
 
-  function addBooking(booking: DemoBooking, newCustomer?: DemoCustomer) {
+  function addBooking(booking: DemoBooking, newCustomer?: DemoCustomer): DemoValidationIssue[] {
+    if (newCustomer) {
+      const customerIssues = validateCustomer(newCustomer, state.customers);
+      if (customerIssues.length > 0) return customerIssues;
+    }
+    const validationState = newCustomer
+      ? { ...state, customers: [newCustomer, ...state.customers] }
+      : state;
+    const bookingIssues = validateBooking(booking, validationState);
+    if (bookingIssues.length > 0) return bookingIssues;
+
     setState((current) => {
       const customers = newCustomer ? [newCustomer, ...current.customers] : current.customers;
       const activityLabel = newCustomer ? "Prenotazione e cliente creati" : "Prenotazione creata";
@@ -448,6 +503,7 @@ export default function DemoManagementApp() {
     });
     setNewBookingOpen(false);
     setToast(newCustomer ? `Prenotazione salvata e ${newCustomer.name} aggiunto al CRM` : "Prenotazione aggiunta al workspace locale");
+    return [];
   }
 
   function openNewBooking(date = "2026-09-02", boatId?: string) {
@@ -468,7 +524,9 @@ export default function DemoManagementApp() {
     setState((current) => ({ ...current, workspaceName: "", workspaceLocation: null }));
   }
 
-  function addBoat(boat: DemoBoat) {
+  function addBoat(boat: DemoBoat): DemoValidationIssue[] {
+    const issues = validateBoat(boat, state.boats);
+    if (issues.length > 0) return issues;
     setState((current) => ({
       ...current,
       boats: [boat, ...current.boats],
@@ -477,11 +535,15 @@ export default function DemoManagementApp() {
     setNewBoatOpen(false);
     setToast("Imbarcazione aggiunta alla flotta");
     setView("flotta");
+    return [];
   }
 
-  function updateBooking(booking: DemoBooking) {
+  function updateBooking(booking: DemoBooking): DemoValidationIssue[] {
+    const issues = validateBooking(booking, state, booking.id);
+    if (issues.length > 0) return issues;
     setState((current) => ({ ...current, bookings: current.bookings.map((item) => item.id === booking.id ? booking : item), activity: withActivity(current, "Prenotazione aggiornata", `${booking.reference} · ${BOOKING_LABELS[booking.status]}`) }));
     setSelectedBookingId(null); setToast("Stato, agenda e finanza aggiornati");
+    return [];
   }
 
   function deleteSelectedBooking() {
@@ -495,9 +557,15 @@ export default function DemoManagementApp() {
     setToast("Prenotazione rimossa");
   }
 
-  function updateBoat(boat: DemoBoat) {
+  function updateBoat(boat: DemoBoat): DemoValidationIssue[] {
+    const issues = [
+      ...validateBoat(boat, state.boats, boat.id),
+      ...validateBoatOperationalConstraints(boat, state),
+    ];
+    if (issues.length > 0) return issues;
     setState((current) => ({ ...current, boats: current.boats.map((item) => item.id === boat.id ? boat : item), activity: withActivity(current, "Flotta aggiornata", `${boat.name} · ${BOAT_LABELS[boat.status]}`) }));
     setSelectedBoatId(null); setToast("Disponibilità della flotta aggiornata");
+    return [];
   }
 
   function deleteSelectedBoat() {
@@ -518,15 +586,21 @@ export default function DemoManagementApp() {
     setToast("Imbarcazione rimossa dal workspace locale");
   }
 
-  function addCustomer(customer: DemoCustomer) {
+  function addCustomer(customer: DemoCustomer): DemoValidationIssue[] {
+    const issues = validateCustomer(customer, state.customers);
+    if (issues.length > 0) return issues;
     setState((current) => ({ ...current, customers: [customer, ...current.customers], activity: withActivity(current, "Cliente aggiunto", customer.name) }));
     setNewCustomerOpen(false);
     setToast("Cliente aggiunto al CRM locale");
+    return [];
   }
 
-  function updateCustomer(customer: DemoCustomer) {
+  function updateCustomer(customer: DemoCustomer): DemoValidationIssue[] {
+    const issues = validateCustomer(customer, state.customers, customer.id);
+    if (issues.length > 0) return issues;
     setState((current) => ({ ...current, customers: current.customers.map((item) => item.id === customer.id ? customer : item), activity: withActivity(current, "CRM aggiornato", customer.name) }));
     setSelectedCustomerId(null); setToast("Scheda cliente aggiornata");
+    return [];
   }
 
   function deleteSelectedCustomer() {
@@ -570,6 +644,8 @@ export default function DemoManagementApp() {
 
         <div className="min-w-0 p-4 sm:p-6 lg:p-8">
           <section className="mb-5 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold text-[#6D5DFB]">{selectedView.note}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{selectedView.label}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#676B80]">Azioni e dati della sezione sono collegati in tempo reale a tutto il workspace locale.</p></div><div className="rounded-2xl border border-[#E2DFEB] bg-white px-4 py-3 text-xs text-[#676B80] sm:text-sm"><span className="inline-block h-2 w-2 rounded-full bg-[#6D5DFB]" /> <strong className="ml-1 text-[#171A2B]">Modifiche salvate sul dispositivo</strong></div></section>
+
+          {integrityIssues.length > 0 ? <section className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-900 sm:mb-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-sm font-semibold">Controllo integrità: {integrityIssues.length} {integrityIssues.length === 1 ? "problema rilevato" : "problemi rilevati"}</p><ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">{integrityIssues.slice(0, 3).map((issue, index) => <li key={`${issue.field}-${index}`}>{issue.message}</li>)}</ul>{integrityIssues.length > 3 ? <p className="mt-2 text-xs">Altri {integrityIssues.length - 3} problemi richiedono attenzione.</p> : null}</div><button className="min-h-11 shrink-0 rounded-xl bg-rose-700 px-4 text-sm font-semibold text-white" onClick={() => setView("prenotazioni")}>Controlla prenotazioni</button></div></section> : null}
 
           {view === "dashboard" ? <DashboardView state={state} onNavigate={setView} onNewBooking={() => openNewBooking()} onOpenBooking={setSelectedBookingId} /> : null}
           {view === "calendario" ? <DemoCalendarView state={state} onOpenBooking={setSelectedBookingId} onOpenBoat={setSelectedBoatId} onNewBooking={openNewBooking} onAddBoat={() => setNewBoatOpen(true)} /> : null}

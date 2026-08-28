@@ -1,17 +1,20 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
+import { DemoValidationSummary } from "@/components/demo/demo-validation-summary";
 import type {
   DemoBoat,
   DemoBoatExtra,
   DemoBoatStatus,
   DemoExtraPricingUnit,
 } from "@/lib/demo/types";
+import { normalizeIdentity, type DemoValidationIssue } from "@/lib/demo/validation";
 
 const inputClass = "min-h-11 w-full rounded-xl border border-[#D8D5E5] bg-white px-3 text-base text-[#171A2B] outline-none transition focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/15 sm:text-sm";
 const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-xl bg-[#171A2B] px-5 text-sm font-semibold text-white transition hover:bg-[#292D45] disabled:cursor-not-allowed disabled:opacity-40";
 const secondaryButton = "inline-flex min-h-11 items-center justify-center rounded-xl border border-[#D8D5E5] bg-white px-5 text-sm font-semibold text-[#171A2B] transition hover:bg-[#F4F2FA]";
+const MAX_MANUFACTURE_YEAR = new Date().getFullYear() + 1;
 
 const STATUS_LABELS: Record<DemoBoatStatus, string> = {
   ACTIVE: "Attiva",
@@ -70,7 +73,7 @@ function emptyBoat(defaultBase: string): DemoBoat {
 function optionalNumber(value: string) {
   if (!value.trim()) return null;
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -86,7 +89,7 @@ type DemoBoatFormProps = {
   boat?: DemoBoat;
   defaultBase?: string;
   bookingCount?: number;
-  onSave: (boat: DemoBoat) => void;
+  onSave: (boat: DemoBoat) => DemoValidationIssue[];
   onDelete?: () => void;
   onClose: () => void;
 };
@@ -96,11 +99,14 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
   const [licenseChoice, setLicenseChoice] = useState<"" | "true" | "false">(() => boat ? String(boat.licenseRequired) as "true" | "false" : "");
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("");
+  const [issues, setIssues] = useState<DemoValidationIssue[]>([]);
+  const submittingRef = useRef(false);
 
   const valid = draft.name.trim().length >= 2 && draft.horsepower > 0 && licenseChoice !== "";
 
   function set<K extends keyof DemoBoat>(key: K, value: DemoBoat[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
+    setIssues([]);
   }
 
   function toggleCatalogExtra(extra: DemoBoatExtra) {
@@ -125,6 +131,15 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
   function addCustomExtra() {
     const name = customName.trim();
     if (name.length < 2) return;
+    if (draft.extras.some((extra) => normalizeIdentity(extra.name) === normalizeIdentity(name))) {
+      setIssues([{ field: "extras", message: `L’optional “${name}” è già presente sulla barca.` }]);
+      return;
+    }
+    const priceCents = Math.round(Number(customPrice || 0) * 100);
+    if (!Number.isInteger(priceCents) || priceCents < 0) {
+      setIssues([{ field: "extras", message: "Il prezzo dell’optional personalizzato non è valido." }]);
+      return;
+    }
     setDraft((current) => ({
       ...current,
       extras: [
@@ -134,7 +149,7 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
           name,
           description: "Extra personalizzato dell’attività.",
           pricingUnit: "FIXED",
-          priceCents: Math.max(0, Math.round(Number(customPrice || 0) * 100)),
+          priceCents,
           maxQuantity: 1,
         },
       ],
@@ -145,8 +160,10 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     if (!valid) return;
-    onSave({
+    submittingRef.current = true;
+    const validationIssues = onSave({
       ...draft,
       name: draft.name.trim(),
       type: draft.type.trim(),
@@ -158,6 +175,8 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
       fuelType: draft.fuelType.trim(),
       licenseRequired: licenseChoice === "true",
     });
+    setIssues(validationIssues);
+    if (validationIssues.length > 0) submittingRef.current = false;
   }
 
   return (
@@ -168,7 +187,7 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <Field label="Nome della barca" required><input autoFocus required minLength={2} maxLength={160} className={inputClass} value={draft.name} onChange={(event) => set("name", event.target.value)} placeholder="Es. Stella Marina" /></Field>
           <Field label="Potenza totale (CV)" required><input required type="number" min="1" step="1" className={inputClass} value={draft.horsepower || ""} onChange={(event) => set("horsepower", Math.max(0, Number(event.target.value)))} placeholder="Es. 300" /></Field>
-          <Field label="Patente nautica" required><select required className={inputClass} value={licenseChoice} onChange={(event) => setLicenseChoice(event.target.value as "" | "true" | "false")}><option value="">Seleziona…</option><option value="true">Obbligatoria</option><option value="false">Non obbligatoria</option></select></Field>
+          <Field label="Patente nautica" required><select required className={inputClass} value={licenseChoice} onChange={(event) => { setLicenseChoice(event.target.value as "" | "true" | "false"); setIssues([]); }}><option value="">Seleziona…</option><option value="true">Obbligatoria</option><option value="false">Non obbligatoria</option></select></Field>
         </div>
       </section>
 
@@ -180,8 +199,8 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
           <Field label="Base di partenza"><input className={inputClass} value={draft.base} onChange={(event) => set("base", event.target.value)} placeholder="Es. Napoli, Mergellina" /></Field>
           <Field label="Cantiere / produttore"><input className={inputClass} value={draft.manufacturer} onChange={(event) => set("manufacturer", event.target.value)} /></Field>
           <Field label="Modello"><input className={inputClass} value={draft.model} onChange={(event) => set("model", event.target.value)} /></Field>
-          <Field label="Anno di costruzione"><input type="number" min="1900" max="2100" className={inputClass} value={draft.manufactureYear ?? ""} onChange={(event) => set("manufactureYear", optionalNumber(event.target.value))} /></Field>
-          <Field label="Tariffa giornaliera (€)"><input type="number" min="0" step="10" className={inputClass} value={draft.dailyPriceCents ? draft.dailyPriceCents / 100 : ""} onChange={(event) => set("dailyPriceCents", Math.max(0, Math.round(Number(event.target.value) * 100)))} /></Field>
+          <Field label="Anno di costruzione"><input type="number" min="1900" max={MAX_MANUFACTURE_YEAR} className={inputClass} value={draft.manufactureYear ?? ""} onChange={(event) => set("manufactureYear", optionalNumber(event.target.value))} /></Field>
+          <Field label="Tariffa giornaliera (€)"><input type="number" min="0" step="10" className={inputClass} value={draft.dailyPriceCents ? draft.dailyPriceCents / 100 : ""} onChange={(event) => set("dailyPriceCents", Math.round(Number(event.target.value) * 100))} /></Field>
         </div>
         <div className="mt-4 grid gap-4">
           <Field label="Descrizione breve"><input maxLength={280} className={inputClass} value={draft.shortDescription} onChange={(event) => set("shortDescription", event.target.value)} placeholder="La frase principale visibile nei risultati" /></Field>
@@ -222,7 +241,7 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
                   <input type="checkbox" className="mt-1 h-5 w-5 accent-[#6D5DFB]" checked={Boolean(selected)} onChange={() => toggleCatalogExtra(extra)} />
                   <span><strong className="block text-sm">{extra.name}</strong><span className="mt-1 block text-xs leading-5 text-[#676B80]">{extra.description}</span></span>
                 </label>
-                {selected ? <div className="mt-3 grid gap-2 sm:grid-cols-2"><input aria-label={`Prezzo ${extra.name}`} type="number" min="0" step="1" className={inputClass} value={selected.priceCents / 100} onChange={(event) => updateExtra(selected.id, { priceCents: Math.max(0, Math.round(Number(event.target.value) * 100)) })} /><select aria-label={`Unità prezzo ${extra.name}`} className={inputClass} value={selected.pricingUnit} onChange={(event) => updateExtra(selected.id, { pricingUnit: event.target.value as DemoExtraPricingUnit })}>{Object.entries(PRICING_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div> : null}
+                {selected ? <div className="mt-3 grid gap-2 sm:grid-cols-2"><input aria-label={`Prezzo ${extra.name}`} type="number" min="0" step="1" className={inputClass} value={selected.priceCents / 100} onChange={(event) => updateExtra(selected.id, { priceCents: Math.round(Number(event.target.value) * 100) })} /><select aria-label={`Unità prezzo ${extra.name}`} className={inputClass} value={selected.pricingUnit} onChange={(event) => updateExtra(selected.id, { pricingUnit: event.target.value as DemoExtraPricingUnit })}>{Object.entries(PRICING_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div> : null}
               </div>
             );
           })}
@@ -238,6 +257,8 @@ export function DemoBoatForm({ boat, defaultBase = "", bookingCount = 0, onSave,
           {draft.extras.filter((item) => item.id.startsWith("extra-custom-")).map((extra) => <div key={extra.id} className="mt-3 flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm"><span><b>{extra.name}</b> · € {(extra.priceCents / 100).toFixed(0)}</span><button type="button" onClick={() => setDraft((current) => ({ ...current, extras: current.extras.filter((item) => item.id !== extra.id) }))} className="min-h-11 px-3 font-semibold text-rose-700">Rimuovi</button></div>)}
         </div>
       </section>
+
+      <DemoValidationSummary issues={issues} />
 
       <div className="grid gap-2 border-t border-[#E2DFEB] pt-6 sm:grid-cols-2">
         <button type="button" className={secondaryButton} onClick={onClose}>Annulla</button>

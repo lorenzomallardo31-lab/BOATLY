@@ -20,6 +20,16 @@ nominativo inserito manualmente. In quest'ultimo caso nome, email e telefono
 vengono trasformati automaticamente in una nuova scheda CRM collegata al
 booking; il nome è obbligatorio, mentre i contatti restano facoltativi.
 
+Ogni salvataggio passa dallo stesso controllo di integrità, anche quando parte
+dal calendario o dalla modifica di un record esistente. La demo impedisce
+clienti duplicati per nome normalizzato, email o telefono; email e numeri non
+validi; prenotazioni sovrapposte per la stessa barca o lo stesso cliente;
+orari invertiti, capienza superata, importi non validi e uso di barche non
+attive. Due uscite consecutive sono ammesse soltanto quando la prima termina
+esattamente prima dell'inizio della seconda. Nomi barca e optional devono
+inoltre essere univoci. Un controllo globale segnala eventuali incoerenze già
+presenti nel workspace prima dell'aggiornamento.
+
 La sede viene selezionata dai suggerimenti Mapbox limitati all'Italia e salvata
 insieme a coordinate, comune e regione. Il gestionale richiede quindi anche la
 variabile pubblica `NEXT_PUBLIC_MAPBOX_TOKEN`. Il visitatore non può confermare
@@ -130,13 +140,16 @@ ruolo valido in `platform_user_roles`.
    tre soli campi obbligatori, associare optional, modificare e rimuovere.
 6. Prenotazioni → modificare tutti i campi e lo stato; verificare che dashboard,
    flotta, cliente e finanza si aggiornino.
-7. CRM → aggiungere, modificare e rimuovere un cliente, controllando le
+7. Integrità → provare una sovrapposizione anche parziale: il salvataggio deve
+   essere bloccato indicando prenotazione e intervallo in conflitto. Verificare
+   anche un nuovo cliente con nome, email o telefono già presenti.
+8. CRM → aggiungere, modificare e rimuovere un cliente, controllando le
    prenotazioni collegate.
-8. Registrazione → email di conferma → login.
-9. Account fondatore → card Admin → accesso `/admin` e `/operator`.
-10. `robots.txt` → `Disallow: /`.
-11. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
-12. Stripe → chiavi e pagamenti esclusivamente TEST.
-13. Telefono → configurazione iniziale, barra gestionale inferiore, schede
+9. Registrazione → email di conferma → login.
+10. Account fondatore → card Admin → accesso `/admin` e `/operator`.
+11. `robots.txt` → `Disallow: /`.
+12. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
+13. Stripe → chiavi e pagamenti esclusivamente TEST.
+14. Telefono → configurazione iniziale, barra gestionale inferiore, schede
    booking e modali della flotta utilizzabili
    senza zoom o scorrimento orizzontale della pagina.

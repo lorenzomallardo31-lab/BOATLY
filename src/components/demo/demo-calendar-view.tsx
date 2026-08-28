@@ -54,6 +54,7 @@ type DemoCalendarViewProps = {
 
 export function DemoCalendarView({ state, onOpenBooking, onOpenBoat, onNewBooking, onAddBoat }: DemoCalendarViewProps) {
   const dates = CALENDAR_DATES;
+  const activeBoats = state.boats.filter((boat) => boat.status === "ACTIVE");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const selectedBookings = selectedDate
@@ -69,7 +70,7 @@ export function DemoCalendarView({ state, onOpenBooking, onOpenBoat, onNewBookin
             <h2 className="mt-2 text-2xl font-semibold">Calendario operativo</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">Apri un giorno per gestire prenotazioni, disponibilità e schede delle imbarcazioni senza cambiare sezione.</p>
           </div>
-          <button onClick={() => onNewBooking(isoDate(dates[0]))} disabled={state.boats.length === 0} className="min-h-11 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:opacity-40">+ Nuova prenotazione</button>
+          <button onClick={() => onNewBooking(isoDate(dates[0]))} disabled={activeBoats.length === 0} className="min-h-11 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:opacity-40">+ Nuova prenotazione</button>
         </div>
       </section>
 
@@ -112,24 +113,27 @@ export function DemoCalendarView({ state, onOpenBooking, onOpenBoat, onNewBookin
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.09em] text-[#6D5DFB]">Giornata selezionata</p>
               <h3 className="mt-1 text-2xl font-semibold capitalize">{fullDayLabel(selectedDate)}</h3>
-              <p className="mt-2 text-sm text-[#676B80]">{selectedBookings.length} prenotazioni · {Math.max(0, state.boats.length - new Set(selectedBookings.map((item) => item.boatId)).size)} barche libere</p>
+              <p className="mt-2 text-sm text-[#676B80]">{selectedBookings.length} prenotazioni · {Math.max(0, activeBoats.length - new Set(selectedBookings.filter((item) => activeBoats.some((boat) => boat.id === item.boatId)).map((item) => item.boatId)).size)} barche attive libere</p>
             </div>
             <button className="min-h-11 rounded-xl bg-[#171A2B] px-5 text-sm font-semibold text-white" onClick={() => onNewBooking(selectedDate)}>+ Prenotazione per questo giorno</button>
           </div>
 
           <div className="mt-5 grid gap-3">
             {state.boats.map((boat) => {
-              const booking = selectedBookings.find((item) => item.boatId === boat.id);
+              const boatBookings = selectedBookings
+                .filter((item) => item.boatId === boat.id)
+                .sort((a, b) => a.startAt.localeCompare(b.startAt));
+              const unavailableLabel = boat.status === "MAINTENANCE" ? "MANUTENZIONE" : "NON DISPONIBILE";
               return (
                 <article key={boat.id} className="grid gap-4 rounded-2xl border border-[#E2DFEB] bg-white p-4 lg:grid-cols-[1.1fr_1fr_auto] lg:items-center">
                   <div>
                     <p className="font-semibold">{boat.name}</p>
                     <p className="mt-1 text-xs text-[#676B80]">{boat.type || "Tipologia da definire"} · {boat.base || "Base da definire"}</p>
                   </div>
-                  {booking ? <div><span className="inline-flex rounded-full bg-[#FFF0D6] px-2.5 py-1 text-xs font-bold text-[#A14B08]">PRENOTATA</span><p className="mt-2 text-sm font-semibold">{time(booking.startAt)}–{time(booking.endAt)} · {booking.reference}</p></div> : <div><span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">DISPONIBILE</span><p className="mt-2 text-xs text-[#676B80]">Nessuna prenotazione attiva</p></div>}
+                  {boatBookings.length > 0 ? <div><span className="inline-flex rounded-full bg-[#FFF0D6] px-2.5 py-1 text-xs font-bold text-[#A14B08]">{boatBookings.length === 1 ? "PRENOTATA" : `${boatBookings.length} PRENOTAZIONI`}</span><div className="mt-2 space-y-1">{boatBookings.map((booking) => <button key={booking.id} onClick={() => onOpenBooking(booking.id)} className="block min-h-9 w-full rounded-lg px-2 text-left text-sm font-semibold hover:bg-[#F4F2FA]">{time(booking.startAt)}–{time(booking.endAt)} · {booking.reference}</button>)}</div></div> : boat.status === "ACTIVE" ? <div><span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">DISPONIBILE</span><p className="mt-2 text-xs text-[#676B80]">Nessuna prenotazione attiva</p></div> : <div><span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">{unavailableLabel}</span><p className="mt-2 text-xs text-[#676B80]">La barca non può ricevere prenotazioni</p></div>}
                   <div className="grid grid-cols-2 gap-2 lg:min-w-[310px]">
                     <button className="min-h-11 rounded-xl border border-[#D8D5E5] px-3 text-xs font-semibold hover:bg-[#F4F2FA]" onClick={() => onOpenBoat(boat.id)}>Gestisci barca</button>
-                    {booking ? <button className="min-h-11 rounded-xl bg-[#6D5DFB] px-3 text-xs font-semibold text-white" onClick={() => onOpenBooking(booking.id)}>Gestisci booking</button> : <button className="min-h-11 rounded-xl bg-[#171A2B] px-3 text-xs font-semibold text-white" onClick={() => onNewBooking(selectedDate, boat.id)}>+ Prenota</button>}
+                    {boat.status === "ACTIVE" ? <button className="min-h-11 rounded-xl bg-[#171A2B] px-3 text-xs font-semibold text-white" onClick={() => onNewBooking(selectedDate, boat.id)}>{boatBookings.length ? "+ Altro orario" : "+ Prenota"}</button> : <button disabled className="min-h-11 cursor-not-allowed rounded-xl bg-[#E2DFEB] px-3 text-xs font-semibold text-[#676B80]">Non prenotabile</button>}
                   </div>
                 </article>
               );
