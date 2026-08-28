@@ -5,6 +5,7 @@ import {
   privateBetaEnabled,
   verifyBetaAccessCookie,
 } from "@/lib/beta-access";
+import { isMarketplacePath, marketplaceEnabled } from "@/lib/marketplace-mode";
 import { updateSession } from "@/lib/supabase/proxy";
 
 const PUBLIC_BETA_PATHS = [
@@ -30,43 +31,77 @@ function withPrivatePreviewHeaders<T extends NextResponse>(response: T) {
   return response;
 }
 
+function copyResponseCookies(source: NextResponse, destination: NextResponse) {
+  source.cookies.getAll().forEach((cookie) => destination.cookies.set(cookie));
+  return destination;
+}
+
+function managementRedirect(request: NextRequest, response: NextResponse) {
+  const destination = request.nextUrl.clone();
+  destination.pathname = "/demo-gestionale";
+  destination.search = "";
+
+  const redirect = NextResponse.redirect(destination);
+  redirect.headers.set("Cache-Control", "no-store, max-age=0");
+  copyResponseCookies(response, redirect);
+
+  return withPrivatePreviewHeaders(redirect);
+}
+
 export async function proxy(request: NextRequest) {
   const { response, authenticated } = await updateSession(request);
-
-  if (!privateBetaEnabled()) {
-    return withPrivatePreviewHeaders(response);
-  }
-
   const pathname = request.nextUrl.pathname;
   const hasInvitation = verifyBetaAccessCookie(
     request.cookies.get(BETA_ACCESS_COOKIE)?.value,
   );
 
-  if (authenticated || hasInvitation || isPublicBetaPath(pathname)) {
-    return withPrivatePreviewHeaders(response);
+  if (privateBetaEnabled()) {
+    const canAccessPrivateBeta =
+      authenticated || hasInvitation || isPublicBetaPath(pathname);
+
+    if (!canAccessPrivateBeta) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "private-beta-access-required" },
+          {
+            status: 401,
+            headers: {
+              "Cache-Control": "no-store, max-age=0",
+              "X-Robots-Tag": "noindex, nofollow, noarchive",
+            },
+          },
+        );
+      }
+
+      const destination = request.nextUrl.clone();
+      const requestedPath = `${pathname}${request.nextUrl.search}`;
+
+      destination.pathname = "/accesso-beta";
+      destination.search = "";
+      destination.searchParams.set("next", requestedPath);
+
+      return withPrivatePreviewHeaders(NextResponse.redirect(destination));
+    }
   }
 
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.json(
-      { error: "private-beta-access-required" },
-      {
-        status: 401,
-        headers: {
-          "Cache-Control": "no-store, max-age=0",
-          "X-Robots-Tag": "noindex, nofollow, noarchive",
+  if (!marketplaceEnabled() && isMarketplacePath(pathname)) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return NextResponse.json(
+        { error: "marketplace-offline" },
+        {
+          status: 404,
+          headers: {
+            "Cache-Control": "no-store, max-age=0",
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
+          },
         },
-      },
-    );
+      );
+    }
+
+    return managementRedirect(request, response);
   }
 
-  const destination = request.nextUrl.clone();
-  const requestedPath = `${pathname}${request.nextUrl.search}`;
-
-  destination.pathname = "/accesso-beta";
-  destination.search = "";
-  destination.searchParams.set("next", requestedPath);
-
-  return withPrivatePreviewHeaders(NextResponse.redirect(destination));
+  return withPrivatePreviewHeaders(response);
 }
 
 export const config = {

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: "%s | Boatly",
   },
   description:
-    "Trova, prenota e gestisci noleggi di barche con Boatly.",
+    "Gestisci calendario, prenotazioni, flotta, clienti e ricavi con Boatly Ops.",
   robots: {
     index: false,
     follow: false,

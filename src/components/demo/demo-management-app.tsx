@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   type FormEvent,
   type ReactNode,
@@ -634,8 +633,8 @@ export default function DemoManagementApp() {
     <main className="min-h-screen bg-[#F4F3FA] pb-24 text-[#171A2B] lg:pb-0">
       <header className="sticky top-0 z-30 border-b border-[#D8D5E5] bg-white/95 shadow-sm backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="min-w-0"><Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#6D5DFB] text-sm text-white">B</span>Boatly Ops</Link><p className="truncate text-[11px] text-[#676B80]">{state.workspaceName} · {state.workspaceLocation.city}</p></div>
-          <div className="flex items-center gap-1 sm:gap-2"><span className="hidden rounded-full bg-[#EDE9FE] px-3 py-1.5 text-xs font-semibold text-[#5B4FD6] md:inline-flex">Area noleggiatore · dati locali</span><button className="min-h-11 rounded-xl px-2 text-xs font-semibold text-[#676B80] hover:bg-[#F4F2FA] sm:px-3" onClick={reconfigureWorkspace}>Attività</button><button className="min-h-11 rounded-xl px-2 text-xs font-semibold text-[#676B80] hover:bg-[#F4F2FA] sm:px-3" onClick={resetDemo}>Ripristina</button><Link href="/" className="grid min-h-11 place-items-center rounded-xl bg-[#171A2B] px-3 text-xs font-semibold text-white sm:px-4 sm:text-sm">Marketplace</Link></div>
+          <div className="min-w-0"><div className="flex items-center gap-2 text-xl font-bold tracking-tight"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#6D5DFB] text-sm text-white">B</span>Boatly Ops</div><p className="truncate text-[11px] text-[#676B80]">{state.workspaceName} · {state.workspaceLocation.city}</p></div>
+          <div className="flex items-center gap-1 sm:gap-2"><span className="hidden rounded-full bg-[#EDE9FE] px-3 py-1.5 text-xs font-semibold text-[#5B4FD6] md:inline-flex">Area noleggiatore · dati locali</span><button className="min-h-11 rounded-xl px-2 text-xs font-semibold text-[#676B80] hover:bg-[#F4F2FA] sm:px-3" onClick={reconfigureWorkspace}>Attività</button><button className="min-h-11 rounded-xl px-2 text-xs font-semibold text-[#676B80] hover:bg-[#F4F2FA] sm:px-3" onClick={resetDemo}>Ripristina</button></div>
         </div>
       </header>
 

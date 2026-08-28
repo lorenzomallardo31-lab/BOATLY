@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 
 import type { DemoLocation } from "@/lib/demo/types";
@@ -161,7 +160,7 @@ export function DemoWorkspaceSetup({ token, onContinue }: DemoWorkspaceSetupProp
             </form>
           )}
 
-          <Link href="/" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#676B80]">← Torna al marketplace</Link>
+          <p className="mt-5 text-xs leading-5 text-[#676B80]">Il workspace è indipendente dalla piattaforma pubblica e resta salvato soltanto su questo dispositivo.</p>
         </div>
       </section>
     </main>

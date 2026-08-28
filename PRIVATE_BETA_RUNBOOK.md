@@ -1,10 +1,12 @@
-# Boatly — beta privata condivisibile
+# Boatly Ops — gestionale privato condivisibile
 
 ## Obiettivo
 
-La beta è una superficie dimostrativa, non un servizio commerciale. Solo chi
-riceve il link di invito può aprire le pagine anonime, registrarsi e provare i
-flussi. Gli account già registrati possono continuare ad accedere dal login.
+La beta pubblica del marketplace è sospesa. Il codice resta nel progetto per
+una futura riattivazione, ma home, ricerca, schede barca, checkout,
+registrazione cliente e prenotazioni cliente non sono raggiungibili. Solo chi
+riceve il link di invito può aprire Boatly Ops; gli account amministrativi già
+registrati possono continuare ad accedere dal login.
 
 Il gestionale commerciale interattivo è disponibile su `/demo-gestionale` con
 dati interamente sintetici. Ogni visitatore riceve un workspace separato,
@@ -64,7 +66,13 @@ Variabili server-only richieste in Production:
 ```text
 BETA_PRIVATE_MODE=true
 BETA_ACCESS_TOKEN=<segreto casuale di almeno 24 caratteri>
+MARKETPLACE_ENABLED=false
 ```
+
+`MARKETPLACE_ENABLED` è fail-closed: se manca o contiene un valore diverso da
+`true`, le rotte cliente restano offline e vengono reindirizzate al gestionale.
+Per la futura apertura della piattaforma sarà necessario impostarla
+esplicitamente a `true` e creare un nuovo deployment.
 
 Variabile pubblica richiesta per la configurazione geografica:
 
@@ -89,7 +97,8 @@ nei referrer o nei normali log del server. La pagina lo scambia via HTTPS con un
 cookie `HttpOnly`, `Secure`, `SameSite=Lax`, valido 30 giorni, poi rimuove il
 fragment dalla cronologia del browser.
 
-Il link è un segreto condiviso: chi lo riceve può inoltrarlo. Per revocarlo,
+Il link apre direttamente `/demo-gestionale`. È un segreto condiviso: chi lo
+riceve può inoltrarlo. Per revocarlo,
 ruotare `BETA_ACCESS_TOKEN` su Vercel e creare un nuovo deployment. Tutti i
 cookie di invito precedenti diventano automaticamente non validi.
 
@@ -97,7 +106,7 @@ Gli utenti che hanno già creato e confermato un account continuano ad accedere
 tramite login. Per revocare anche un singolo account occorre disabilitarlo o
 eliminarlo in Supabase Auth dopo avere valutato i dati associati.
 
-## Percorsi volutamente raggiungibili senza invito
+## Percorsi tecnici volutamente raggiungibili senza invito
 
 - `/accesso-beta` e `/api/beta-access`: attivazione dell'invito;
 - `/sign-in`, `/forgot-password`, `/update-password`: accesso e recupero degli
@@ -128,10 +137,20 @@ ruolo valido in `platform_user_roles`.
 - webhook e privilegi admin mantengono le verifiche server-side indipendenti
   dal cancello di invito.
 
+## Rotte marketplace sospese
+
+Con `MARKETPLACE_ENABLED=false`, `/`, `/cerca`, `/search`, `/barche`,
+`/come-funziona`, `/checkout`, `/prenotazioni` e `/sign-up` non rendono più il
+marketplace. Le visite GET vengono portate a `/demo-gestionale`; eventuali POST
+ricevono `404 marketplace-offline`. I pulsanti dal gestionale verso il
+marketplace sono rimossi. `/admin`, `/operator`, `/account` e il login restano
+disponibili, ma continuano a richiedere i rispettivi account e ruoli.
+
 ## Checklist dopo ogni rilascio
 
 1. URL normale in finestra anonima → reindirizzamento ad `accesso-beta`.
-2. Link completo → apertura homepage e rimozione del token dall'indirizzo.
+2. Link completo → apertura diretta del gestionale e rimozione del token
+   dall'indirizzo.
 3. `/demo-gestionale` → inserimento nome attività e selezione della sede da un
    suggerimento Mapbox italiano; verificare intestazione, mappa e persistenza.
 4. Calendario → aprire una giornata e gestire da lì barca, prenotazione e nuovo
@@ -145,8 +164,9 @@ ruolo valido in `platform_user_roles`.
    anche un nuovo cliente con nome, email o telefono già presenti.
 8. CRM → aggiungere, modificare e rimuovere un cliente, controllando le
    prenotazioni collegate.
-9. Registrazione → email di conferma → login.
-10. Account fondatore → card Admin → accesso `/admin` e `/operator`.
+9. Marketplace → `/`, ricerca, schede barca, checkout, prenotazioni cliente e
+   registrazione devono riportare al gestionale senza mostrare contenuti.
+10. Login fondatore → account → accesso `/admin` e `/operator`.
 11. `robots.txt` → `Disallow: /`.
 12. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
 13. Stripe → chiavi e pagamenti esclusivamente TEST.
