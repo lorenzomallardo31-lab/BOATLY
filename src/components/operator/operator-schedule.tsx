@@ -224,7 +224,7 @@ export default function OperatorSchedule({
                             : "bg-[#F1F0F6] text-[#777285]"
                         }`}
                       >
-                        {active ? "ATTIVA" : boat.status}
+                        {active ? "DISPONIBILE" : "NON DISPONIBILE"}
                       </span>
                     </Link>
                   </th>

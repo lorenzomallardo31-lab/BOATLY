@@ -92,11 +92,7 @@ export async function createMarketplaceRefund(formData: FormData) {
     redirect("/admin/finance?error=refund-input-invalid");
   }
 
-  const { supabase } = await requirePlatformContext([
-    "SUPER_ADMIN",
-    "ADMIN",
-    "FINANCE",
-  ]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
 
   const { data, error } = isRetry
     ? await supabase.rpc("admin_marketplace_refund_retry_setup", {

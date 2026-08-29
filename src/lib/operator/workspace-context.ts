@@ -29,7 +29,7 @@ export async function requireOperatorWorkspaceContext(
     !claimsData?.claims ||
     typeof claimsData.claims.sub !== "string"
   ) {
-    redirect("/sign-in?next=/operator/dashboard");
+    redirect("/sign-in?next=/operator/calendar");
   }
 
   const userId = claimsData.claims.sub;
@@ -48,16 +48,21 @@ export async function requireOperatorWorkspaceContext(
     : memberships[0];
 
   if (!selectedMembership) {
-    redirect("/operator/dashboard");
+    redirect("/operator/calendar");
   }
 
   const { data: operator, error: operatorError } = await supabase
     .from("operators")
     .select("id, name, status, currency, timezone")
     .eq("id", selectedMembership.operator_id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (operatorError || !operator) {
+    redirect("/operator/onboarding");
+  }
+
+  if (operator.status !== "ACTIVE") {
     redirect("/operator/onboarding");
   }
 

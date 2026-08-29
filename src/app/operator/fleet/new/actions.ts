@@ -9,8 +9,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 const MANAGEABLE_OPERATOR_STATUSES = [
-  "DRAFT",
-  "PENDING_VERIFICATION",
   "ACTIVE",
 ];
 
@@ -236,36 +234,17 @@ export async function createBoatDraft(
   }
 
   const {
-    data: boat,
+    data: boatId,
     error: insertError,
-  } = await supabase
-    .from("boats")
-    .insert({
-      operator_id:
-        operatorId,
-
-      primary_location_id:
-        primaryLocationId || null,
-
-      boat_type_id:
-        boatTypeId || null,
-
-      status:
-        "DRAFT",
-
-      internal_code:
-        internalCode || null,
-
-      name,
-
-      engine_power_hp:
-        enginePowerHp,
-
-      license_required:
-        licenseRequiredRaw === "true",
-    })
-    .select("id")
-    .single();
+  } = await supabase.rpc("operator_create_operational_boat", {
+    p_operator_id: operatorId,
+    p_name: name,
+    p_engine_power_hp: enginePowerHp,
+    p_license_required: licenseRequiredRaw === "true",
+    p_internal_code: internalCode || null,
+    p_boat_type_id: boatTypeId || null,
+    p_primary_location_id: primaryLocationId || null,
+  });
 
   if (insertError) {
     if (
@@ -284,7 +263,7 @@ export async function createBoatDraft(
     );
   }
 
-  if (!boat?.id) {
+  if (!boatId) {
     redirectWithError(
       operatorId,
       "create-failed",
@@ -299,7 +278,7 @@ export async function createBoatDraft(
     `/operator/fleet?operator=${encodeURIComponent(
       operatorId,
     )}&created=1&boat=${encodeURIComponent(
-      boat.id,
+      boatId,
     )}`,
   );
 }

@@ -1,340 +1,69 @@
 "use server";
 
-import {
-  revalidatePath,
-} from "next/cache";
-
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-
-function readText(
-  formData: FormData,
-  field: string,
-) {
-  const value =
-    formData.get(field);
-
-  return typeof value === "string"
-    ? value.trim()
-    : "";
+function readText(formData: FormData, field: string) {
+  const value = formData.get(field);
+  return typeof value === "string" ? value.trim() : "";
 }
 
-
-function statusUrl(
-  boatId: string,
-  operatorId: string,
-  extra?: string,
-) {
-  const base =
-    `/operator/fleet/${encodeURIComponent(
-      boatId,
-    )}/status?operator=${encodeURIComponent(
-      operatorId,
-    )}`;
-
-  return extra
-    ? `${base}&${extra}`
-    : base;
+function statusUrl(boatId: string, operatorId: string, extra?: string) {
+  const base = `/operator/fleet/${encodeURIComponent(boatId)}/status?operator=${encodeURIComponent(operatorId)}`;
+  return extra ? `${base}&${extra}` : base;
 }
 
+export async function changeBoatStatus(formData: FormData) {
+  const operatorId = readText(formData, "operator_id");
+  const boatId = readText(formData, "boat_id");
+  const targetStatus = readText(formData, "target_status");
 
-export async function changeBoatStatus(
-  formData: FormData,
-) {
-  const operatorId =
-    readText(
-      formData,
-      "operator_id",
-    );
-
-  const boatId =
-    readText(
-      formData,
-      "boat_id",
-    );
-
-  const targetStatus =
-    readText(
-      formData,
-      "target_status",
-    );
-
-
-  if (
-    !operatorId ||
-    !boatId
-  ) {
-    redirect(
-      "/operator/fleet",
-    );
+  if (!operatorId || !boatId) redirect("/operator/fleet");
+  if (!new Set(["ACTIVE", "INACTIVE"]).has(targetStatus)) {
+    redirect(statusUrl(boatId, operatorId, "error=invalid-status"));
   }
 
-
-  if (
-    targetStatus !== "ACTIVE" &&
-    targetStatus !== "INACTIVE"
-  ) {
-    redirect(
-      statusUrl(
-        boatId,
-        operatorId,
-        "error=invalid-status",
-      ),
-    );
-  }
-
-
-  const supabase =
-    await createClient();
-
-
-  const {
-    data: claimsData,
-    error: claimsError,
-  } =
-    await supabase.auth.getClaims();
-
-
-  if (
-    claimsError ||
-    !claimsData?.claims
-  ) {
-    redirect(
-      `/sign-in?next=${encodeURIComponent(
-        `/operator/fleet/${boatId}/status`,
-      )}`,
-    );
-  }
-
-
-  const {
-    error,
-  } = await supabase.rpc(
-    "set_boat_fleet_status",
-    {
-      p_operator_id:
-        operatorId,
-
-      p_boat_id:
-        boatId,
-
-      p_status:
-        targetStatus,
-    },
-  );
-
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_boat_fleet_status", {
+    p_operator_id: operatorId,
+    p_boat_id: boatId,
+    p_status: targetStatus,
+  });
 
   if (error) {
-    let errorCode =
-      "status-change-failed";
-
-
-    if (
-      error.message.includes(
-        "boat_not_ready_for_activation",
-      ) ||
-      error.message.includes(
-        "active_boat_must_remain_complete",
-      )
-    ) {
-      errorCode =
-        "not-ready";
-    }
-
-
-    if (
-      error.message.includes(
-        "boat_status_change_not_allowed",
-      )
-    ) {
-      errorCode =
-        "not-allowed";
-    }
-
-
-    redirect(
-      statusUrl(
-        boatId,
-        operatorId,
-        `error=${encodeURIComponent(
-          errorCode,
-        )}`,
-      ),
-    );
+    redirect(statusUrl(boatId, operatorId, "error=status-change-failed"));
   }
 
-
-  revalidatePath(
-    "/operator/fleet",
-  );
-
-  revalidatePath(
-    `/operator/fleet/${boatId}`,
-  );
-
-  revalidatePath(
-    `/operator/fleet/${boatId}/status`,
-  );
-
-
-  redirect(
-    statusUrl(
-      boatId,
-      operatorId,
-      `changed=${encodeURIComponent(
-        targetStatus,
-      )}`,
-    ),
-  );
+  revalidatePath("/operator/calendar");
+  revalidatePath("/operator/fleet");
+  revalidatePath(`/operator/fleet/${boatId}/status`);
+  redirect(statusUrl(boatId, operatorId, `changed=${targetStatus}`));
 }
 
+export async function deleteBoat(formData: FormData) {
+  const operatorId = readText(formData, "operator_id");
+  const boatId = readText(formData, "boat_id");
+  const confirmation = readText(formData, "confirmation");
 
-export async function archiveBoat(
-  formData: FormData,
-) {
-  const operatorId =
-    readText(
-      formData,
-      "operator_id",
-    );
+  if (!operatorId || !boatId) redirect("/operator/fleet");
 
-  const boatId =
-    readText(
-      formData,
-      "boat_id",
-    );
-
-  const confirmation =
-    readText(
-      formData,
-      "confirmation",
-    );
-
-
-  if (
-    !operatorId ||
-    !boatId
-  ) {
-    redirect(
-      "/operator/fleet",
-    );
-  }
-
-
-  const supabase =
-    await createClient();
-
-
-  const {
-    data: claimsData,
-    error: claimsError,
-  } =
-    await supabase.auth.getClaims();
-
-
-  if (
-    claimsError ||
-    !claimsData?.claims
-  ) {
-    redirect(
-      `/sign-in?next=${encodeURIComponent(
-        `/operator/fleet/${boatId}/status`,
-      )}`,
-    );
-  }
-
-
-  const {
-    data: boat,
-    error: boatError,
-  } = await supabase
-    .from("boats")
-    .select(
-      "id, operator_id, name",
-    )
-    .eq(
-      "id",
-      boatId,
-    )
-    .eq(
-      "operator_id",
-      operatorId,
-    )
-    .maybeSingle();
-
-
-  if (
-    boatError ||
-    !boat
-  ) {
-    redirect(
-      statusUrl(
-        boatId,
-        operatorId,
-        "error=boat-not-found",
-      ),
-    );
-  }
-
-
-  if (
-    confirmation !==
-      boat.name
-  ) {
-    redirect(
-      statusUrl(
-        boatId,
-        operatorId,
-        "error=archive-confirmation",
-      ),
-    );
-  }
-
-
-  const {
-    error,
-  } = await supabase.rpc(
-    "set_boat_fleet_status",
-    {
-      p_operator_id:
-        operatorId,
-
-      p_boat_id:
-        boatId,
-
-      p_status:
-        "ARCHIVED",
-    },
-  );
-
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("operator_schedule_boat_deletion", {
+    p_operator_id: operatorId,
+    p_boat_id: boatId,
+    p_confirmation: confirmation,
+  });
 
   if (error) {
-    redirect(
-      statusUrl(
-        boatId,
-        operatorId,
-        "error=archive-failed",
-      ),
-    );
+    const code = error.message.includes("confirmation")
+      ? "delete-confirmation"
+      : "delete-failed";
+    redirect(statusUrl(boatId, operatorId, `error=${code}`));
   }
 
-
-  revalidatePath(
-    "/operator/fleet",
-  );
-
-  revalidatePath(
-    `/operator/fleet/${boatId}/status`,
-  );
-
-
-  redirect(
-    statusUrl(
-      boatId,
-      operatorId,
-      "changed=ARCHIVED",
-    ),
-  );
+  revalidatePath("/operator/calendar");
+  revalidatePath("/operator/fleet");
+  redirect(`/operator/fleet?operator=${encodeURIComponent(operatorId)}&deleting=1`);
 }

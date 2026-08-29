@@ -334,7 +334,7 @@ export default async function OfferingPage({
             </div>
 
             <span className="rounded-full bg-[#F1F5F4] px-4 py-2 text-xs font-semibold">
-              {boat.status}
+              {boat.status === "ACTIVE" ? "Disponibile" : "Non disponibile"}
             </span>
 
           </div>

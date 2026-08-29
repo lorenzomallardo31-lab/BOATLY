@@ -9,10 +9,78 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 const MANAGEABLE_OPERATOR_STATUSES = [
-  "DRAFT",
-  "PENDING_VERIFICATION",
   "ACTIVE",
 ];
+
+export async function saveBoatEssentials(formData: FormData) {
+  const operatorId = readText(formData, "operator_id");
+  const boatId = readText(formData, "boat_id");
+  const name = readText(formData, "name");
+  const internalCode = readText(formData, "internal_code");
+  const boatTypeId = readText(formData, "boat_type_id");
+  const primaryLocationId = readText(formData, "primary_location_id");
+  const enginePowerHp = optionalNumber(readText(formData, "engine_power_hp"));
+  const licenseRequired = optionalBoolean(readText(formData, "license_required"));
+
+  if (!operatorId || !boatId) redirect("/operator/fleet");
+  if (!name || name.length > 160) redirectWithError(boatId, operatorId, "invalid-name");
+  if (internalCode.length > 80) redirectWithError(boatId, operatorId, "invalid-internal-code");
+  if (enginePowerHp === undefined || enginePowerHp === null || enginePowerHp <= 0 || enginePowerHp > 100000) {
+    redirectWithError(boatId, operatorId, "invalid-engine-power");
+  }
+  if (licenseRequired === undefined || licenseRequired === null) {
+    redirectWithError(boatId, operatorId, "invalid-boolean-value");
+  }
+
+  const supabase = await createClient();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError || !claimsData?.claims || typeof claimsData.claims.sub !== "string") {
+    redirect(`/sign-in?next=${encodeURIComponent(`/operator/fleet/${boatId}?operator=${operatorId}`)}`);
+  }
+
+  const userId = claimsData.claims.sub;
+  const [{ data: membership }, { data: operator }] = await Promise.all([
+    supabase.from("operator_members").select("role").eq("operator_id", operatorId).eq("user_id", userId).eq("status", "ACTIVE").maybeSingle(),
+    supabase.from("operators").select("status").eq("id", operatorId).is("deleted_at", null).maybeSingle(),
+  ]);
+  if (!membership || !["OWNER", "MANAGER"].includes(membership.role) || operator?.status !== "ACTIVE") {
+    redirectWithError(boatId, operatorId, "not-allowed");
+  }
+
+  if (boatTypeId) {
+    const { data } = await supabase.from("boat_types").select("id").eq("id", boatTypeId).eq("is_active", true).maybeSingle();
+    if (!data) redirectWithError(boatId, operatorId, "invalid-boat-type");
+  }
+  if (primaryLocationId) {
+    const { data } = await supabase.from("operator_locations").select("id").eq("id", primaryLocationId).eq("operator_id", operatorId).eq("is_active", true).maybeSingle();
+    if (!data) redirectWithError(boatId, operatorId, "invalid-location");
+  }
+
+  const { error } = await supabase
+    .from("boats")
+    .update({
+      name,
+      internal_code: internalCode || null,
+      boat_type_id: boatTypeId || null,
+      primary_location_id: primaryLocationId || null,
+      engine_power_hp: enginePowerHp,
+      license_required: licenseRequired,
+    })
+    .eq("id", boatId)
+    .eq("operator_id", operatorId)
+    .is("deleted_at", null)
+    .is("deletion_requested_at", null);
+
+  if (error) {
+    const code = error.code === "23505" ? "duplicate-value" : "save-failed";
+    redirectWithError(boatId, operatorId, code);
+  }
+
+  revalidatePath("/operator/calendar");
+  revalidatePath("/operator/fleet");
+  revalidatePath(`/operator/fleet/${boatId}`);
+  redirect(`/operator/fleet/${boatId}?operator=${encodeURIComponent(operatorId)}&saved=1`);
+}
 
 function readText(
   formData: FormData,

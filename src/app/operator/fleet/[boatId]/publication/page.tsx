@@ -33,7 +33,7 @@ function errorMessage(error?: string) {
     case "pricing-required":
       return "Configura una tariffa attiva prima di inviare la barca.";
     case "boat-not-active":
-      return "La barca deve essere ACTIVE nella Fleet prima dell'invio.";
+      return "La barca deve essere disponibile prima dell'invio.";
     case "boat-not-ready":
       return "La scheda Fleet non è ancora completa.";
     case "not-allowed":
@@ -106,7 +106,7 @@ export default async function PublicationPage({
       href: `/operator/fleet/${boat.id}/status`,
     },
     {
-      label: "Barca ACTIVE nella Fleet",
+      label: "Barca disponibile",
       ok: boat.status === "ACTIVE",
       href: `/operator/fleet/${boat.id}/status`,
     },

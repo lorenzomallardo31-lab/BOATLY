@@ -5,6 +5,7 @@ import AdminNav from "@/components/admin/admin-nav";
 import { requirePlatformContext } from "@/lib/admin/context";
 
 import {
+  deleteOperatorAccount,
   setOperatorMemberStatus,
   setOperatorStatus,
   updateOperatorLegalProfile,
@@ -79,6 +80,12 @@ function statusClasses(status: string) {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
+function statusLabel(status: string) {
+  if (status === "ACTIVE") return "Confermato";
+  if (status === "REJECTED") return "Rifiutato";
+  return "Da verificare";
+}
+
 function message(error?: string, scope?: string) {
   if (!error) return null;
   const labels: Record<string, string> = {
@@ -86,19 +93,15 @@ function message(error?: string, scope?: string) {
     "last-owner": "Non puoi sospendere o rimuovere l’ultimo proprietario attivo del workspace.",
     duplicate: "Esiste già una sede con questo nome nel workspace.",
     "save-failed": "Operazione non completata. Controlla i dati e riprova.",
+    "confirmation-required": "Per eliminare l’account devi scrivere esattamente il nome dell’attività.",
   };
   return `${labels[error] ?? labels["save-failed"]}${scope ? ` Sezione: ${scope}.` : ""}`;
 }
 
 export default async function AdminOperatorDetailPage({ params, searchParams }: PageProps) {
   const [{ operatorId }, query] = await Promise.all([params, searchParams]);
-  const { supabase, roles, userId } = await requirePlatformContext([
-    "SUPER_ADMIN",
-    "ADMIN",
-    "COMPLIANCE",
-    "SUPPORT",
-  ]);
-  const canControl = roles.includes("SUPER_ADMIN") || roles.includes("ADMIN");
+  const { supabase, userId } = await requirePlatformContext(["SUPER_ADMIN"]);
+  const canControl = true;
 
   const [
     operatorResult,
@@ -115,6 +118,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
       .from("operators")
       .select("id, name, slug, status, country_code, currency, timezone, created_by, created_at, updated_at")
       .eq("id", operatorId)
+      .is("deleted_at", null)
       .maybeSingle(),
     supabase
       .from("operator_legal_profiles")
@@ -192,11 +196,11 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className={`rounded-full px-3 py-2 text-xs font-bold ring-1 ${statusClasses(operator.status)}`}>
-              {operator.status}
+              {statusLabel(operator.status)}
             </span>
             {canOpenOperatorWorkspace ? (
               <Link
-                href={`/operator/dashboard?operator=${operator.id}`}
+                href={`/operator/calendar?operator=${operator.id}`}
                 className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-[#0B1F33]"
               >
                 Apri gestionale
@@ -257,26 +261,22 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#14B8A6]">Lifecycle</p>
-                    <h2 className="mt-1 text-xl font-semibold">Attivazione e blocco</h2>
+                    <h2 className="mt-1 text-xl font-semibold">Decisione sull’iscrizione</h2>
                   </div>
                   <span className="text-xs text-[#6D8190]">Motivo sempre obbligatorio</span>
                 </div>
                 <form action={setOperatorStatus} className="mt-5 grid gap-3 sm:grid-cols-[220px_1fr_auto]">
                   <input type="hidden" name="operator_id" value={operator.id} />
-                  <select name="status" required defaultValue={operator.status} className={inputClass}>
-                    {[
-                      "DRAFT",
-                      "PENDING_VERIFICATION",
-                      "ACTIVE",
-                      "SUSPENDED",
-                      "REJECTED",
-                    ].map((status) => <option key={status}>{status}</option>)}
+                  <select name="status" required defaultValue={operator.status === "ACTIVE" ? "ACTIVE" : operator.status === "REJECTED" ? "REJECTED" : "PENDING_VERIFICATION"} className={inputClass}>
+                    <option value="PENDING_VERIFICATION" disabled>Da verificare</option>
+                    <option value="ACTIVE">Confermato</option>
+                    <option value="REJECTED">Rifiutato</option>
                   </select>
                   <input name="reason" required maxLength={1000} placeholder="Motivo amministrativo della modifica" className={inputClass} />
-                  <button className="min-h-12 rounded-xl bg-[#0B1F33] px-5 text-sm font-semibold text-white">Applica stato</button>
+                  <button className="min-h-12 rounded-xl bg-[#0B1F33] px-5 text-sm font-semibold text-white">Salva decisione</button>
                 </form>
                 <p className="mt-3 text-xs leading-5 text-[#6D8190]">
-                  L’approvazione ordinaria resta nella coda verifiche. Questo comando è un override manuale tracciato per sospendere, riattivare o correggere casi eccezionali.
+                  Un account rifiutato resta visibile per due minuti, poi scompare definitivamente. Puoi confermare nuovamente durante questa breve finestra.
                 </p>
               </section>
             ) : null}
@@ -426,6 +426,21 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
             </section>
           </aside>
         </div>
+
+        {canControl ? (
+          <section className="mt-6 rounded-3xl border border-rose-200 bg-white p-5 shadow-sm sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-rose-700">Eliminazione account</p>
+            <h2 className="mt-1 text-xl font-semibold">Elimina questo noleggiatore</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#6D8190]">L’accesso viene revocato e l’account scompare definitivamente dopo due minuti. Le informazioni tecniche indispensabili a eventuali documenti contabili già prodotti restano conservate senza essere più utilizzabili.</p>
+            <form action={deleteOperatorAccount} className="mt-5 grid gap-3 sm:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1.4fr)_auto]">
+              <input type="hidden" name="operator_id" value={operator.id} />
+              <input type="hidden" name="operator_name" value={operator.name} />
+              <input name="confirmation" required autoComplete="off" placeholder={`Scrivi: ${operator.name}`} className={inputClass} />
+              <input name="reason" required maxLength={1000} placeholder="Motivo eliminazione" className={inputClass} />
+              <button className="min-h-12 rounded-xl bg-rose-700 px-5 text-sm font-semibold text-white">Elimina account</button>
+            </form>
+          </section>
+        ) : null}
       </div>
     </main>
   );

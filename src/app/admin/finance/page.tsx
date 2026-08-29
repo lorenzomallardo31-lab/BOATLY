@@ -60,11 +60,7 @@ export default async function AdminFinancePage({
   searchParams,
 }: FinancePageProps) {
   const query = await searchParams;
-  const { supabase } = await requirePlatformContext([
-    "SUPER_ADMIN",
-    "ADMIN",
-    "FINANCE",
-  ]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
 
   const [accounts, payments, refunds, payouts] = await Promise.all([
     supabase

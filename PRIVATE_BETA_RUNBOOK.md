@@ -18,11 +18,11 @@ dimostrativo. Nessuna azione interroga o modifica operatori, clienti, pagamenti
 o prenotazioni reali.
 
 Il gestionale persistente è disponibile su `/operator`. Un noleggiatore che ha
-ricevuto l’accesso beta può creare il proprio account da `/sign-up`, completare
-l’onboarding e inviare il fascicolo. Il workspace resta `DRAFT` o
-`PENDING_VERIFICATION` finché un amministratore Boatly non lo approva; solo lo
-stato `ACTIVE` abilita prenotazioni, CRM e finanza operative. I dati reali sono
-multi-tenant su Supabase e sincronizzati tra dispositivi.
+ricevuto l’accesso beta può creare il proprio account da `/sign-up` e indicare
+soltanto il nome dell’attività. La richiesta appare subito come `Da verificare`
+nel pannello del fondatore. Solo la conferma del `SUPER_ADMIN` abilita il
+workspace e apre direttamente il calendario. I dati reali sono multi-tenant su
+Supabase e sincronizzati tra dispositivi.
 
 Il modulo di nuova prenotazione accetta sia clienti già presenti sia un nuovo
 nominativo inserito manualmente. In quest'ultimo caso nome, email e telefono
@@ -110,9 +110,10 @@ ruotare `BETA_ACCESS_TOKEN` su Vercel e creare un nuovo deployment. Tutti i
 cookie di invito precedenti diventano automaticamente non validi.
 
 Gli utenti che hanno già creato e confermato un account continuano ad accedere
-tramite login. Per sospendere un’attività usare prima il lifecycle in
-`/admin/operators/[id]`; per revocare anche l’identità occorre poi disabilitare
-le sessioni o l’utente in Supabase Auth, dopo avere valutato i dati associati.
+tramite login. Rifiuto ed eliminazione revocano l’accesso operativo, disattivano
+immediatamente la flotta e fanno sparire account e barche entro due minuti. I
+record indispensabili a prenotazioni, contabilità e audit sono conservati come
+tombstone invisibili e non possono essere riattivati dal noleggiatore.
 
 ## Percorsi tecnici volutamente raggiungibili senza invito
 
@@ -135,17 +136,20 @@ assegnato esclusivamente lato database. L'account del fondatore deve accedere
 da `/sign-in`; la card `Boatly Admin` appare in `/account` solo quando esiste un
 ruolo valido in `platform_user_roles`.
 
-La coda `/admin/verifications` approva ogni nuovo noleggiatore. Il control center
-`/admin/operators/[id]` consente a `SUPER_ADMIN`/`ADMIN` di correggere profilo,
-sede, dati legali e membri, oltre a sospendere o riattivare il workspace. Ogni
-comando richiede una motivazione ed è registrato in `audit_logs`.
+La coda `/admin/operators` mostra soltanto `Da verificare`, `Confermato` e
+`Rifiutato`. Il control center `/admin/operators/[id]` consente esclusivamente
+al `SUPER_ADMIN` fondatore di confermare, rifiutare, eliminare o correggere un
+workspace. Ogni comando richiede una motivazione ed è registrato in
+`audit_logs`. Un indice univoco impedisce la creazione di un secondo
+`SUPER_ADMIN`.
 
 ## Gestionale reale
 
 - calendario a matrice con 45 giorni e imbarcazioni in verticale;
 - prenotazioni manuali atomiche e protezione DB contro sovrapposizioni;
 - CRM modificabile, identità univoche e import CSV fino a 500 righe;
-- flotta, disponibilità, extra, foto, prezzi e pubblicazione;
+- flotta con soli stati Disponibile/Non disponibile, servizi, dotazioni,
+  periodi, blocchi e prezzi;
 - riprogrammazione immutabile delle prenotazioni prive di movimenti attivi;
 - team con inviti email-bound, ruoli e lifecycle;
 - registro off-platform per acconti, saldi, cauzioni e rimborsi;
@@ -194,13 +198,14 @@ ruoli.
    prenotazioni collegate.
 9. Marketplace → `/`, ricerca, schede barca, checkout, prenotazioni cliente e
    registrazione devono riportare al gestionale senza mostrare contenuti.
-10. Registrazione Ops → onboarding → stato pendente → approvazione admin →
-    workspace ACTIVE.
+10. Registrazione Ops → nome attività → `Da verificare` → conferma del solo
+    fondatore → apertura diretta del calendario.
 11. Calendario reale → matrice 45 giorni, popup booking e saldo, creazione dalla
     cella, conflitto parziale bloccato.
 12. Finanza reale → acconto/saldo/cauzione, sovraincasso bloccato, storno
     Owner/Manager e CSV mensile.
-13. Login fondatore → account → accesso `/admin` e `/operator`.
+13. Login fondatore → `/admin/operators`; confermare, rifiutare ed eliminare un
+    account di prova verificando la scomparsa entro due minuti.
 14. `robots.txt` → `Disallow: /`.
 15. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
 16. Stripe → chiavi e pagamenti esclusivamente TEST.

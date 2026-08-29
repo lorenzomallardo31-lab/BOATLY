@@ -38,8 +38,6 @@ type LocationRow = {
 };
 
 const MANAGEABLE_OPERATOR_STATUSES = [
-  "DRAFT",
-  "PENDING_VERIFICATION",
   "ACTIVE",
 ];
 
@@ -314,8 +312,9 @@ export default async function NewBoatPage({
 
           <p className="mt-3 text-sm leading-6 text-[#64748B]">
             Nome, cavalli e obbligo di patente sono gli unici dati obbligatori.
-            La barca verrà salvata come bozza: potrai completare scheda, foto,
-            dotazioni, extra, prezzi e disponibilità nei passaggi successivi.
+            Appena salvata, la barca sarà disponibile nel calendario e potrà
+            ricevere prenotazioni. Codice interno, tipo, sede e servizi sono
+            facoltativi e possono essere configurati in seguito.
           </p>
 
         </div>
@@ -574,7 +573,7 @@ export default async function NewBoatPage({
               type="submit"
               className="rounded-xl bg-[#6D5DFB] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#5849DE]"
             >
-              Crea barca
+              Aggiungi e rendi disponibile
             </button>
 
           </div>

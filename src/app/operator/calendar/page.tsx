@@ -145,7 +145,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       .from("boats")
       .select("id, name, status, manufacturer, model, internal_code")
       .eq("operator_id", operator.id)
-      .neq("status", "ARCHIVED")
+      .is("deleted_at", null)
       .order("name"),
     supabase
       .from("bookings")

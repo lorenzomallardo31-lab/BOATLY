@@ -2,7 +2,7 @@ import AdminNav from "@/components/admin/admin-nav";
 import { requirePlatformContext } from "@/lib/admin/context";
 
 export default async function AdminPrivacyPage() {
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN", "ADMIN", "COMPLIANCE"]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
   const { data: requests, error } = await supabase.from("privacy_requests").select("id, requester_name_snapshot, requester_email_snapshot, request_type, status, identity_verification_status, scope, received_at, response_due_at, resolved_at, decision_summary").order("received_at", { ascending: false }).limit(200);
   if (error) throw new Error(`Unable to load privacy requests: ${error.message}`);
 

@@ -45,6 +45,18 @@ export async function createOperatorWorkspace(
     },
   );
 
+  if (error?.message.includes("operator_account_closed")) {
+    redirect(
+      "/operator/onboarding?error=account-closed",
+    );
+  }
+
+  if (error?.message.includes("operator_workspace_already_exists")) {
+    redirect(
+      "/operator/onboarding?error=workspace-exists",
+    );
+  }
+
   if (error || typeof data !== "string") {
     redirect(
       "/operator/onboarding?error=bootstrap-failed",
@@ -52,8 +64,6 @@ export async function createOperatorWorkspace(
   }
 
   redirect(
-    `/operator/onboarding?operator=${encodeURIComponent(
-      data,
-    )}&created=1`,
+    `/operator/onboarding?created=1&operator=${encodeURIComponent(data)}`,
   );
 }

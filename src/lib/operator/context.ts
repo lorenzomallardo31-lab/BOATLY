@@ -3,8 +3,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 const MANAGEABLE_OPERATOR_STATUSES = new Set([
-  "DRAFT",
-  "PENDING_VERIFICATION",
   "ACTIVE",
 ]);
 
@@ -63,6 +61,8 @@ export async function requireOperatorBoatContext(
     .from("boats")
     .select("id, operator_id, name, slug, status, primary_location_id")
     .eq("id", boatId)
+    .is("deleted_at", null)
+    .is("deletion_requested_at", null)
     .maybeSingle();
 
   if (boatError || !boatRow) {
@@ -100,6 +100,7 @@ export async function requireOperatorBoatContext(
     .from("operators")
     .select("id, name, status")
     .eq("id", boatRow.operator_id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (operatorError || !operatorRow) {
@@ -109,7 +110,7 @@ export async function requireOperatorBoatContext(
   const canManage =
     (membership.role === "OWNER" || membership.role === "MANAGER") &&
     MANAGEABLE_OPERATOR_STATUSES.has(operatorRow.status) &&
-    boatRow.status !== "ARCHIVED";
+    ["ACTIVE", "INACTIVE"].includes(boatRow.status);
 
   return {
     supabase,

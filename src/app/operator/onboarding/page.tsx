@@ -5,952 +5,121 @@ import { createClient } from "@/lib/supabase/server";
 
 import { createOperatorWorkspace } from "./actions";
 
-type OperatorOnboardingPageProps = {
-  searchParams: Promise<{
-    operator?: string;
-    created?: string;
-    legalSaved?: string;
-    locationSaved?: string;
-    submitted?: string;
-    error?: string;
-  }>;
+type PageProps = {
+  searchParams: Promise<{ created?: string; error?: string }>;
 };
 
-type OperatorSummary = {
-  id: string;
-  name: string;
-  status: string;
-};
-
-type LegalProfileSummary = {
-  legal_name: string | null;
-  legal_form: string | null;
-  vat_number: string | null;
-  tax_code: string | null;
-  registered_address_line_1: string | null;
-  registered_city: string | null;
-  registered_administrative_area: string | null;
-  registered_postal_code: string | null;
-  registered_country_code: string;
-  legal_representative_first_name: string | null;
-  legal_representative_last_name: string | null;
-};
-
-type OperatorLocationSummary = {
-  id: string;
-  name: string;
-  address_line_1: string | null;
-  city: string | null;
-  administrative_area: string | null;
-  postal_code: string | null;
-  country_code: string;
-  timezone: string;
-  is_primary: boolean;
-  is_public: boolean;
-  is_active: boolean;
-};
-
-type VerificationStatusRow = {
-  verification_id: string | null;
-  verification_status: string | null;
-  submitted_at: string | null;
-  reviewed_at: string | null;
-  decision_note: string | null;
-  operator_status: string;
-};
-
-function getErrorMessage(
-  error?: string,
-) {
-  switch (error) {
-    case "invalid-name":
-      return "Inserisci un nome valido per la tua attività.";
-
-    case "bootstrap-failed":
-      return "Non è stato possibile creare il workspace operatore. Riprova.";
-
-    default:
-      return null;
-  }
+function errorMessage(error?: string) {
+  if (error === "invalid-name") return "Inserisci un nome valido per la tua attività.";
+  if (error === "account-closed") return "Questo account è stato rifiutato o eliminato e non può presentare una nuova richiesta.";
+  if (error === "workspace-exists") return "Questo account possiede già un’attività.";
+  if (error === "bootstrap-failed") return "Non è stato possibile inviare la richiesta. Riprova.";
+  return null;
 }
 
-function isLegalProfileComplete(
-  profile: LegalProfileSummary | null,
-) {
-  if (!profile) {
-    return false;
+export default async function OperatorOnboardingPage({ searchParams }: PageProps) {
+  const query = await searchParams;
+  const supabase = await createClient();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+
+  if (claimsError || !claimsData?.claims || typeof claimsData.claims.sub !== "string") {
+    redirect("/sign-in?next=/operator/onboarding");
   }
 
-  return Boolean(
-    profile.legal_name?.trim() &&
-      profile.legal_form?.trim() &&
-      profile.vat_number?.trim() &&
-      profile.tax_code?.trim() &&
-      profile.registered_address_line_1?.trim() &&
-      profile.registered_city?.trim() &&
-      profile.registered_administrative_area?.trim() &&
-      profile.registered_postal_code?.trim() &&
-      profile.registered_country_code === "IT" &&
-      profile.legal_representative_first_name?.trim() &&
-      profile.legal_representative_last_name?.trim(),
-  );
-}
-
-function isLocationComplete(
-  location: OperatorLocationSummary | null,
-) {
-  if (!location) {
-    return false;
-  }
-
-  return Boolean(
-    location.name?.trim() &&
-      location.address_line_1?.trim() &&
-      location.city?.trim() &&
-      location.administrative_area?.trim() &&
-      location.postal_code?.trim() &&
-      location.country_code === "IT" &&
-      location.timezone === "Europe/Rome" &&
-      location.is_primary &&
-      location.is_public &&
-      location.is_active,
-  );
-}
-
-function verificationStepLabel(
-  status: string | null,
-) {
-  switch (status) {
-    case "PENDING":
-      return "Inviato";
-
-    case "IN_REVIEW":
-      return "In revisione";
-
-    case "NEEDS_CHANGES":
-      return "Modifiche richieste";
-
-    case "APPROVED":
-      return "Approvato";
-
-    case "REJECTED":
-      return "Respinto";
-
-    default:
-      return "Da completare";
-  }
-}
-
-export default async function OperatorOnboardingPage({
-  searchParams,
-}: OperatorOnboardingPageProps) {
-  const params =
-    await searchParams;
-
-  const supabase =
-    await createClient();
-
-  const {
-    data: claimsData,
-    error: claimsError,
-  } =
-    await supabase.auth.getClaims();
-
-  if (
-    claimsError ||
-    !claimsData?.claims ||
-    typeof claimsData.claims.sub !==
-      "string"
-  ) {
-    redirect(
-      "/sign-in?next=/operator/onboarding",
-    );
-  }
-
-  const userId =
-    claimsData.claims.sub;
-
-  const {
-    data: memberships,
-    error: membershipsError,
-  } = await supabase
+  const userId = claimsData.claims.sub;
+  const { data: memberships, error: membershipError } = await supabase
     .from("operator_members")
-    .select("operator_id")
+    .select("operator_id, role, status")
     .eq("user_id", userId)
-    .eq("role", "OWNER")
-    .eq("status", "ACTIVE");
+    .eq("role", "OWNER");
 
-  if (membershipsError) {
-    throw new Error(
-      "Unable to load operator memberships.",
-    );
-  }
+  if (membershipError) throw new Error("Unable to load the operator request.");
 
-  const operatorIds =
-    Array.from(
-      new Set(
-        (memberships ?? []).map(
-          (membership) =>
-            membership.operator_id,
-        ),
-      ),
-    );
+  const operatorIds = Array.from(new Set((memberships ?? []).map((item) => item.operator_id)));
+  const { data: operators, error: operatorError } = operatorIds.length
+    ? await supabase
+        .from("operators")
+        .select("id, name, status, deleted_at, purge_after")
+        .in("id", operatorIds)
+    : { data: [], error: null };
 
-  let operators:
-    OperatorSummary[] = [];
+  if (operatorError) throw new Error("Unable to load the operator workspace.");
 
-  if (
-    operatorIds.length > 0
-  ) {
-    const {
-      data: operatorRows,
-      error: operatorsError,
-    } = await supabase
-      .from("operators")
-      .select(
-        "id, name, status",
-      )
-      .in(
-        "id",
-        operatorIds,
-      );
+  const active = (operators ?? []).find((operator) => operator.status === "ACTIVE" && !operator.deleted_at);
+  if (active) redirect(`/operator/calendar?operator=${encodeURIComponent(active.id)}`);
 
-    if (operatorsError) {
-      throw new Error(
-        "Unable to load operator workspaces.",
-      );
-    }
-
-    operators =
-      (operatorRows ??
-        []) as OperatorSummary[];
-  }
-
-  const requestedOperator =
-    params.operator
-      ? operators.find(
-          (operator) =>
-            operator.id ===
-            params.operator,
-        )
-      : undefined;
-
-  const selectedOperator =
-    requestedOperator ||
-    operators.find(
-      (operator) =>
-        operator.status === "DRAFT",
-    ) ||
-    operators.find(
-      (operator) =>
-        operator.status ===
-        "PENDING_VERIFICATION",
-    ) ||
-    operators.find(
-      (operator) =>
-        operator.status === "ACTIVE",
-    ) ||
-    operators.find(
-      (operator) =>
-        operator.status ===
-        "REJECTED",
-    ) ||
-    operators[0] ||
-    null;
-
-  const errorMessage =
-    getErrorMessage(
-      params.error,
-    );
-
-  if (!selectedOperator) {
-    return (
-      <main className="min-h-screen bg-[#FCFBF8] px-4 py-10 text-[#0B1F33] sm:py-14">
-
-        <div className="mx-auto w-full max-w-3xl">
-
-          <div className="flex items-center justify-between gap-4">
-
-            <Link
-              href="/"
-              className="text-2xl font-bold tracking-tight"
-            >
-              Boatly
-            </Link>
-
-            <Link
-              href="/account"
-              className="text-sm font-medium text-[#64748B]"
-            >
-              Torna al tuo account
-            </Link>
-
-          </div>
-
-          <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-
-            <section>
-
-              <p className="text-sm font-semibold text-[#14B8A6]">
-                Boatly per operatori
-              </p>
-
-              <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
-                Porta la tua flotta su Boatly.
-              </h1>
-
-              <p className="mt-5 text-base leading-7 text-[#64748B]">
-                Crea il workspace della tua attività
-                e completa il processo di onboarding.
-              </p>
-
-            </section>
-
-            <section className="rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-
-              <h2 className="text-2xl font-semibold">
-                Crea il workspace
-              </h2>
-
-              {errorMessage ? (
-                <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                  {errorMessage}
-                </div>
-              ) : null}
-
-              <form
-                action={
-                  createOperatorWorkspace
-                }
-                className="mt-6 space-y-5"
-              >
-
-                <input
-                  name="name"
-                  type="text"
-                  required
-                  maxLength={120}
-                  placeholder="Nome attività"
-                  className="w-full rounded-xl border border-[#DEE5E8] px-4 py-3"
-                />
-
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-[#14B8A6] px-4 py-3 font-semibold text-white"
-                >
-                  Crea workspace operatore
-                </button>
-
-              </form>
-
-            </section>
-
-          </div>
-
-        </div>
-
-      </main>
-    );
-  }
-
-  const {
-    data: legalProfileRow,
-    error: legalProfileError,
-  } = await supabase
-    .from(
-      "operator_legal_profiles",
-    )
-    .select(`
-      legal_name,
-      legal_form,
-      vat_number,
-      tax_code,
-      registered_address_line_1,
-      registered_city,
-      registered_administrative_area,
-      registered_postal_code,
-      registered_country_code,
-      legal_representative_first_name,
-      legal_representative_last_name
-    `)
-    .eq(
-      "operator_id",
-      selectedOperator.id,
-    )
-    .maybeSingle();
-
-  if (legalProfileError) {
-    throw new Error(
-      "Unable to load operator legal profile.",
-    );
-  }
-
-  const legalProfile =
-    legalProfileRow as
-      LegalProfileSummary | null;
-
-  const legalComplete =
-    isLegalProfileComplete(
-      legalProfile,
-    );
-
-  const {
-    data: locationRow,
-    error: locationError,
-  } = await supabase
-    .from("operator_locations")
-    .select(`
-      id,
-      name,
-      address_line_1,
-      city,
-      administrative_area,
-      postal_code,
-      country_code,
-      timezone,
-      is_primary,
-      is_public,
-      is_active
-    `)
-    .eq(
-      "operator_id",
-      selectedOperator.id,
-    )
-    .eq(
-      "is_primary",
-      true,
-    )
-    .maybeSingle();
-
-  if (locationError) {
-    throw new Error(
-      "Unable to load operator primary location.",
-    );
-  }
-
-  const primaryLocation =
-    locationRow as
-      OperatorLocationSummary | null;
-
-  const locationComplete =
-    legalComplete &&
-    isLocationComplete(
-      primaryLocation,
-    );
-
-  const {
-    data: requiredDocumentTypes,
-    error: requiredDocumentTypesError,
-  } = await supabase
-    .from("document_types")
-    .select("id")
-    .eq(
-      "subject_type",
-      "OPERATOR",
-    )
-    .eq(
-      "is_active",
-      true,
-    )
-    .in(
-      "code",
-      [
-        "COMPANY_REGISTRY_EXTRACT",
-        "LEGAL_REPRESENTATIVE_ID",
-      ],
-    );
-
-  if (
-    requiredDocumentTypesError
-  ) {
-    throw new Error(
-      "Unable to load required onboarding documents.",
-    );
-  }
-
-  const requiredDocumentTypeIds =
-    (requiredDocumentTypes ??
-      []).map(
-        (documentType) =>
-          documentType.id,
-      );
-
-  const {
-    data: uploadedDocuments,
-    error: uploadedDocumentsError,
-  } =
-    requiredDocumentTypeIds.length ===
-    2
-      ? await supabase
-          .from(
-            "operator_documents",
-          )
-          .select(
-            "document_type_id",
-          )
-          .eq(
-            "operator_id",
-            selectedOperator.id,
-          )
-          .in(
-            "document_type_id",
-            requiredDocumentTypeIds,
-          )
-      : {
-          data: [],
-          error: null,
-        };
-
-  if (
-    uploadedDocumentsError
-  ) {
-    throw new Error(
-      "Unable to load onboarding documents.",
-    );
-  }
-
-  const uploadedDocumentTypeIds =
-    new Set(
-      (uploadedDocuments ??
-        []).map(
-        (document) =>
-          document.document_type_id,
-      ),
-    );
-
-  const documentsComplete =
-    locationComplete &&
-    requiredDocumentTypeIds.length ===
-      2 &&
-    requiredDocumentTypeIds.every(
-      (documentTypeId) =>
-        uploadedDocumentTypeIds.has(
-          documentTypeId,
-        ),
-    );
-
-  const {
-    data: verificationRows,
-    error: verificationError,
-  } = await supabase.rpc(
-    "get_operator_onboarding_verification_status",
-    {
-      p_operator_id:
-        selectedOperator.id,
-    },
-  );
-
-  if (verificationError) {
-    throw new Error(
-      "Unable to load operator verification status.",
-    );
-  }
-
-  const verification =
-    Array.isArray(
-      verificationRows,
-    )
-      ? (
-          verificationRows[0] as
-            | VerificationStatusRow
-            | undefined
-        ) ?? null
-      : null;
-
-  const verificationStatus =
-    verification?.verification_status ??
-    null;
-
-  const needsChanges =
-    verificationStatus ===
-    "NEEDS_CHANGES";
-
-  const verificationSubmitted =
-    verificationStatus ===
-      "PENDING" ||
-    verificationStatus ===
-      "IN_REVIEW" ||
-    verificationStatus ===
-      "APPROVED" ||
-    verificationStatus ===
-      "REJECTED";
-
-  const completedSteps =
-    verificationSubmitted
-      ? 5
-      : documentsComplete
-        ? 4
-        : locationComplete
-          ? 3
-          : legalComplete
-            ? 2
-            : 1;
-
-  const steps = [
-    {
-      number: "01",
-      title:
-        "Workspace operatore",
-      status:
-        "Completato",
-      completed:
-        true,
-    },
-
-    {
-      number: "02",
-      title:
-        "Dati aziendali e legali",
-      status:
-        legalComplete
-          ? "Completato"
-          : "Da completare",
-      completed:
-        legalComplete,
-    },
-
-    {
-      number: "03",
-      title:
-        "Prima sede operativa",
-      status:
-        locationComplete
-          ? "Completato"
-          : "Da completare",
-      completed:
-        locationComplete,
-    },
-
-    {
-      number: "04",
-      title:
-        "Documenti",
-      status:
-        documentsComplete
-          ? "Completato"
-          : "Da completare",
-      completed:
-        documentsComplete,
-    },
-
-    {
-      number: "05",
-      title:
-        "Invio a Boatly",
-      status:
-        verificationStepLabel(
-          verificationStatus,
-        ),
-      completed:
-        verificationSubmitted,
-    },
-  ];
+  const rejected = (operators ?? []).find((operator) => operator.status === "REJECTED" || operator.deleted_at);
+  const pending = (operators ?? []).find((operator) => ["DRAFT", "PENDING_VERIFICATION"].includes(operator.status));
+  const removedMembership = (memberships ?? []).some((membership) => membership.status === "REMOVED");
+  const error = errorMessage(query.error);
 
   return (
-    <main className="min-h-screen bg-[#FCFBF8] px-4 py-8 text-[#0B1F33] sm:px-6 sm:py-10">
-
-      <div className="mx-auto max-w-5xl">
-
+    <main className="min-h-screen bg-[#F7F6FB] px-4 py-8 text-[#171A2B] sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-2xl">
         <header className="flex items-center justify-between gap-4">
-
-          <Link
-            href="/"
-            className="text-2xl font-bold"
-          >
-            Boatly
+          <div>
+            <p className="text-xl font-bold tracking-tight">Boatly Ops</p>
+            <p className="text-xs font-medium text-[#6D5DFB]">Gestionale noleggiatori</p>
+          </div>
+          <Link href="/account" className="rounded-xl border border-[#D8D5E5] bg-white px-4 py-2 text-sm font-semibold">
+            Account
           </Link>
-
-          <Link
-            href="/account"
-            className="text-sm text-[#64748B]"
-          >
-            Il tuo account
-          </Link>
-
         </header>
 
-        {params.submitted ===
-        "1" ? (
-          <div className="mt-8 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">
-            <strong>
-              Richiesta inviata.
-            </strong>{" "}
-            Boatly prenderà in carico
-            la verifica del tuo workspace.
-          </div>
-        ) : null}
-
-        <section className="mt-8 rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-
-          <div className="flex flex-wrap items-start justify-between gap-5">
-
-            <div>
-
-              <p className="text-sm font-semibold text-[#14B8A6]">
-                Onboarding operatore
-              </p>
-
-              <h1 className="mt-2 text-3xl font-semibold">
-                {
-                  selectedOperator.name
-                }
-              </h1>
-
-            </div>
-
-            <div className="rounded-full bg-[#F1F5F4] px-4 py-2 text-xs font-semibold">
-              {
-                selectedOperator.status
-              }
-            </div>
-
-          </div>
-
-          <div className="mt-8">
-
-            <div className="flex justify-between text-sm">
-
-              <span>
-                Avanzamento onboarding
-              </span>
-
-              <span className="text-[#64748B]">
-                {completedSteps} di 5
-              </span>
-
-            </div>
-
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1F5F4]">
-
-              <div
-                className="h-full rounded-full bg-[#14B8A6]"
-                style={{
-                  width:
-                    `${completedSteps * 20}%`,
-                }}
-              />
-
-            </div>
-
-          </div>
-
-        </section>
-
-        <section className="mt-6 space-y-3">
-
-          {steps.map(
-            (step) => (
-              <div
-                key={
-                  step.number
-                }
-                className="flex items-center gap-4 rounded-2xl border border-[#DEE5E8] bg-white p-5"
-              >
-
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F1F5F4] font-semibold">
-
-                  {step.completed
-                    ? "✓"
-                    : step.number}
-
-                </div>
-
-                <div className="flex-1">
-
-                  <div className="flex justify-between gap-4">
-
-                    <h2 className="font-semibold">
-                      {
-                        step.title
-                      }
-                    </h2>
-
-                    <span
-                      className={
-                        step.completed
-                          ? "text-xs font-semibold text-[#14B8A6]"
-                          : needsChanges &&
-                              step.number ===
-                                "05"
-                            ? "text-xs font-semibold text-amber-700"
-                            : "text-xs text-[#64748B]"
-                      }
-                    >
-                      {
-                        step.status
-                      }
-                    </span>
-
-                  </div>
-
-                </div>
-
+        {rejected || removedMembership ? (
+          <section className="mt-12 rounded-3xl border border-rose-200 bg-white p-7 shadow-sm sm:p-10">
+            <span className="inline-flex rounded-full bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700">
+              Rifiutato
+            </span>
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight">Richiesta non approvata</h1>
+            <p className="mt-3 text-sm leading-6 text-[#676B80]">
+              L’accesso al gestionale non è attivo. L’account operativo viene rimosso automaticamente dal sistema.
+            </p>
+          </section>
+        ) : pending ? (
+          <section className="mt-12 rounded-3xl border border-amber-200 bg-white p-7 shadow-sm sm:p-10">
+            <span className="inline-flex rounded-full bg-amber-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-amber-800">
+              Da verificare
+            </span>
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight">Richiesta ricevuta</h1>
+            <p className="mt-3 text-sm leading-6 text-[#676B80]">
+              <strong>{pending.name}</strong> sarà abilitata dall’amministratore. Dopo la conferma, entrando qui si aprirà direttamente il calendario.
+            </p>
+            {query.created === "1" ? (
+              <div className="mt-6 rounded-2xl bg-[#EDE9FE] p-4 text-sm font-medium text-[#4C3FC2]">
+                Non devi compilare altro in questa fase.
               </div>
-            ),
-          )}
-
-        </section>
-
-        {!legalComplete ? (
-
-          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
-            <h2 className="text-xl font-semibold">
-              Dati aziendali e legali
-            </h2>
-
-            <Link
-              href={`/operator/onboarding/legal?operator=${selectedOperator.id}`}
-              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Continua
-            </Link>
-
+            ) : null}
           </section>
-
-        ) : !locationComplete ? (
-
-          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
-            <h2 className="text-xl font-semibold">
-              Prima sede operativa
-            </h2>
-
-            <Link
-              href={`/operator/onboarding/location?operator=${selectedOperator.id}`}
-              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Continua
-            </Link>
-
-          </section>
-
-        ) : !documentsComplete ? (
-
-          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
-            <h2 className="text-xl font-semibold">
-              Documenti
-            </h2>
-
-            <Link
-              href={`/operator/onboarding/documents?operator=${selectedOperator.id}`}
-              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Continua con i documenti
-            </Link>
-
-          </section>
-
-        ) : needsChanges ? (
-
-          <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6">
-
-            <p className="text-sm font-semibold text-amber-700">
-              Modifiche richieste
-            </p>
-
-            <h2 className="mt-2 text-xl font-semibold">
-              Boatly richiede alcune correzioni
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Consulta lo stato della verifica per
-              leggere la nota del team e sapere cosa
-              correggere prima del nuovo invio.
-            </p>
-
-            <Link
-              href={`/operator/onboarding/status?operator=${selectedOperator.id}`}
-              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Vedi modifiche richieste
-            </Link>
-
-          </section>
-
-        ) : verification?.verification_id ? (
-
-          <section className="mt-6 rounded-2xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-6">
-
-            <p className="text-sm font-semibold text-[#14B8A6]">
-              Stato verifica
-            </p>
-
-            <h2 className="mt-2 text-xl font-semibold">
-              {
-                verificationStepLabel(
-                  verificationStatus,
-                )
-              }
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Consulta la pagina di stato per
-              seguire l&apos;avanzamento della
-              verifica Boatly.
-            </p>
-
-            <Link
-              href={`/operator/onboarding/status?operator=${selectedOperator.id}`}
-              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Vedi stato verifica
-            </Link>
-
-          </section>
-
-        ) : selectedOperator.status ===
-          "DRAFT" ? (
-
-          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
-            <p className="text-sm font-semibold text-[#14B8A6]">
-              Ultimo passaggio
-            </p>
-
-            <h2 className="mt-2 text-xl font-semibold">
-              Invia a Boatly
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-[#64748B]">
-              Tutti i dati necessari sono presenti.
-              Controlla il riepilogo finale e invia
-              il workspace alla verifica.
-            </p>
-
-            <Link
-              href={`/operator/onboarding/submit?operator=${selectedOperator.id}`}
-              className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Controlla e invia
-            </Link>
-
-          </section>
-
         ) : (
-
-          <section className="mt-6 rounded-2xl border border-[#DEE5E8] bg-white p-6">
-
-            <h2 className="text-xl font-semibold">
-              Stato workspace
-            </h2>
-
-            <p className="mt-2 text-sm text-[#64748B]">
-              Stato attuale:{" "}
-              <strong>
-                {
-                  selectedOperator.status
-                }
-              </strong>
+          <section className="mt-12 rounded-3xl border border-[#D8D5E5] bg-white p-7 shadow-sm sm:p-10">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#6D5DFB]">Nuova attività</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight">Come si chiama la tua attività?</h1>
+            <p className="mt-3 text-sm leading-6 text-[#676B80]">
+              È l’unica informazione necessaria per inviare la richiesta. Dopo la conferma potrai aprire il calendario e aggiungere le barche.
             </p>
 
+            {error ? <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div> : null}
+
+            <form action={createOperatorWorkspace} className="mt-7 space-y-4">
+              <label htmlFor="name" className="block text-sm font-semibold">Nome attività</label>
+              <input
+                id="name"
+                name="name"
+                required
+                minLength={1}
+                maxLength={120}
+                autoComplete="organization"
+                placeholder="Es. Noleggio Mare Blu"
+                className="min-h-14 w-full rounded-2xl border border-[#D8D5E5] px-4 text-base outline-none focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/20"
+              />
+              <button className="min-h-14 w-full rounded-2xl bg-[#6D5DFB] px-5 text-base font-bold text-white transition hover:bg-[#5849DE]">
+                Invia richiesta
+              </button>
+            </form>
           </section>
-
         )}
-
       </div>
-
     </main>
   );
 }

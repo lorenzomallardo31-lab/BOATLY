@@ -7,7 +7,7 @@ type PageProps = { searchParams: Promise<{ updated?: string; error?: string }> }
 
 export default async function AdminCasesPage({ searchParams }: PageProps) {
   const query = await searchParams;
-  const { supabase } = await requirePlatformContext();
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
   const { data: cases, error } = await supabase.from("platform_cases").select("id, case_type, status, priority, subject, description, resolution_summary, operator_id, booking_id, created_at, updated_at").order("updated_at", { ascending: false }).limit(200);
   if (error) throw new Error(`Unable to load platform cases: ${error.message}`);
 

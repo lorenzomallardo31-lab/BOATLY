@@ -36,13 +36,18 @@ export async function setOperatorStatus(formData: FormData) {
   const operatorId = text(formData, "operator_id");
   const status = text(formData, "status");
   const reason = text(formData, "reason");
-  const allowed = new Set(["DRAFT", "PENDING_VERIFICATION", "ACTIVE", "SUSPENDED", "REJECTED"]);
+  const decisions: Record<string, string> = {
+    DRAFT: "PENDING",
+    PENDING_VERIFICATION: "PENDING",
+    ACTIVE: "CONFIRM",
+    REJECTED: "REJECT",
+  };
 
-  if (!operatorId || !allowed.has(status)) redirect("/admin/operators");
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN", "ADMIN"]);
-  const { error } = await supabase.rpc("admin_set_operator_status", {
+  if (!operatorId || !decisions[status] || decisions[status] === "PENDING") redirect("/admin/operators");
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
+  const { error } = await supabase.rpc("admin_decide_operator", {
     p_operator_id: operatorId,
-    p_status: status,
+    p_decision: decisions[status],
     p_reason: reason,
   });
 
@@ -51,10 +56,33 @@ export async function setOperatorStatus(formData: FormData) {
   redirect(operatorUrl(operatorId, `saved=status-${status.toLowerCase()}`));
 }
 
+export async function deleteOperatorAccount(formData: FormData) {
+  const operatorId = text(formData, "operator_id");
+  const reason = text(formData, "reason");
+  const confirmation = text(formData, "confirmation");
+  const expectedName = text(formData, "operator_name");
+
+  if (!operatorId) redirect("/admin/operators");
+  if (!expectedName || confirmation !== expectedName) {
+    redirect(operatorUrl(operatorId, "error=confirmation-required&scope=delete"));
+  }
+
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
+  const { error } = await supabase.rpc("admin_decide_operator", {
+    p_operator_id: operatorId,
+    p_decision: "DELETE",
+    p_reason: reason,
+  });
+
+  if (error) fail(operatorId, "delete", error.message);
+  refreshOperator(operatorId);
+  redirect("/admin/operators?deleted=1");
+}
+
 export async function updateOperatorWorkspace(formData: FormData) {
   const operatorId = text(formData, "operator_id");
   if (!operatorId) redirect("/admin/operators");
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN", "ADMIN"]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
   const { error } = await supabase.rpc("admin_update_operator_workspace", {
     p_operator_id: operatorId,
     p_name: text(formData, "name"),
@@ -91,7 +119,7 @@ export async function updateOperatorLegalProfile(formData: FormData) {
     "legal_representative_last_name",
   ];
   const profile = Object.fromEntries(fields.map((field) => [field, text(formData, field)]));
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN", "ADMIN"]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
   const { error } = await supabase.rpc("admin_update_operator_legal_profile", {
     p_operator_id: operatorId,
     p_profile: profile,
@@ -123,7 +151,7 @@ export async function updateOperatorLocation(formData: FormData) {
     is_public: formData.get("is_public") === "on",
     is_active: formData.get("is_active") === "on",
   };
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN", "ADMIN"]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
   const { error } = await supabase.rpc("admin_update_operator_location", {
     p_operator_id: operatorId,
     p_location_id: locationId,
@@ -143,7 +171,7 @@ export async function setOperatorMemberStatus(formData: FormData) {
   if (!operatorId || !userId || !["ACTIVE", "SUSPENDED", "REMOVED"].includes(status)) {
     redirect("/admin/operators");
   }
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN", "ADMIN"]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
   const { error } = await supabase.rpc("admin_set_operator_member_status", {
     p_operator_id: operatorId,
     p_user_id: userId,
@@ -160,7 +188,7 @@ export async function updateOperatorMemberProfile(formData: FormData) {
   const operatorId = text(formData, "operator_id");
   const userId = text(formData, "user_id");
   if (!operatorId || !userId) redirect("/admin/operators");
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN", "ADMIN"]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
   const { error } = await supabase.rpc("admin_update_operator_member_profile", {
     p_operator_id: operatorId,
     p_user_id: userId,

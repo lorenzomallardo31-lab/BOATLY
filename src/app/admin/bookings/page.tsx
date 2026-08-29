@@ -14,13 +14,7 @@ function money(cents: number | null, currency = "EUR") {
 
 export default async function AdminBookingsPage({ searchParams }: PageProps) {
   const query = await searchParams;
-  const { supabase } = await requirePlatformContext([
-    "SUPER_ADMIN",
-    "ADMIN",
-    "SUPPORT",
-    "FINANCE",
-    "COMPLIANCE",
-  ]);
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
 
   let request = supabase
     .from("bookings")

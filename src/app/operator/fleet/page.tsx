@@ -8,6 +8,7 @@ type FleetPageProps = {
   searchParams: Promise<{
     operator?: string;
     created?: string;
+    deleting?: string;
   }>;
 };
 
@@ -35,6 +36,8 @@ type BoatRow = {
   primary_location_id: string | null;
   boat_type_id: string | null;
   updated_at: string;
+  deleted_at: string | null;
+  deletion_requested_at: string | null;
 };
 
 type BoatTypeRow = {
@@ -49,8 +52,6 @@ type LocationRow = {
 };
 
 const MANAGEABLE_OPERATOR_STATUSES = [
-  "DRAFT",
-  "PENDING_VERIFICATION",
   "ACTIVE",
 ];
 
@@ -203,12 +204,15 @@ export default async function FleetPage({
       operator_passenger_limit,
       primary_location_id,
       boat_type_id,
-      updated_at
+      updated_at,
+      deleted_at,
+      deletion_requested_at
     `)
     .eq(
       "operator_id",
       selectedOperator.id,
     )
+    .is("deleted_at", null)
     .order(
       "updated_at",
       {
@@ -354,7 +358,14 @@ export default async function FleetPage({
             <strong>
               Barca creata.
             </strong>{" "}
-            La nuova unità è stata aggiunta alla flotta come bozza.
+            La nuova unità è disponibile e può ricevere prenotazioni.
+          </div>
+        ) : null}
+
+        {params.deleting === "1" ? (
+          <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <strong>Eliminazione avviata.</strong>{" "}
+            La barca è già non disponibile e sparirà definitivamente entro due minuti.
           </div>
         ) : null}
 
@@ -382,11 +393,11 @@ export default async function FleetPage({
             <div className="flex flex-wrap items-center gap-2">
 
               <span className="rounded-full bg-[#F1F5F4] px-4 py-2 text-xs font-semibold">
-                {selectedOperator.status}
+                Confermato
               </span>
 
               <span className="rounded-full bg-[#F1F5F4] px-4 py-2 text-xs font-semibold">
-                {membership.role}
+                {membership.role === "OWNER" ? "Proprietario" : "Collaboratore"}
               </span>
 
             </div>
@@ -504,7 +515,11 @@ export default async function FleetPage({
                       </div>
 
                       <span className="rounded-full bg-[#F1F5F4] px-3 py-2 text-xs font-semibold">
-                        {boat.status}
+                        {boat.deletion_requested_at
+                          ? "Eliminazione in corso"
+                          : boat.status === "ACTIVE"
+                            ? "Disponibile"
+                            : "Non disponibile"}
                       </span>
 
                     </div>
