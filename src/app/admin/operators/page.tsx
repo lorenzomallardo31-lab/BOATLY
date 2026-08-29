@@ -11,12 +11,14 @@ type PageProps = {
 
 function visibleStatus(status: string) {
   if (status === "ACTIVE") return "Confermato";
+  if (status === "SUSPENDED") return "Bloccato";
   if (status === "REJECTED") return "Rifiutato";
   return "Da verificare";
 }
 
 function statusClasses(status: string) {
   if (status === "ACTIVE") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+  if (status === "SUSPENDED") return "bg-violet-50 text-violet-700 ring-violet-200";
   if (status === "REJECTED") return "bg-rose-50 text-rose-700 ring-rose-200";
   return "bg-amber-50 text-amber-800 ring-amber-200";
 }
@@ -35,20 +37,23 @@ export default async function AdminOperatorsPage({ searchParams }: PageProps) {
   if (query.status === "pending") request = request.in("status", ["DRAFT", "PENDING_VERIFICATION"]);
   if (query.status === "confirmed") request = request.eq("status", "ACTIVE");
   if (query.status === "rejected") request = request.eq("status", "REJECTED");
+  if (query.status === "suspended") request = request.eq("status", "SUSPENDED");
   if (query.q?.trim()) request = request.ilike("name", `%${query.q.trim()}%`);
 
-  const [listResult, pendingResult, confirmedResult, rejectedResult] = await Promise.all([
+  const [listResult, pendingResult, confirmedResult, suspendedResult, rejectedResult] = await Promise.all([
     request,
     supabase.from("operators").select("id", { count: "exact", head: true }).is("deleted_at", null).in("status", ["DRAFT", "PENDING_VERIFICATION"]),
     supabase.from("operators").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "ACTIVE"),
+    supabase.from("operators").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "SUSPENDED"),
     supabase.from("operators").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("status", "REJECTED"),
   ]);
-  const firstError = [listResult, pendingResult, confirmedResult, rejectedResult].find((result) => result.error)?.error;
+  const firstError = [listResult, pendingResult, confirmedResult, suspendedResult, rejectedResult].find((result) => result.error)?.error;
   if (firstError) throw new Error(`Unable to load operators: ${firstError.message}`);
   const operators = listResult.data ?? [];
   const counts = {
     pending: pendingResult.count ?? 0,
     confirmed: confirmedResult.count ?? 0,
+    suspended: suspendedResult.count ?? 0,
     rejected: rejectedResult.count ?? 0,
   };
 
@@ -74,10 +79,11 @@ export default async function AdminOperatorsPage({ searchParams }: PageProps) {
           </div>
         ) : null}
 
-        <section className="mt-7 grid gap-3 sm:grid-cols-3">
+        <section className="mt-7 grid gap-3 sm:grid-cols-4">
           {[
             ["Da verificare", counts.pending, "pending", "bg-amber-50 text-amber-900"],
             ["Confermati", counts.confirmed, "confirmed", "bg-emerald-50 text-emerald-900"],
+            ["Bloccati", counts.suspended, "suspended", "bg-violet-50 text-violet-900"],
             ["Rifiutati", counts.rejected, "rejected", "bg-rose-50 text-rose-900"],
           ].map(([label, count, status, classes]) => (
             <Link key={String(status)} href={`/admin/operators?status=${status}`} className={`rounded-2xl p-5 ${classes}`}>
@@ -93,6 +99,7 @@ export default async function AdminOperatorsPage({ searchParams }: PageProps) {
             <option value="">Tutti</option>
             <option value="pending">Da verificare</option>
             <option value="confirmed">Confermato</option>
+            <option value="suspended">Bloccato</option>
             <option value="rejected">Rifiutato</option>
           </select>
           <button className="min-h-12 rounded-xl bg-[#0B1F33] px-5 text-sm font-semibold text-white">Cerca</button>

@@ -8,7 +8,7 @@ type OperatorNavProps = {
   operatorName: string;
 };
 
-type IconName = "calendar" | "booking" | "customers" | "fleet" | "more";
+type IconName = "calendar" | "fleet" | "more";
 
 const NAV_ITEMS: Array<{
   href: string;
@@ -17,8 +17,6 @@ const NAV_ITEMS: Array<{
   icon: IconName;
 }> = [
   { href: "/operator/calendar", label: "Calendario", mobileLabel: "Calendario", icon: "calendar" },
-  { href: "/operator/bookings", label: "Prenotazioni", mobileLabel: "Prenota", icon: "booking" },
-  { href: "/operator/customers", label: "Clienti", mobileLabel: "Clienti", icon: "customers" },
   { href: "/operator/fleet", label: "Flotta", mobileLabel: "Flotta", icon: "fleet" },
   { href: "/operator/more", label: "Altro", mobileLabel: "Altro", icon: "more" },
 ];
@@ -38,12 +36,6 @@ function NavIcon({ name }: { name: IconName }) {
 
   if (name === "calendar") {
     return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" /></svg>;
-  }
-  if (name === "booking") {
-    return <svg {...common}><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z" /><path d="M9 8h6M9 12h6" /></svg>;
-  }
-  if (name === "customers") {
-    return <svg {...common}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
   }
   if (name === "fleet") {
     return <svg {...common}><path d="M3 18h18l-2 3H5l-2-3Z" /><path d="m5 18 2-9h10l2 9M9 9V5h6v4" /><path d="M12 2v3" /></svg>;
@@ -97,7 +89,7 @@ export default function OperatorNav({ operatorId, operatorName }: OperatorNavPro
       </header>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-[#D8D5E5] bg-white/95 px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-12px_32px_rgba(23,26,43,0.12)] backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-3 border-t border-[#D8D5E5] bg-white/95 px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-12px_32px_rgba(23,26,43,0.12)] backdrop-blur lg:hidden"
         aria-label="Navigazione gestionale mobile"
       >
         {NAV_ITEMS.map((item) => {

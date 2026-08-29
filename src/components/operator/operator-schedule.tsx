@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import CalendarBookingForm from "@/components/operator/calendar-booking-form";
+import {
+  CalendarBookingStatusForm,
+  CalendarDayBlockForm,
+  CalendarReleaseBlockForm,
+} from "@/components/operator/calendar-cell-actions";
+import CustomerForm from "@/components/operator/customer-form";
+import RescheduleBookingForm from "@/components/operator/reschedule-booking-form";
+
 export type ScheduleDay = {
   key: string;
   start: string;
@@ -19,6 +28,7 @@ export type ScheduleBoat = {
   name: string;
   status: string;
   detail: string;
+  passengerLimit: number | null;
 };
 
 export type ScheduleItem = {
@@ -26,21 +36,29 @@ export type ScheduleItem = {
   boatId: string;
   kind: "BOOKING" | "BLOCK";
   bookingId: string | null;
+  source: string | null;
   occupancyId: string | null;
   startsAt: string;
   endsAt: string;
   status: string;
+  rawStatus: string;
   title: string;
   subtitle: string | null;
   reference: string | null;
   customer: string | null;
   passengers: number | null;
   notes: string | null;
-  currency: string | null;
-  totalCents: number | null;
-  collectedCents: number | null;
-  outstandingCents: number | null;
-  securityHeldCents: number | null;
+  operatorCustomerId: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  customerCountryCode: string | null;
+  customerDateOfBirth: string | null;
+  customerNotes: string | null;
+  legalOfferingId: string | null;
+  pickupLocationId: string | null;
+  startsAtLocal: string | null;
+  endsAtLocal: string | null;
+  total: string | null;
 };
 
 type OperatorScheduleProps = {
@@ -49,6 +67,9 @@ type OperatorScheduleProps = {
   days: ScheduleDay[];
   boats: ScheduleBoat[];
   items: ScheduleItem[];
+  offerings: Array<{ id: string; boatId: string; label: string }>;
+  customers: Array<{ id: string; name: string; email: string | null; phone: string | null }>;
+  locations: Array<{ id: string; label: string }>;
   canManageFleet: boolean;
 };
 
@@ -74,13 +95,6 @@ function longDateLabel(dayKey: string) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(Date.UTC(year, month - 1, day)));
-}
-
-function money(cents: number, currency: string) {
-  return new Intl.NumberFormat("it-IT", {
-    style: "currency",
-    currency,
-  }).format(cents / 100);
 }
 
 function overlapsDay(item: ScheduleItem, day: ScheduleDay) {
@@ -126,6 +140,9 @@ export default function OperatorSchedule({
   days,
   boats,
   items,
+  offerings,
+  customers,
+  locations,
   canManageFleet,
 }: OperatorScheduleProps) {
   const [selected, setSelected] = useState<SelectedCell | null>(null);
@@ -300,18 +317,46 @@ export default function OperatorSchedule({
               </button>
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-4">
               {selectedItems.length === 0 ? (
-                <div className={`rounded-2xl border p-5 ${selectedBoatIsActive ? "border-emerald-200 bg-emerald-50" : "border-[#D8D5E5] bg-[#F7F6FB]"}`}>
-                  <p className={`font-semibold ${selectedBoatIsActive ? "text-emerald-800" : "text-[#4A4758]"}`}>
-                    {selectedBoatIsActive ? "Barca libera per l’intera giornata" : "Barca non attiva"}
-                  </p>
-                  <p className="mt-1 text-sm text-[#676B80]">
-                    {selectedBoatIsActive
-                      ? "Puoi creare subito una prenotazione oppure aprire la disponibilità della barca."
-                      : "Attiva o completa la barca prima di inserirla in una prenotazione."}
-                  </p>
-                </div>
+                <>
+                  <div className={`rounded-2xl border p-5 ${selectedBoatIsActive ? "border-emerald-200 bg-emerald-50" : "border-[#D8D5E5] bg-[#F7F6FB]"}`}>
+                    <p className={`font-semibold ${selectedBoatIsActive ? "text-emerald-800" : "text-[#4A4758]"}`}>
+                      {selectedBoatIsActive ? "Barca libera per l’intera giornata" : "Barca non disponibile"}
+                    </p>
+                    <p className="mt-1 text-sm text-[#676B80]">
+                      {selectedBoatIsActive
+                        ? "Crea qui la prenotazione oppure rendi la barca non disponibile per questa giornata."
+                        : "Rendi disponibile la barca dalla Flotta prima di prenotarla."}
+                    </p>
+                  </div>
+
+                  {selectedBoatIsActive ? (
+                    <details open className="rounded-2xl border border-[#C8C0FF] bg-white p-4">
+                      <summary className="cursor-pointer text-base font-semibold text-[#4C3FC2]">+ Crea prenotazione</summary>
+                      <div className="mt-4 border-t border-[#ECEAF1] pt-4">
+                        <CalendarBookingForm
+                          operatorId={operatorId}
+                          boatId={selectedBoat.id}
+                          dayKey={selectedDay.key}
+                          passengerLimit={selectedBoat.passengerLimit}
+                          offerings={offerings.filter((offering) => offering.boatId === selectedBoat.id)}
+                          customers={customers}
+                          locations={locations}
+                        />
+                      </div>
+                    </details>
+                  ) : null}
+
+                  {selectedBoatIsActive && canManageFleet ? (
+                    <details className="rounded-2xl border border-[#D8D5E5] bg-white p-4">
+                      <summary className="cursor-pointer text-base font-semibold text-[#4A4758]">Rendi non disponibile</summary>
+                      <div className="mt-4 border-t border-[#ECEAF1] pt-4">
+                        <CalendarDayBlockForm operatorId={operatorId} boatId={selectedBoat.id} dayKey={selectedDay.key} />
+                      </div>
+                    </details>
+                  ) : null}
+                </>
               ) : (
                 selectedItems.map((item) => (
                   <article
@@ -360,31 +405,63 @@ export default function OperatorSchedule({
 
                     {item.notes ? <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm text-[#4A4758]">{item.notes}</p> : null}
 
-                    {item.currency && item.totalCents !== null ? (
-                      <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-white/75 p-3 text-xs sm:grid-cols-4">
-                        <div><p className="text-[#777285]">Totale</p><p className="mt-1 font-semibold">{money(item.totalCents, item.currency)}</p></div>
-                        <div><p className="text-[#777285]">Incassato</p><p className="mt-1 font-semibold text-emerald-700">{money(item.collectedCents ?? 0, item.currency)}</p></div>
-                        <div><p className="text-[#777285]">Saldo</p><p className={`mt-1 font-semibold ${(item.outstandingCents ?? 0) > 0 ? "text-amber-700" : "text-emerald-700"}`}>{(item.outstandingCents ?? 0) > 0 ? money(item.outstandingCents ?? 0, item.currency) : "Saldato"}</p></div>
-                        <div><p className="text-[#777285]">Cauzione</p><p className="mt-1 font-semibold">{money(item.securityHeldCents ?? 0, item.currency)}</p></div>
-                      </div>
+                    {item.kind === "BLOCK" && item.occupancyId && canManageFleet ? (
+                      <CalendarReleaseBlockForm operatorId={operatorId} boatId={selectedBoat.id} occupancyId={item.occupancyId} />
                     ) : null}
 
                     {item.bookingId ? (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Link
-                          href={`/operator/bookings/${item.bookingId}?operator=${operatorId}`}
-                          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#171A2B] px-4 text-sm font-semibold text-white"
-                        >
-                          Gestisci prenotazione
-                        </Link>
-                        {item.currency ? (
-                          <Link
-                            href={`/operator/bookings/${item.bookingId}?operator=${operatorId}#manual-finance`}
-                            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#D8D5E5] bg-white px-4 text-sm font-semibold text-[#4C3FC2]"
-                          >
-                            Incassi e saldo
-                          </Link>
+                      <div className="mt-4 space-y-3 border-t border-black/10 pt-4">
+                        {item.operatorCustomerId ? (
+                          <details className="rounded-xl bg-white/80 p-3">
+                            <summary className="cursor-pointer text-sm font-semibold text-[#4C3FC2]">Modifica cliente</summary>
+                            <div className="mt-4 border-t border-[#ECEAF1] pt-4">
+                              <CustomerForm
+                                operatorId={operatorId}
+                                calendarMode
+                                customer={{
+                                  id: item.operatorCustomerId,
+                                  displayName: item.customer ?? "Cliente",
+                                  email: item.customerEmail,
+                                  phone: item.customerPhone,
+                                  countryCode: item.customerCountryCode,
+                                  dateOfBirth: item.customerDateOfBirth,
+                                  notes: item.customerNotes,
+                                }}
+                              />
+                            </div>
+                          </details>
                         ) : null}
+
+                        {item.source === "MANUAL" && item.rawStatus === "CONFIRMED" && item.legalOfferingId && item.pickupLocationId && item.startsAtLocal && item.endsAtLocal && item.total !== null ? (
+                          <details className="rounded-xl bg-white/80 p-3">
+                            <summary className="cursor-pointer text-sm font-semibold text-[#4C3FC2]">Cambia barca, giorno o orario</summary>
+                            <RescheduleBookingForm
+                              operatorId={operatorId}
+                              bookingId={item.bookingId}
+                              calendarMode
+                              boats={boats.filter((boat) => boat.status === "ACTIVE").map((boat) => ({ id: boat.id, name: boat.name, passengerLimit: boat.passengerLimit }))}
+                              offerings={offerings}
+                              locations={locations}
+                              initial={{
+                                boatId: item.boatId,
+                                offeringId: item.legalOfferingId,
+                                locationId: item.pickupLocationId,
+                                startsAtLocal: item.startsAtLocal,
+                                endsAtLocal: item.endsAtLocal,
+                                passengerCount: item.passengers ?? 1,
+                                total: item.total,
+                                operatorNote: item.notes ?? "",
+                              }}
+                            />
+                          </details>
+                        ) : null}
+
+                        <details className="rounded-xl bg-white/80 p-3">
+                          <summary className="cursor-pointer text-sm font-semibold text-[#4C3FC2]">Aggiorna stato</summary>
+                          <div className="mt-4 border-t border-[#ECEAF1] pt-4">
+                            <CalendarBookingStatusForm operatorId={operatorId} bookingId={item.bookingId} status={item.rawStatus} />
+                          </div>
+                        </details>
                       </div>
                     ) : null}
                   </article>
@@ -392,27 +469,14 @@ export default function OperatorSchedule({
               )}
             </div>
 
-            <div className="mt-6 grid gap-3 border-t border-[#ECEAF1] pt-5 sm:grid-cols-3">
-              {selectedBoatIsActive ? (
-                <Link
-                  href={`/operator/bookings/new?operator=${operatorId}&date=${selectedDay.key}&boat=${selectedBoat.id}`}
-                  className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#6D5DFB] px-4 text-center text-sm font-semibold text-white hover:bg-[#5849DE]"
-                >
-                  + Prenotazione
-                </Link>
-              ) : null}
-              <Link
-                href={`/operator/fleet/${selectedBoat.id}/availability?operator=${operatorId}`}
-                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#D8D5E5] px-4 text-center text-sm font-semibold text-[#171A2B] hover:bg-[#F7F6FB]"
-              >
-                Disponibilità e blocchi
-              </Link>
+            <div className="mt-6 grid gap-3 border-t border-[#ECEAF1] pt-5 sm:grid-cols-2">
               <Link
                 href={`/operator/fleet/${selectedBoat.id}?operator=${operatorId}`}
                 className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#D8D5E5] px-4 text-center text-sm font-semibold text-[#171A2B] hover:bg-[#F7F6FB]"
               >
                 {canManageFleet ? "Gestisci barca" : "Vedi barca"}
               </Link>
+              <button type="button" onClick={() => setSelected(null)} className="min-h-12 rounded-xl bg-[#171A2B] px-4 text-sm font-semibold text-white">Chiudi</button>
             </div>
           </section>
         </div>

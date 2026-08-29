@@ -13,12 +13,6 @@ export default async function OperatorMorePage({ searchParams }: MorePageProps) 
   const suffix = `?operator=${encodeURIComponent(operator.id)}`;
   const items = [
     {
-      href: `/operator/finance${suffix}`,
-      title: "Cassa e incassi",
-      description: "Controlla pagamenti, saldi e movimenti.",
-      icon: "€",
-    },
-    {
       href: `/operator/team${suffix}`,
       title: "Collaboratori",
       description: "Gestisci chi può lavorare nel gestionale.",

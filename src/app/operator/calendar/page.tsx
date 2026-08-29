@@ -9,10 +9,10 @@ import OperatorSchedule, {
 import {
   addDays,
   isDateKey,
+  localDateTimeInTimeZone,
   todayInTimeZone,
   zonedDayBounds,
 } from "@/lib/operator/date-time";
-import { summarizeManualFinance, type ManualPaymentRecordLike } from "@/lib/operator/finance";
 import { requireOperatorWorkspaceContext } from "@/lib/operator/workspace-context";
 
 type CalendarPageProps = {
@@ -25,6 +25,9 @@ type CalendarPageProps = {
 type BookingRow = {
   id: string;
   boat_id: string;
+  operator_customer_id: string;
+  legal_offering_id: string;
+  pickup_location_id: string;
   source: string;
   reference: string | null;
   status: string;
@@ -34,7 +37,16 @@ type BookingRow = {
   customer_snapshot: unknown;
   operator_note: string | null;
   customer_total_cents_snapshot: number | null;
-  currency_snapshot: string | null;
+};
+
+type CustomerRow = {
+  id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  country_code: string | null;
+  date_of_birth: string | null;
+  notes: string | null;
 };
 
 type OccupancyRow = {
@@ -111,14 +123,6 @@ function scheduleHref(operatorId: string, start: string) {
   return `/operator/calendar?${params.toString()}`;
 }
 
-function chunks<T>(values: T[], size: number) {
-  const result: T[][] = [];
-  for (let index = 0; index < values.length; index += size) {
-    result.push(values.slice(index, index + size));
-  }
-  return result;
-}
-
 export default async function OperatorCalendarPage({ searchParams }: CalendarPageProps) {
   const query = await searchParams;
   const { supabase, operator, membership } =
@@ -140,16 +144,18 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
     { data: boatData, error: boatsError },
     { data: bookingData, error: bookingsError },
     { data: occupancyData, error: occupanciesError },
+    { data: customerData, error: customersError },
+    { data: locationData, error: locationsError },
   ] = await Promise.all([
     supabase
       .from("boats")
-      .select("id, name, status, manufacturer, model, internal_code")
+      .select("id, name, status, manufacturer, model, internal_code, operator_passenger_limit")
       .eq("operator_id", operator.id)
       .is("deleted_at", null)
       .order("name"),
     supabase
       .from("bookings")
-      .select("id, boat_id, source, reference, status, starts_at, ends_at, passenger_count, customer_snapshot, operator_note, customer_total_cents_snapshot, currency_snapshot")
+      .select("id, boat_id, operator_customer_id, legal_offering_id, pickup_location_id, source, reference, status, starts_at, ends_at, passenger_count, customer_snapshot, operator_note, customer_total_cents_snapshot")
       .eq("operator_id", operator.id)
       .in("status", ACTIVE_BOOKING_STATUSES)
       .lt("starts_at", lastBounds.end)
@@ -163,33 +169,37 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       .lt("starts_at", lastBounds.end)
       .gt("ends_at", firstBounds.start)
       .order("starts_at"),
+    supabase
+      .from("operator_customers")
+      .select("id, display_name, email, phone, country_code, date_of_birth, notes")
+      .eq("operator_id", operator.id)
+      .order("display_name")
+      .limit(1000),
+    supabase
+      .from("operator_locations")
+      .select("id, name, city")
+      .eq("operator_id", operator.id)
+      .eq("is_active", true)
+      .order("is_primary", { ascending: false }),
   ]);
 
-  if (boatsError || bookingsError || occupanciesError) {
+  if (boatsError || bookingsError || occupanciesError || customersError || locationsError) {
     throw new Error("Unable to load operator planning.");
   }
 
   const bookings = (bookingData ?? []) as BookingRow[];
   const occupancies = (occupancyData ?? []) as OccupancyRow[];
-  const manualBookingIds = bookings.filter((booking) => booking.source === "MANUAL").map((booking) => booking.id);
-  const manualPaymentResults = await Promise.all(
-    chunks(manualBookingIds, 100).map((ids) =>
-      supabase
-        .from("manual_payment_records")
-        .select("booking_id, record_type, purpose, amount_cents, status")
-        .eq("operator_id", operator.id)
-        .in("booking_id", ids),
-    ),
-  );
-  const manualPaymentsByBooking = new Map<string, ManualPaymentRecordLike[]>();
-  for (const result of manualPaymentResults) {
-    if (result.error) throw new Error("Unable to load calendar finance status.");
-    for (const record of result.data ?? []) {
-      const current = manualPaymentsByBooking.get(record.booking_id);
-      if (current) current.push(record);
-      else manualPaymentsByBooking.set(record.booking_id, [record]);
-    }
-  }
+  const customers = (customerData ?? []) as CustomerRow[];
+  const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+  const boatIds = (boatData ?? []).map((boat) => boat.id);
+  const { data: offeringData, error: offeringsError } = boatIds.length
+    ? await supabase
+        .from("boat_legal_offerings")
+        .select("id, boat_id, legal_type, skipper_mode")
+        .in("boat_id", boatIds)
+        .eq("is_active", true)
+    : { data: [], error: null };
+  if (offeringsError) throw new Error("Unable to load boat operating formulas.");
   const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
   const occupancyBookingIds = new Set(
     occupancies.flatMap((occupancy) => occupancy.booking_id ? [occupancy.booking_id] : []),
@@ -226,6 +236,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       [boat.manufacturer, boat.model].filter(Boolean).join(" · ") ||
       boat.internal_code ||
       "Scheda tecnica da completare",
+    passengerLimit: boat.operator_passenger_limit,
   }));
 
   const items: ScheduleItem[] = occupancies.map((occupancy) => {
@@ -233,63 +244,69 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       ? bookingById.get(occupancy.booking_id) ?? null
       : null;
     const isBooking = Boolean(booking);
-    const finance = booking?.source === "MANUAL"
-      ? summarizeManualFinance(
-          manualPaymentsByBooking.get(booking.id) ?? [],
-          booking.customer_total_cents_snapshot ?? 0,
-        )
-      : null;
+    const customer = booking ? customerById.get(booking.operator_customer_id) ?? null : null;
     return {
       id: occupancy.id,
       boatId: occupancy.boat_id,
       kind: isBooking ? "BOOKING" : "BLOCK",
       bookingId: booking?.id ?? null,
+      source: booking?.source ?? null,
       occupancyId: occupancy.id,
       startsAt: occupancy.starts_at,
       endsAt: occupancy.ends_at,
       status: booking ? bookingStatusLabel(booking.status) : occupancyLabel(occupancy.occupancy_type),
-      title: booking ? customerName(booking.customer_snapshot) : occupancy.title ?? occupancyLabel(occupancy.occupancy_type),
+      rawStatus: booking?.status ?? occupancy.occupancy_type,
+      title: booking ? customer?.display_name ?? customerName(booking.customer_snapshot) : occupancy.title ?? occupancyLabel(occupancy.occupancy_type),
       subtitle: booking?.reference ?? null,
       reference: booking?.reference ?? null,
-      customer: booking ? customerName(booking.customer_snapshot) : null,
+      customer: booking ? customer?.display_name ?? customerName(booking.customer_snapshot) : null,
       passengers: booking?.passenger_count ?? null,
       notes: booking?.operator_note ?? occupancy.notes,
-      currency: finance ? booking?.currency_snapshot ?? operator.currency : null,
-      totalCents: finance ? booking?.customer_total_cents_snapshot ?? 0 : null,
-      collectedCents: finance?.commercialNetCents ?? null,
-      outstandingCents: finance?.outstandingCents ?? null,
-      securityHeldCents: finance?.securityHeldCents ?? null,
+      operatorCustomerId: booking?.operator_customer_id ?? null,
+      customerEmail: customer?.email ?? null,
+      customerPhone: customer?.phone ?? null,
+      customerCountryCode: customer?.country_code ?? null,
+      customerDateOfBirth: customer?.date_of_birth ?? null,
+      customerNotes: customer?.notes ?? null,
+      legalOfferingId: booking?.legal_offering_id ?? null,
+      pickupLocationId: booking?.pickup_location_id ?? null,
+      startsAtLocal: booking ? localDateTimeInTimeZone(booking.starts_at, operator.timezone) : null,
+      endsAtLocal: booking ? localDateTimeInTimeZone(booking.ends_at, operator.timezone) : null,
+      total: booking ? ((booking.customer_total_cents_snapshot ?? 0) / 100).toFixed(2).replace(".", ",") : null,
     };
   });
 
   for (const booking of bookings) {
     if (occupancyBookingIds.has(booking.id)) continue;
-    const finance = booking.source === "MANUAL"
-      ? summarizeManualFinance(
-          manualPaymentsByBooking.get(booking.id) ?? [],
-          booking.customer_total_cents_snapshot ?? 0,
-        )
-      : null;
+    const customer = customerById.get(booking.operator_customer_id) ?? null;
     items.push({
       id: `booking-${booking.id}`,
       boatId: booking.boat_id,
       kind: "BOOKING",
       bookingId: booking.id,
+      source: booking.source,
       occupancyId: null,
       startsAt: booking.starts_at,
       endsAt: booking.ends_at,
       status: bookingStatusLabel(booking.status),
-      title: customerName(booking.customer_snapshot),
+      rawStatus: booking.status,
+      title: customer?.display_name ?? customerName(booking.customer_snapshot),
       subtitle: booking.reference,
       reference: booking.reference,
-      customer: customerName(booking.customer_snapshot),
+      customer: customer?.display_name ?? customerName(booking.customer_snapshot),
       passengers: booking.passenger_count,
       notes: booking.operator_note,
-      currency: finance ? booking.currency_snapshot ?? operator.currency : null,
-      totalCents: finance ? booking.customer_total_cents_snapshot ?? 0 : null,
-      collectedCents: finance?.commercialNetCents ?? null,
-      outstandingCents: finance?.outstandingCents ?? null,
-      securityHeldCents: finance?.securityHeldCents ?? null,
+      operatorCustomerId: booking.operator_customer_id,
+      customerEmail: customer?.email ?? null,
+      customerPhone: customer?.phone ?? null,
+      customerCountryCode: customer?.country_code ?? null,
+      customerDateOfBirth: customer?.date_of_birth ?? null,
+      customerNotes: customer?.notes ?? null,
+      legalOfferingId: booking.legal_offering_id,
+      pickupLocationId: booking.pickup_location_id,
+      startsAtLocal: localDateTimeInTimeZone(booking.starts_at, operator.timezone),
+      endsAtLocal: localDateTimeInTimeZone(booking.ends_at, operator.timezone),
+      total: ((booking.customer_total_cents_snapshot ?? 0) / 100).toFixed(2).replace(".", ","),
     });
   }
 
@@ -333,12 +350,6 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
             >
               + 20 giorni →
             </Link>
-            <Link
-              href={`/operator/bookings/new?operator=${operator.id}&date=${startDate}`}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#171A2B] px-5 text-sm font-semibold text-white"
-            >
-              + Prenotazione
-            </Link>
           </div>
         </div>
 
@@ -375,6 +386,21 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
               days={days}
               boats={boats}
               items={items}
+              offerings={(offeringData ?? []).map((offering) => ({
+                id: offering.id,
+                boatId: offering.boat_id,
+                label: `${offering.legal_type} · ${offering.skipper_mode}`,
+              }))}
+              customers={customers.map((customer) => ({
+                id: customer.id,
+                name: customer.display_name,
+                email: customer.email,
+                phone: customer.phone,
+              }))}
+              locations={(locationData ?? []).map((location) => ({
+                id: location.id,
+                label: `${location.name}${location.city ? ` · ${location.city}` : ""}`,
+              }))}
               canManageFleet={canManageFleet}
             />
           )}

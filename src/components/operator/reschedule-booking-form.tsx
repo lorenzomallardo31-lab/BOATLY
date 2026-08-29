@@ -17,6 +17,7 @@ type LocationOption = { id: string; label: string };
 type Props = {
   operatorId: string;
   bookingId: string;
+  calendarMode?: boolean;
   boats: BoatOption[];
   offerings: OfferingOption[];
   locations: LocationOption[];
@@ -60,7 +61,7 @@ function SubmitButton() {
   return <button type="submit" disabled={pending} className="min-h-12 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:opacity-50">{pending ? "Verifica e riprogramma…" : "Conferma riprogrammazione"}</button>;
 }
 
-export default function RescheduleBookingForm({ operatorId, bookingId, boats, offerings, locations, initial }: Props) {
+export default function RescheduleBookingForm({ operatorId, bookingId, boats, offerings, locations, initial, calendarMode = false }: Props) {
   const [state, action] = useActionState(rescheduleManualBooking, initialRescheduleState);
   const [boatId, setBoatId] = useState(initial.boatId);
   const [offeringId, setOfferingId] = useState(initial.offeringId);
@@ -77,6 +78,8 @@ export default function RescheduleBookingForm({ operatorId, bookingId, boats, of
     <form action={action} className="mt-5 space-y-5">
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="booking_id" value={bookingId} />
+      {calendarMode ? <input type="hidden" name="calendar_mode" value="1" /> : null}
+      {state.status === "success" ? <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">Prenotazione riprogrammata e calendario aggiornato.</div> : null}
       {error ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium leading-6 text-rose-800">{error}</div> : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">Barca *<select name="boat_id" required value={boatId} onChange={(event) => changeBoat(event.target.value)} className={inputClass}>{boats.map((boat) => <option key={boat.id} value={boat.id}>{boat.name}</option>)}</select></label>
@@ -85,7 +88,7 @@ export default function RescheduleBookingForm({ operatorId, bookingId, boats, of
         <label className="grid gap-2 text-sm font-semibold">Passeggeri *<input name="passenger_count" type="number" min={1} max={selectedBoat?.passengerLimit ?? undefined} required defaultValue={initial.passengerCount} className={inputClass} /></label>
         <label className="grid gap-2 text-sm font-semibold">Nuovo inizio *<input name="starts_at_local" type="datetime-local" required defaultValue={initial.startsAtLocal} className={inputClass} /></label>
         <label className="grid gap-2 text-sm font-semibold">Nuova fine *<input name="ends_at_local" type="datetime-local" required defaultValue={initial.endsAtLocal} className={inputClass} /></label>
-        <label className="grid gap-2 text-sm font-semibold">Totale concordato (€) *<input name="total" inputMode="decimal" required defaultValue={initial.total} className={inputClass} /></label>
+        {calendarMode ? <input type="hidden" name="total" value={initial.total} /> : <label className="grid gap-2 text-sm font-semibold">Totale concordato (€) *<input name="total" inputMode="decimal" required defaultValue={initial.total} className={inputClass} /></label>}
         <label className="grid gap-2 text-sm font-semibold">Nota operativa<textarea name="operator_note" rows={3} defaultValue={initial.operatorNote} className={`${inputClass} py-3`} /></label>
         <label className="grid gap-2 text-sm font-semibold sm:col-span-2">Motivo della modifica *<textarea name="reason" rows={3} required maxLength={1000} className={`${inputClass} py-3`} placeholder="Es. richiesta del cliente, meteo, cambio imbarcazione…" /></label>
       </div>

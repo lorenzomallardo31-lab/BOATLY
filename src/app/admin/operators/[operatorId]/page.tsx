@@ -8,6 +8,7 @@ import {
   deleteOperatorAccount,
   setOperatorMemberStatus,
   setOperatorStatus,
+  toggleOperatorSuspension,
   updateOperatorLegalProfile,
   updateOperatorLocation,
   updateOperatorMemberProfile,
@@ -82,6 +83,7 @@ function statusClasses(status: string) {
 
 function statusLabel(status: string) {
   if (status === "ACTIVE") return "Confermato";
+  if (status === "SUSPENDED") return "Bloccato";
   if (status === "REJECTED") return "Rifiutato";
   return "Da verificare";
 }
@@ -263,21 +265,34 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                     <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#14B8A6]">Lifecycle</p>
                     <h2 className="mt-1 text-xl font-semibold">Decisione sull’iscrizione</h2>
                   </div>
-                  <span className="text-xs text-[#6D8190]">Motivo sempre obbligatorio</span>
+                  <span className="text-xs text-[#6D8190]">Conferma o rifiuta senza motivazione</span>
                 </div>
-                <form action={setOperatorStatus} className="mt-5 grid gap-3 sm:grid-cols-[220px_1fr_auto]">
+                <form action={setOperatorStatus} className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
                   <input type="hidden" name="operator_id" value={operator.id} />
                   <select name="status" required defaultValue={operator.status === "ACTIVE" ? "ACTIVE" : operator.status === "REJECTED" ? "REJECTED" : "PENDING_VERIFICATION"} className={inputClass}>
                     <option value="PENDING_VERIFICATION" disabled>Da verificare</option>
                     <option value="ACTIVE">Confermato</option>
                     <option value="REJECTED">Rifiutato</option>
                   </select>
-                  <input name="reason" required maxLength={1000} placeholder="Motivo amministrativo della modifica" className={inputClass} />
                   <button className="min-h-12 rounded-xl bg-[#0B1F33] px-5 text-sm font-semibold text-white">Salva decisione</button>
                 </form>
                 <p className="mt-3 text-xs leading-5 text-[#6D8190]">
                   Un account rifiutato resta visibile per due minuti, poi scompare definitivamente. Puoi confermare nuovamente durante questa breve finestra.
                 </p>
+
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#DDE5E9] bg-[#F6F8F9] p-4">
+                  <div>
+                    <p className="font-semibold">Accesso temporaneo</p>
+                    <p className="mt-1 text-sm text-[#587083]">Blocca il gestionale senza cancellare l’account, la flotta o il calendario.</p>
+                  </div>
+                  <form action={toggleOperatorSuspension}>
+                    <input type="hidden" name="operator_id" value={operator.id} />
+                    <input type="hidden" name="suspended" value={operator.status === "SUSPENDED" ? "0" : "1"} />
+                    <button className={`inline-flex min-h-12 items-center rounded-xl px-5 text-sm font-semibold ${operator.status === "SUSPENDED" ? "bg-emerald-600 text-white" : "bg-rose-700 text-white"}`}>
+                      {operator.status === "SUSPENDED" ? "Sblocca account" : "Blocca temporaneamente"}
+                    </button>
+                  </form>
+                </div>
               </section>
             ) : null}
 

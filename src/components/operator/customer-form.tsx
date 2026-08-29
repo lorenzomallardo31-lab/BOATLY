@@ -12,6 +12,7 @@ const initialCustomerState: CustomerActionState = { status: "idle" };
 
 type CustomerFormProps = {
   operatorId: string;
+  calendarMode?: boolean;
   customer?: {
     id: string;
     displayName: string;
@@ -56,7 +57,7 @@ function SubmitButton({ editing }: { editing: boolean }) {
   );
 }
 
-export default function CustomerForm({ operatorId, customer }: CustomerFormProps) {
+export default function CustomerForm({ operatorId, customer, calendarMode = false }: CustomerFormProps) {
   const [state, action] = useActionState(saveCustomer, initialCustomerState);
   const error = state.code ? ERRORS[state.code] ?? ERRORS["save-failed"] : null;
 
@@ -64,6 +65,13 @@ export default function CustomerForm({ operatorId, customer }: CustomerFormProps
     <form action={action} className="space-y-6">
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="customer_id" value={customer?.id ?? ""} />
+      {calendarMode ? <input type="hidden" name="calendar_mode" value="1" /> : null}
+
+      {state.status === "success" ? (
+        <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          Cliente aggiornato. Il calendario mostra subito i dati correnti.
+        </div>
+      ) : null}
 
       {error ? (
         <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium leading-6 text-rose-800">
@@ -95,17 +103,24 @@ export default function CustomerForm({ operatorId, customer }: CustomerFormProps
         <p className="rounded-xl bg-[#EDE9FE] p-3 text-xs leading-5 text-[#4C3FC2] sm:col-span-2">
           È obbligatorio almeno un contatto. Email e telefono sono univoci nel workspace e vengono verificati anche in caso di salvataggi simultanei.
         </p>
-        <label className="grid gap-2 text-sm font-semibold">
-          Paese
-          <input name="country_code" maxLength={2} defaultValue={customer?.countryCode ?? "IT"} className={`${fieldClass} uppercase`} />
-        </label>
-        <label className="grid gap-2 text-sm font-semibold">
-          Data di nascita
-          <input name="date_of_birth" type="date" defaultValue={customer?.dateOfBirth ?? ""} className={fieldClass} />
-        </label>
+        {!calendarMode ? <>
+          <label className="grid gap-2 text-sm font-semibold">
+            Paese
+            <input name="country_code" maxLength={2} defaultValue={customer?.countryCode ?? "IT"} className={`${fieldClass} uppercase`} />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold">
+            Data di nascita
+            <input name="date_of_birth" type="date" defaultValue={customer?.dateOfBirth ?? ""} className={fieldClass} />
+          </label>
+        </> : (
+          <>
+            <input type="hidden" name="country_code" value={customer?.countryCode ?? "IT"} />
+            <input type="hidden" name="date_of_birth" value={customer?.dateOfBirth ?? ""} />
+          </>
+        )}
         <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
           Note CRM
-          <textarea name="notes" rows={5} maxLength={5000} defaultValue={customer?.notes ?? ""} className={`${fieldClass} py-3`} placeholder="Preferenze, richieste ricorrenti, informazioni operative…" />
+          <textarea name="notes" rows={calendarMode ? 3 : 5} maxLength={5000} defaultValue={customer?.notes ?? ""} className={`${fieldClass} py-3`} placeholder="Preferenze, richieste ricorrenti, informazioni operative…" />
         </label>
       </div>
 

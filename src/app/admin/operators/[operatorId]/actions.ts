@@ -56,6 +56,22 @@ export async function setOperatorStatus(formData: FormData) {
   redirect(operatorUrl(operatorId, `saved=status-${status.toLowerCase()}`));
 }
 
+export async function toggleOperatorSuspension(formData: FormData) {
+  const operatorId = text(formData, "operator_id");
+  const suspended = text(formData, "suspended") === "1";
+  if (!operatorId) redirect("/admin/operators");
+  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
+  const { error } = await supabase.rpc("admin_decide_operator", {
+    p_operator_id: operatorId,
+    p_decision: suspended ? "SUSPEND" : "RESUME",
+    p_reason: null,
+  });
+
+  if (error) fail(operatorId, "access", error.message);
+  refreshOperator(operatorId);
+  redirect(operatorUrl(operatorId, `saved=${suspended ? "suspended" : "resumed"}`));
+}
+
 export async function deleteOperatorAccount(formData: FormData) {
   const operatorId = text(formData, "operator_id");
   const reason = text(formData, "reason");

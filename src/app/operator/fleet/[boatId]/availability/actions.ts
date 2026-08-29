@@ -29,91 +29,15 @@ async function requireSession(next: string) {
   return supabase;
 }
 
-export async function saveWeeklyAvailability(formData: FormData) {
-  const operatorId = text(formData, "operator_id");
-  const boatId = text(formData, "boat_id");
-  const timezone = text(formData, "timezone") || "Europe/Rome";
-
-  if (!operatorId || !boatId) {
-    redirect("/operator/fleet");
-  }
-
-  const rules: Array<{
-    weekday: number;
-    available_from: string;
-    available_to: string;
-    timezone: string;
-    valid_from: string | null;
-    valid_to: string | null;
-  }> = [];
-
-  for (let weekday = 1; weekday <= 7; weekday += 1) {
-    if (formData.get(`enabled_${weekday}`) !== "on") {
-      continue;
-    }
-
-    const availableFrom = text(formData, `from_${weekday}`);
-    const availableTo = text(formData, `to_${weekday}`);
-
-    if (!availableFrom || !availableTo || availableTo <= availableFrom) {
-      redirect(url(boatId, operatorId, "error=invalid-window"));
-    }
-
-    rules.push({
-      weekday,
-      available_from: availableFrom,
-      available_to: availableTo,
-      timezone,
-      valid_from: text(formData, `valid_from_${weekday}`) || null,
-      valid_to: text(formData, `valid_to_${weekday}`) || null,
-    });
-  }
-
-  const supabase = await requireSession(
-    `/operator/fleet/${boatId}/availability`,
-  );
-
-  const { error } = await supabase.rpc("save_boat_weekly_availability", {
-    p_operator_id: operatorId,
-    p_boat_id: boatId,
-    p_rules: rules,
-  });
-
-  if (error) {
-    redirect(
-      url(
-        boatId,
-        operatorId,
-        `error=${encodeURIComponent(
-          error.message.includes("not_allowed") ? "not-allowed" : "save-failed",
-        )}`,
-      ),
-    );
-  }
-
-  revalidatePath(`/operator/fleet/${boatId}/availability`);
-  redirect(url(boatId, operatorId, "saved=availability"));
-}
-
 export async function createCalendarBlock(formData: FormData) {
   const operatorId = text(formData, "operator_id");
   const boatId = text(formData, "boat_id");
-  const occupancyType = text(formData, "occupancy_type");
   const start = text(formData, "starts_at");
   const end = text(formData, "ends_at");
   const timezone = text(formData, "timezone") || "Europe/Rome";
-  const title = text(formData, "title");
   const notes = text(formData, "notes");
 
-  const allowed = new Set([
-    "MAINTENANCE",
-    "TRANSFER",
-    "PRIVATE_USE",
-    "OPERATOR_BLOCK",
-    "OTHER",
-  ]);
-
-  if (!operatorId || !boatId || !allowed.has(occupancyType)) {
+  if (!operatorId || !boatId) {
     redirect("/operator/fleet");
   }
 
@@ -128,10 +52,10 @@ export async function createCalendarBlock(formData: FormData) {
   const { error } = await supabase.rpc("create_operator_boat_occupancy", {
     p_operator_id: operatorId,
     p_boat_id: boatId,
-    p_occupancy_type: occupancyType,
+    p_occupancy_type: "OPERATOR_BLOCK",
     p_starts_at: `${start.replace("T", " ")}:00 ${timezone}`,
     p_ends_at: `${end.replace("T", " ")}:00 ${timezone}`,
-    p_title: title || null,
+    p_title: "Non disponibile",
     p_notes: notes || null,
   });
 
@@ -144,6 +68,7 @@ export async function createCalendarBlock(formData: FormData) {
   }
 
   revalidatePath(`/operator/fleet/${boatId}/availability`);
+  revalidatePath("/operator/calendar");
   redirect(url(boatId, operatorId, "saved=block"));
 }
 
@@ -172,5 +97,6 @@ export async function releaseCalendarBlock(formData: FormData) {
   }
 
   revalidatePath(`/operator/fleet/${boatId}/availability`);
+  revalidatePath("/operator/calendar");
   redirect(url(boatId, operatorId, "saved=released"));
 }

@@ -8,8 +8,9 @@ import { zonedDateTimeToIso } from "@/lib/operator/date-time";
 import { requireOperatorWorkspaceContext } from "@/lib/operator/workspace-context";
 
 export type RescheduleActionState = {
-  status: "idle" | "error";
+  status: "idle" | "error" | "success";
   code?: string;
+  bookingId?: string;
 };
 
 function text(formData: FormData, key: string) {
@@ -103,6 +104,9 @@ export async function rescheduleManualBooking(
   revalidatePath("/operator/bookings");
   revalidatePath(`/operator/bookings/${bookingId}`);
   revalidatePath(`/operator/bookings/${data}`);
+  if (text(formData, "calendar_mode") === "1") {
+    return { status: "success", bookingId: data };
+  }
   redirect(`/operator/bookings/${data}?operator=${encodeURIComponent(operator.id)}&rescheduled=1`);
 }
 

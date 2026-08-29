@@ -49,6 +49,7 @@ export default async function OperatorOnboardingPage({ searchParams }: PageProps
   if (active) redirect(`/operator/calendar?operator=${encodeURIComponent(active.id)}`);
 
   const rejected = (operators ?? []).find((operator) => operator.status === "REJECTED" || operator.deleted_at);
+  const suspended = (operators ?? []).find((operator) => operator.status === "SUSPENDED" && !operator.deleted_at);
   const pending = (operators ?? []).find((operator) => ["DRAFT", "PENDING_VERIFICATION"].includes(operator.status));
   const removedMembership = (memberships ?? []).some((membership) => membership.status === "REMOVED");
   const error = errorMessage(query.error);
@@ -66,7 +67,13 @@ export default async function OperatorOnboardingPage({ searchParams }: PageProps
           </Link>
         </header>
 
-        {rejected || removedMembership ? (
+        {suspended ? (
+          <section className="mt-12 rounded-3xl border border-violet-200 bg-white p-7 shadow-sm sm:p-10">
+            <span className="inline-flex rounded-full bg-violet-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-violet-700">Temporaneamente bloccato</span>
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight">Accesso sospeso</h1>
+            <p className="mt-3 text-sm leading-6 text-[#676B80]">L’amministratore ha sospeso temporaneamente il gestionale di <strong>{suspended.name}</strong>. I dati restano al sicuro e l’accesso tornerà disponibile quando verrà riattivato.</p>
+          </section>
+        ) : rejected || removedMembership ? (
           <section className="mt-12 rounded-3xl border border-rose-200 bg-white p-7 shadow-sm sm:p-10">
             <span className="inline-flex rounded-full bg-rose-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-rose-700">
               Rifiutato

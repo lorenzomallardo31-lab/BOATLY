@@ -6,8 +6,9 @@ import { redirect } from "next/navigation";
 import { requireOperatorWorkspaceContext } from "@/lib/operator/workspace-context";
 
 export type CustomerActionState = {
-  status: "idle" | "error";
+  status: "idle" | "error" | "success";
   code?: string;
+  customerId?: string;
 };
 
 function text(formData: FormData, key: string) {
@@ -75,6 +76,10 @@ export async function saveCustomer(
 
   revalidatePath("/operator/customers");
   revalidatePath(`/operator/customers/${data}`);
+  revalidatePath("/operator/calendar");
+  if (text(formData, "calendar_mode") === "1") {
+    return { status: "success", customerId: data };
+  }
   redirect(
     `/operator/customers/${data}?operator=${encodeURIComponent(operator.id)}&saved=1`,
   );
