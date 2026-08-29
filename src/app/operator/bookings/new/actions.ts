@@ -129,3 +129,67 @@ export async function createManualBooking(
   }
   redirect(`/operator/bookings/${data}?operator=${encodeURIComponent(operator.id)}&created=1`);
 }
+
+export async function createSimpleCalendarBooking(
+  _previousState: ManualBookingActionState,
+  formData: FormData,
+): Promise<ManualBookingActionState> {
+  const operatorId = text(formData, "operator_id");
+  const boatId = text(formData, "boat_id");
+  const date = text(formData, "date");
+  const startTime = text(formData, "start_time");
+  const endTime = text(formData, "end_time");
+  const passengerCount = Number(text(formData, "passenger_count"));
+  const customerName = text(formData, "customer_name");
+  const customerEmail = text(formData, "customer_email");
+  const customerPhone = text(formData, "customer_phone");
+  const operatorNote = text(formData, "operator_note");
+  const legalOfferingId = text(formData, "legal_offering_id") || null;
+
+  if (!operatorId || !boatId || !date || !startTime || !endTime || !customerName) {
+    return {
+      status: "error",
+      code: customerName ? "missing-fields" : "customer-name",
+    };
+  }
+
+  if (!Number.isInteger(passengerCount) || passengerCount <= 0) {
+    return { status: "error", code: "invalid-values" };
+  }
+
+  const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
+  const startsAt = zonedDateTimeToIso(`${date}T${startTime}`, operator.timezone);
+  const endsAt = zonedDateTimeToIso(`${date}T${endTime}`, operator.timezone);
+
+  if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) {
+    return { status: "error", code: "invalid-window" };
+  }
+
+  const { data, error } = await supabase.rpc(
+    "operator_create_simple_calendar_booking",
+    {
+      p_operator_id: operator.id,
+      p_boat_id: boatId,
+      p_starts_at: startsAt,
+      p_ends_at: endsAt,
+      p_passenger_count: passengerCount,
+      p_customer_name: customerName,
+      p_customer_email: customerEmail || null,
+      p_customer_phone: customerPhone || null,
+      p_total_cents: 0,
+      p_operator_note: operatorNote || null,
+      p_legal_offering_id: legalOfferingId,
+    },
+  );
+
+  if (error || typeof data !== "string") {
+    return {
+      status: "error",
+      code: error ? errorCode(error.message) : "save-failed",
+    };
+  }
+
+  revalidatePath("/operator/dashboard");
+  revalidatePath("/operator/calendar");
+  return { status: "success", bookingId: data };
+}

@@ -123,6 +123,29 @@ function scheduleHref(operatorId: string, start: string) {
   return `/operator/calendar?${params.toString()}`;
 }
 
+function toScheduleDay(key: string, timezone: string, today: string): ScheduleDay {
+  const bounds = zonedDayBounds(key, timezone);
+  if (!bounds) throw new Error("Unable to resolve a planning day.");
+  const date = dateFromKey(key);
+  const weekdayIndex = date.getUTCDay();
+  return {
+    key,
+    start: bounds.start,
+    end: bounds.end,
+    dayNumber: String(date.getUTCDate()),
+    weekday: new Intl.DateTimeFormat("it-IT", {
+      weekday: "short",
+      timeZone: "UTC",
+    }).format(date).replace(".", ""),
+    month: new Intl.DateTimeFormat("it-IT", {
+      month: "short",
+      timeZone: "UTC",
+    }).format(date).replace(".", ""),
+    weekend: weekdayIndex === 0 || weekdayIndex === 6,
+    today: key === today,
+  };
+}
+
 export default async function OperatorCalendarPage({ searchParams }: CalendarPageProps) {
   const query = await searchParams;
   const { supabase, operator, membership } =
@@ -135,16 +158,25 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
   const endDate = dateKeys.at(-1)!;
   const firstBounds = zonedDayBounds(startDate, operator.timezone);
   const lastBounds = zonedDayBounds(endDate, operator.timezone);
+  const todayBounds = zonedDayBounds(today, operator.timezone);
 
-  if (!firstBounds || !lastBounds) {
+  if (!firstBounds || !lastBounds || !todayBounds) {
     throw new Error("Unable to resolve planning boundaries.");
   }
+
+  // The calendar can be browsed away from today, but the operational
+  // dashboard must remain current without a second client-side request.
+  const queryStartsAt = firstBounds.start < todayBounds.start
+    ? firstBounds.start
+    : todayBounds.start;
+  const queryEndsAt = lastBounds.end > todayBounds.end
+    ? lastBounds.end
+    : todayBounds.end;
 
   const [
     { data: boatData, error: boatsError },
     { data: bookingData, error: bookingsError },
     { data: occupancyData, error: occupanciesError },
-    { data: customerData, error: customersError },
     { data: locationData, error: locationsError },
   ] = await Promise.all([
     supabase
@@ -158,23 +190,17 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       .select("id, boat_id, operator_customer_id, legal_offering_id, pickup_location_id, source, reference, status, starts_at, ends_at, passenger_count, customer_snapshot, operator_note, customer_total_cents_snapshot")
       .eq("operator_id", operator.id)
       .in("status", ACTIVE_BOOKING_STATUSES)
-      .lt("starts_at", lastBounds.end)
-      .gt("ends_at", firstBounds.start)
+      .lt("starts_at", queryEndsAt)
+      .gt("ends_at", queryStartsAt)
       .order("starts_at"),
     supabase
       .from("boat_occupancies")
       .select("id, boat_id, booking_id, occupancy_type, starts_at, ends_at, title, notes")
       .eq("operator_id", operator.id)
       .eq("is_active", true)
-      .lt("starts_at", lastBounds.end)
-      .gt("ends_at", firstBounds.start)
+      .lt("starts_at", queryEndsAt)
+      .gt("ends_at", queryStartsAt)
       .order("starts_at"),
-    supabase
-      .from("operator_customers")
-      .select("id, display_name, email, phone, country_code, date_of_birth, notes")
-      .eq("operator_id", operator.id)
-      .order("display_name")
-      .limit(1000),
     supabase
       .from("operator_locations")
       .select("id, name, city")
@@ -183,50 +209,46 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       .order("is_primary", { ascending: false }),
   ]);
 
-  if (boatsError || bookingsError || occupanciesError || customersError || locationsError) {
+  if (boatsError || bookingsError || occupanciesError || locationsError) {
     throw new Error("Unable to load operator planning.");
   }
 
   const bookings = (bookingData ?? []) as BookingRow[];
   const occupancies = (occupancyData ?? []) as OccupancyRow[];
+  const boatIds = (boatData ?? []).map((boat) => boat.id);
+  const customerIds = [...new Set(bookings.map((booking) => booking.operator_customer_id))];
+  const [
+    { data: customerData, error: customersError },
+    { data: offeringData, error: offeringsError },
+  ] = await Promise.all([
+    customerIds.length
+      ? supabase
+          .from("operator_customers")
+          .select("id, display_name, email, phone, country_code, date_of_birth, notes")
+          .eq("operator_id", operator.id)
+          .in("id", customerIds)
+      : Promise.resolve({ data: [] as CustomerRow[], error: null }),
+    boatIds.length
+      ? supabase
+          .from("boat_legal_offerings")
+          .select("id, boat_id, legal_type, skipper_mode")
+          .in("boat_id", boatIds)
+          .eq("is_active", true)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (customersError || offeringsError) {
+    throw new Error("Unable to load planning relations.");
+  }
   const customers = (customerData ?? []) as CustomerRow[];
   const customerById = new Map(customers.map((customer) => [customer.id, customer]));
-  const boatIds = (boatData ?? []).map((boat) => boat.id);
-  const { data: offeringData, error: offeringsError } = boatIds.length
-    ? await supabase
-        .from("boat_legal_offerings")
-        .select("id, boat_id, legal_type, skipper_mode")
-        .in("boat_id", boatIds)
-        .eq("is_active", true)
-    : { data: [], error: null };
-  if (offeringsError) throw new Error("Unable to load boat operating formulas.");
   const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
   const occupancyBookingIds = new Set(
     occupancies.flatMap((occupancy) => occupancy.booking_id ? [occupancy.booking_id] : []),
   );
 
-  const days: ScheduleDay[] = dateKeys.map((key) => {
-    const bounds = zonedDayBounds(key, operator.timezone);
-    if (!bounds) throw new Error("Unable to resolve a planning day.");
-    const date = dateFromKey(key);
-    const weekdayIndex = date.getUTCDay();
-    return {
-      key,
-      start: bounds.start,
-      end: bounds.end,
-      dayNumber: String(date.getUTCDate()),
-      weekday: new Intl.DateTimeFormat("it-IT", {
-        weekday: "short",
-        timeZone: "UTC",
-      }).format(date).replace(".", ""),
-      month: new Intl.DateTimeFormat("it-IT", {
-        month: "short",
-        timeZone: "UTC",
-      }).format(date).replace(".", ""),
-      weekend: weekdayIndex === 0 || weekdayIndex === 6,
-      today: key === today,
-    };
-  });
+  const days = dateKeys.map((key) => toScheduleDay(key, operator.timezone, today));
+  const todayDay = days.find((day) => day.key === today)
+    ?? toScheduleDay(today, operator.timezone, today);
 
   const boats: ScheduleBoat[] = (boatData ?? []).map((boat) => ({
     id: boat.id,
@@ -389,6 +411,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
             <OperatorSchedule
               operatorId={operator.id}
               timezone={operator.timezone}
+              today={todayDay}
               days={days}
               boats={boats}
               items={items}
@@ -396,12 +419,6 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
                 id: offering.id,
                 boatId: offering.boat_id,
                 label: `${offering.legal_type} · ${offering.skipper_mode}`,
-              }))}
-              customers={customers.map((customer) => ({
-                id: customer.id,
-                name: customer.display_name,
-                email: customer.email,
-                phone: customer.phone,
               }))}
               locations={(locationData ?? []).map((location) => ({
                 id: location.id,

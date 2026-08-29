@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
-  createManualBooking,
+  createSimpleCalendarBooking,
   type ManualBookingActionState,
 } from "@/app/operator/bookings/new/actions";
 
@@ -14,7 +14,6 @@ type Props = {
   dayKey: string;
   passengerLimit: number | null;
   offerings: Array<{ id: string; label: string }>;
-  customers: Array<{ id: string; name: string; email: string | null; phone: string | null }>;
 };
 
 const initialState: ManualBookingActionState = { status: "idle" };
@@ -30,12 +29,9 @@ const errors: Record<string, string> = {
   offering: "La formula operativa della barca non è disponibile.",
   location: "La sede operativa non è disponibile.",
   "customer-name": "Inserisci il nome del cliente.",
-  "customer-contact": "Inserisci almeno email o telefono.",
   "customer-email": "L’indirizzo email non è valido.",
   "customer-phone": "Il telefono deve contenere da 8 a 15 cifre.",
-  "customer-not-found": "Il cliente selezionato non esiste più.",
-  "customer-exists": "Email o telefono appartengono a un cliente già presente: selezionalo dall’elenco.",
-  "customer-conflict": "Email e telefono appartengono a clienti diversi.",
+  "customer-conflict": "Email e telefono appartengono a due persone diverse. Correggi uno dei contatti.",
   "customer-overlap": "Questo cliente ha già una prenotazione che si sovrappone, anche solo in parte.",
   "boat-overlap": "La barca è già occupata in questo intervallo, anche solo per una parte dell’orario.",
   "save-failed": "Prenotazione non salvata. Nessun dato parziale è stato creato.",
@@ -43,10 +39,10 @@ const errors: Record<string, string> = {
 
 const fieldClass = "min-h-11 w-full rounded-xl border border-[#D8D5E5] bg-white px-3 text-base outline-none focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/15 sm:text-sm";
 
-function SubmitButton({ disabled }: { disabled: boolean }) {
+function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={disabled || pending} className="min-h-12 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+    <button type="submit" disabled={pending} className="min-h-12 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
       {pending ? "Controllo disponibilità…" : "Crea prenotazione"}
     </button>
   );
@@ -58,26 +54,19 @@ export default function CalendarBookingForm({
   dayKey,
   passengerLimit,
   offerings,
-  customers,
 }: Props) {
-  const [state, action] = useActionState(createManualBooking, initialState);
-  const [mode, setMode] = useState<"EXISTING" | "NEW">(customers.length ? "EXISTING" : "NEW");
-  const [customerId, setCustomerId] = useState(customers[0]?.id ?? "");
+  const [state, action] = useActionState(createSimpleCalendarBooking, initialState);
   const error = state.code ? errors[state.code] ?? errors["save-failed"] : null;
-  const disabled = mode === "EXISTING" && !customerId;
 
   return (
     <form action={action} className="space-y-4">
-      <input type="hidden" name="calendar_mode" value="1" />
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="boat_id" value={boatId} />
       <input type="hidden" name="date" value={dayKey} />
-      <input type="hidden" name="customer_mode" value={mode} />
-      <input type="hidden" name="total" value="0" />
 
       {state.status === "success" ? (
         <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
-          Prenotazione creata. Barca, cliente e calendario sono aggiornati insieme.
+          Prenotazione creata. Il calendario e il cruscotto Oggi sono aggiornati insieme.
         </div>
       ) : null}
       {error ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium leading-6 text-rose-800">{error}</div> : null}
@@ -104,34 +93,23 @@ export default function CalendarBookingForm({
         </label>
       </div>
 
-      <div className="grid grid-cols-2 rounded-xl bg-[#F1F0F6] p-1">
-        <button type="button" disabled={!customers.length} onClick={() => setMode("EXISTING")} className={`min-h-11 rounded-lg text-sm font-semibold ${mode === "EXISTING" ? "bg-white text-[#4C3FC2] shadow-sm" : "text-[#676B80]"} disabled:opacity-40`}>Cliente presente</button>
-        <button type="button" onClick={() => setMode("NEW")} className={`min-h-11 rounded-lg text-sm font-semibold ${mode === "NEW" ? "bg-white text-[#4C3FC2] shadow-sm" : "text-[#676B80]"}`}>Nuovo cliente</button>
-      </div>
-
-      {mode === "EXISTING" ? (
-        <label className="grid gap-2 text-sm font-semibold">
-          Cliente *
-          <select name="operator_customer_id" required value={customerId} onChange={(event) => setCustomerId(event.target.value)} className={fieldClass}>
-            <option value="">Seleziona</option>
-            {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.email ? ` · ${customer.email}` : customer.phone ? ` · ${customer.phone}` : ""}</option>)}
-          </select>
-        </label>
-      ) : (
+      <div className="rounded-2xl border border-[#E2DFEB] bg-[#F9F8FC] p-4">
         <div className="grid gap-4 sm:grid-cols-3">
-          <label className="grid gap-2 text-sm font-semibold">Nome *<input name="customer_name" required minLength={2} maxLength={160} className={fieldClass} /></label>
-          <label className="grid gap-2 text-sm font-semibold">Email<input name="customer_email" type="email" maxLength={320} className={fieldClass} /></label>
-          <label className="grid gap-2 text-sm font-semibold">Telefono<input name="customer_phone" type="tel" className={fieldClass} /></label>
-          <p className="rounded-xl bg-[#EDE9FE] p-3 text-xs leading-5 text-[#4C3FC2] sm:col-span-3">Inserisci almeno email o telefono. Se appartiene già a un cliente, il salvataggio viene bloccato per evitare doppioni.</p>
+          <label className="grid gap-2 text-sm font-semibold">Nome cliente *<input name="customer_name" required minLength={2} maxLength={160} autoComplete="name" className={fieldClass} /></label>
+          <label className="grid gap-2 text-sm font-semibold">Telefono <span className="font-normal text-[#777285]">(facoltativo)</span><input name="customer_phone" type="tel" autoComplete="tel" className={fieldClass} /></label>
+          <label className="grid gap-2 text-sm font-semibold">Email <span className="font-normal text-[#777285]">(facoltativa)</span><input name="customer_email" type="email" maxLength={320} autoComplete="email" className={fieldClass} /></label>
         </div>
-      )}
+        <p className="mt-3 text-xs leading-5 text-[#676B80]">
+          Scrivi sempre il nome. Se aggiungi un contatto già noto, Boatly riconosce automaticamente la persona senza mostrarti lunghi elenchi.
+        </p>
+      </div>
 
       <label className="grid gap-2 text-sm font-semibold">
         Nota opzionale
         <textarea name="operator_note" rows={3} maxLength={5000} className={`${fieldClass} py-3`} placeholder="Itinerario, richieste, promemoria…" />
       </label>
 
-      <div className="flex justify-end"><SubmitButton disabled={disabled} /></div>
+      <div className="flex justify-end"><SubmitButton /></div>
     </form>
   );
 }

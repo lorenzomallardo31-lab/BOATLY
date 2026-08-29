@@ -11,6 +11,7 @@ import {
 } from "@/components/operator/calendar-cell-actions";
 import CustomerForm from "@/components/operator/customer-form";
 import RescheduleBookingForm from "@/components/operator/reschedule-booking-form";
+import { buildTodayDashboard } from "@/lib/operator/today-dashboard";
 
 export type ScheduleDay = {
   key: string;
@@ -64,11 +65,11 @@ export type ScheduleItem = {
 type OperatorScheduleProps = {
   operatorId: string;
   timezone: string;
+  today: ScheduleDay;
   days: ScheduleDay[];
   boats: ScheduleBoat[];
   items: ScheduleItem[];
   offerings: Array<{ id: string; boatId: string; label: string }>;
-  customers: Array<{ id: string; name: string; email: string | null; phone: string | null }>;
   locations: Array<{ id: string; label: string }>;
   canManageFleet: boolean;
 };
@@ -142,18 +143,181 @@ function cellAppearance(items: ScheduleItem[], active: boolean) {
   };
 }
 
+function TodayDashboard({
+  today,
+  boats,
+  items,
+  timezone,
+  onOpen,
+}: {
+  today: ScheduleDay;
+  boats: ScheduleBoat[];
+  items: ScheduleItem[];
+  timezone: string;
+  onOpen: (boatId: string) => void;
+}) {
+  const overview = useMemo(
+    () => buildTodayDashboard(items, boats, today),
+    [boats, items, today],
+  );
+  const boatById = useMemo(
+    () => new Map(boats.map((boat) => [boat.id, boat])),
+    [boats],
+  );
+  const itemById = useMemo(
+    () => new Map(items.map((item) => [item.id, item])),
+    [items],
+  );
+  const firstDeparture = overview.events.find((event) => event.kind === "DEPARTURE");
+  const lastReturn = overview.events.findLast((event) => event.kind === "RETURN");
+  const eventLabels = {
+    DEPARTURE: "Partenza",
+    RETURN: "Rientro",
+    IN_USE: "Già in uscita",
+    BLOCK: "Non disponibile",
+  } as const;
+
+  return (
+    <section className="border-b border-[#E2DFEB] bg-gradient-to-br from-[#17142C] via-[#211D3A] to-[#31285B] px-4 py-5 text-white sm:px-6 sm:py-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#BDB5FF]">
+            Cruscotto operativo · Oggi
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold capitalize">
+            {longDateLabel(today.key)}
+          </h2>
+          <p className="mt-2 text-sm text-[#D6D2E7]">
+            {firstDeparture || lastReturn
+              ? `${firstDeparture ? `Prima partenza ${timeLabel(firstDeparture.at, timezone)}` : "Nessuna partenza"} · ${lastReturn ? `ultimo rientro ${timeLabel(lastReturn.at, timezone)}` : "nessun rientro"}`
+              : "Nessun movimento programmato: la giornata è libera."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const firstItem = overview.bookings[0] ?? overview.blocks[0];
+            if (firstItem) onOpen(firstItem.boatId);
+          }}
+          disabled={overview.bookings.length === 0 && overview.blocks.length === 0}
+          className="min-h-11 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold transition hover:bg-white/15 disabled:cursor-default disabled:opacity-45"
+        >
+          Apri il primo impegno
+        </button>
+      </div>
+
+      <dl className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {[
+          ["Prenotazioni", overview.bookings.length],
+          ["Barche bloccate", overview.blockedBoatCount],
+          ["Clienti", overview.customerCount],
+          ["Senza telefono", overview.missingPhoneCount],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.08] p-3 sm:p-4">
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-[#BDB8CE]">{label}</dt>
+            <dd className="mt-1 text-2xl font-semibold">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-5 grid gap-3 xl:grid-cols-[1.4fr_0.8fr]">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold">Agenda di oggi</h3>
+            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-[#D6D2E7]">
+              {overview.events.length} movimenti
+            </span>
+          </div>
+          {overview.events.length === 0 ? (
+            <p className="mt-4 rounded-xl border border-dashed border-white/20 p-4 text-sm text-[#D6D2E7]">
+              Nessuna partenza, rientro o indisponibilità per oggi.
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {overview.events.map((event) => {
+                const item = itemById.get(event.itemId);
+                const boat = boatById.get(event.boatId);
+                const isBlock = event.kind === "BLOCK";
+                return (
+                  <button
+                    key={event.id}
+                    type="button"
+                    onClick={() => onOpen(event.boatId)}
+                    className={`min-h-[88px] rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${
+                      isBlock
+                        ? "border-rose-300/25 bg-rose-300/10 hover:bg-rose-300/15"
+                        : "border-emerald-300/20 bg-emerald-300/10 hover:bg-emerald-300/15"
+                    }`}
+                  >
+                    <span className="flex items-center justify-between gap-3">
+                      <span className={`text-[10px] font-bold uppercase tracking-wide ${isBlock ? "text-rose-200" : "text-emerald-200"}`}>
+                        {eventLabels[event.kind]}
+                      </span>
+                      <span className="text-sm font-semibold">{timeLabel(event.at, timezone)}</span>
+                    </span>
+                    <span className="mt-1 block truncate text-sm font-semibold">{boat?.name ?? "Imbarcazione"}</span>
+                    <span className="mt-1 block truncate text-xs text-[#D6D2E7]">
+                      {item?.kind === "BOOKING"
+                        ? `${item.customer ?? "Cliente"}${item.passengers ? ` · ${item.passengers} pax` : ""}`
+                        : item?.notes || item?.title || "Indisponibilità"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold">Da controllare</h3>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${overview.alerts.length ? "bg-amber-300/15 text-amber-100" : "bg-emerald-300/15 text-emerald-100"}`}>
+              {overview.alerts.length || "Tutto ok"}
+            </span>
+          </div>
+          {overview.alerts.length === 0 ? (
+            <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4">
+              <p className="text-sm font-semibold text-emerald-100">Nessuna criticità operativa</p>
+              <p className="mt-1 text-xs leading-5 text-[#D6D2E7]">Orari, flotta e disponibilità risultano coerenti.</p>
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {overview.alerts.slice(0, 6).map((alert) => (
+                <button
+                  key={alert.id}
+                  type="button"
+                  onClick={() => onOpen(alert.boatId)}
+                  className={`w-full rounded-xl border p-3 text-left ${alert.tone === "danger" ? "border-rose-300/25 bg-rose-300/10" : "border-amber-300/20 bg-amber-300/10"}`}
+                >
+                  <span className="block text-sm font-semibold">{alert.title}</span>
+                  <span className="mt-1 block text-xs text-[#D6D2E7]">{alert.detail}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function OperatorSchedule({
   operatorId,
   timezone,
+  today,
   days,
   boats,
   items,
   offerings,
-  customers,
   locations,
   canManageFleet,
 }: OperatorScheduleProps) {
   const [selected, setSelected] = useState<SelectedCell | null>(null);
+
+  const indexedDays = useMemo(
+    () => days.some((day) => day.key === today.key) ? days : [...days, today],
+    [days, today],
+  );
 
   const itemsByCell = useMemo(() => {
     const result = new Map<string, ScheduleItem[]>();
@@ -162,7 +326,7 @@ export default function OperatorSchedule({
     for (const item of items) {
       let overlappingDays = daysByOverlap.get(item.id);
       if (!overlappingDays) {
-        overlappingDays = days.filter((day) => overlapsDay(item, day));
+        overlappingDays = indexedDays.filter((day) => overlapsDay(item, day));
         daysByOverlap.set(item.id, overlappingDays);
       }
 
@@ -175,13 +339,13 @@ export default function OperatorSchedule({
     }
 
     return result;
-  }, [days, items]);
+  }, [indexedDays, items]);
 
   const selectedBoat = selected
     ? boats.find((boat) => boat.id === selected.boatId) ?? null
     : null;
   const selectedDay = selected
-    ? days.find((day) => day.key === selected.dayKey) ?? null
+    ? indexedDays.find((day) => day.key === selected.dayKey) ?? null
     : null;
   const selectedItems = selected
     ? itemsByCell.get(cellKey(selected.boatId, selected.dayKey)) ?? []
@@ -190,6 +354,13 @@ export default function OperatorSchedule({
 
   return (
     <>
+      <TodayDashboard
+        today={today}
+        boats={boats}
+        items={items}
+        timezone={timezone}
+        onOpen={(boatId) => setSelected({ boatId, dayKey: today.key })}
+      />
       <div className="max-h-[70vh] overflow-auto overscroll-contain">
         <table className="min-w-max border-separate border-spacing-0 text-left">
           <thead>
@@ -362,7 +533,6 @@ export default function OperatorSchedule({
                           dayKey={selectedDay.key}
                           passengerLimit={selectedBoat.passengerLimit}
                           offerings={offerings.filter((offering) => offering.boatId === selectedBoat.id)}
-                          customers={customers}
                         />
                       </div>
                     </details>

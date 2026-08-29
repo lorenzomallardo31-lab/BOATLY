@@ -146,7 +146,11 @@ workspace. Ogni comando richiede una motivazione ed è registrato in
 ## Gestionale reale
 
 - calendario a matrice con 45 giorni e imbarcazioni in verticale;
+- cruscotto operativo Oggi con partenze, rientri, blocchi, anomalie e apertura
+  diretta della relativa casella del calendario;
 - prenotazioni manuali atomiche e protezione DB contro sovrapposizioni;
+- inserimento cliente unico: nome obbligatorio, contatti facoltativi e
+  riconoscimento automatico dell'identità tramite email o telefono;
 - CRM modificabile, identità univoche e import CSV fino a 500 righe;
 - flotta con soli stati Disponibile/Non disponibile, servizi, dotazioni,
   periodi, blocchi e prezzi;
@@ -200,8 +204,9 @@ ruoli.
    registrazione devono riportare al gestionale senza mostrare contenuti.
 10. Registrazione Ops → nome attività → `Da verificare` → conferma del solo
     fondatore → apertura diretta del calendario.
-11. Calendario reale → matrice 45 giorni, popup booking e saldo, creazione dalla
-    cella, conflitto parziale bloccato.
+11. Calendario reale → verificare cruscotto Oggi, matrice 45 giorni, apertura
+    delle caselle da agenda e avvisi, creazione con nome cliente e conflitto
+    parziale bloccato.
 12. Finanza reale → acconto/saldo/cauzione, sovraincasso bloccato, storno
     Owner/Manager e CSV mensile.
 13. Login fondatore → `/admin/operators`; confermare, rifiutare ed eliminare un
