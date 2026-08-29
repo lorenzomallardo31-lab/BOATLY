@@ -1,88 +1,151 @@
 import Link from "next/link";
 
 import OperatorNav from "@/components/operator/operator-nav";
+import { isDateKey, todayInTimeZone } from "@/lib/operator/date-time";
 import { requireOperatorWorkspaceContext } from "@/lib/operator/workspace-context";
 
-import { createManualBooking } from "./actions";
+import { ManualBookingForm } from "./manual-booking-form";
 
-type PageProps = { searchParams: Promise<{ operator?: string; error?: string }> };
+type PageProps = {
+  searchParams: Promise<{
+    operator?: string;
+    date?: string;
+    boat?: string;
+    customer?: string;
+  }>;
+};
 
-function errorLabel(error?: string) {
-  const labels: Record<string, string> = {
-    "missing-fields": "Compila tutti i campi obbligatori.",
-    "invalid-values": "Controlla passeggeri e importo.",
-    "operator-inactive": "Le prenotazioni manuali reali richiedono un operatore ACTIVE.",
-    "boat-inactive": "La barca deve essere ACTIVE.",
-    overlap: "La barca è già occupata in questo intervallo.",
-    passengers: "Il numero di passeggeri supera il limite della barca.",
-    "save-failed": "Non è stato possibile creare la prenotazione.",
+function offeringLabel(legalType: string, skipperMode: string) {
+  const legalLabels: Record<string, string> = {
+    LOCAZIONE: "Locazione",
+    NOLEGGIO: "Noleggio",
+    CHARTER: "Charter",
   };
-  return error ? labels[error] ?? "Operazione non riuscita." : null;
+  const skipperLabels: Record<string, string> = {
+    WITHOUT_SKIPPER: "senza skipper",
+    WITH_SKIPPER: "con skipper",
+    OPTIONAL_SKIPPER: "skipper opzionale",
+  };
+  return `${legalLabels[legalType] ?? legalType} · ${skipperLabels[skipperMode] ?? skipperMode}`;
 }
 
 export default async function NewManualBookingPage({ searchParams }: PageProps) {
   const query = await searchParams;
   const { supabase, operator } = await requireOperatorWorkspaceContext(query.operator);
 
-  const [{ data: boats, error: boatsError }, { data: locations, error: locationsError }] = await Promise.all([
-    supabase.from("boats").select("id, name, status, operator_passenger_limit").eq("operator_id", operator.id).eq("status", "ACTIVE").order("name"),
-    supabase.from("operator_locations").select("id, name, city").eq("operator_id", operator.id).eq("is_active", true).order("is_primary", { ascending: false }),
+  const [
+    { data: boats, error: boatsError },
+    { data: locations, error: locationsError },
+    { data: customers, error: customersError },
+  ] = await Promise.all([
+    supabase
+      .from("boats")
+      .select("id, name, status, operator_passenger_limit")
+      .eq("operator_id", operator.id)
+      .eq("status", "ACTIVE")
+      .order("name"),
+    supabase
+      .from("operator_locations")
+      .select("id, name, city")
+      .eq("operator_id", operator.id)
+      .eq("is_active", true)
+      .order("is_primary", { ascending: false }),
+    supabase
+      .from("operator_customers")
+      .select("id, display_name, email, phone")
+      .eq("operator_id", operator.id)
+      .order("display_name")
+      .limit(500),
   ]);
 
-  if (boatsError || locationsError) throw new Error("Unable to load manual booking options.");
+  if (boatsError || locationsError || customersError) {
+    throw new Error("Unable to load manual booking options.");
+  }
 
   const boatIds = (boats ?? []).map((boat) => boat.id);
   const { data: offerings, error: offeringsError } = boatIds.length
-    ? await supabase.from("boat_legal_offerings").select("id, boat_id, legal_type, skipper_mode").in("boat_id", boatIds).eq("is_active", true)
+    ? await supabase
+        .from("boat_legal_offerings")
+        .select("id, boat_id, legal_type, skipper_mode")
+        .in("boat_id", boatIds)
+        .eq("is_active", true)
     : { data: [], error: null };
 
   if (offeringsError) throw new Error("Unable to load legal offerings.");
-  const error = errorLabel(query.error);
-  const input = "w-full rounded-xl border border-[#DEE5E8] bg-white px-4 py-3 outline-none focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20";
+
+  const today = todayInTimeZone(operator.timezone);
+  const initialDate =
+    isDateKey(query.date) && query.date >= today ? query.date : today;
 
   return (
-    <main className="min-h-screen bg-[#FCFBF8] text-[#0B1F33]">
+    <main className="min-h-screen bg-[#F7F6FB] pb-28 text-[#171A2B] lg:pb-12">
       <OperatorNav operatorId={operator.id} operatorName={operator.name} />
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <Link href={`/operator/bookings?operator=${operator.id}`} className="text-sm font-semibold text-[#64748B]">← Torna alle prenotazioni</Link>
-        <div className="mt-5">
-          <p className="text-sm font-semibold text-[#14B8A6]">Off-platform booking</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight">Nuova prenotazione manuale</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748B]">Registra una prenotazione ricevuta fuori dal marketplace. Commissione Boatly: 0%.</p>
+      <div className="mx-auto max-w-5xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
+        <Link
+          href={`/operator/bookings?operator=${operator.id}`}
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-[#676B80] hover:text-[#4C3FC2]"
+        >
+          ← Torna alle prenotazioni
+        </Link>
+
+        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6D5DFB]">Prenotazione diretta</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Nuova prenotazione</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#676B80]">
+              Registra una richiesta ricevuta per telefono, WhatsApp o di persona. Boatly Ops verifica tutte le relazioni prima del salvataggio.
+            </p>
+          </div>
+          <span className="w-fit rounded-full bg-[#EDE9FE] px-3 py-2 text-xs font-bold text-[#4C3FC2]">
+            Commissione marketplace 0%
+          </span>
         </div>
 
-        {error ? <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div> : null}
-        {operator.status !== "ACTIVE" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Il workspace è {operator.status}. Il form è pronto ma il database impedirà booking reali finché l&apos;operatore non sarà ACTIVE.</div> : null}
+        {operator.status !== "ACTIVE" ? (
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            Il workspace è <strong>{operator.status}</strong>. Puoi consultare i dati, ma le nuove prenotazioni saranno abilitate solo dopo l’attivazione.
+          </div>
+        ) : null}
 
-        <form action={createManualBooking} className="mt-6 space-y-6 rounded-3xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-          <input type="hidden" name="operator_id" value={operator.id} />
-
-          <section>
-            <h2 className="text-xl font-semibold">Prenotazione</h2>
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              <div><label className="mb-2 block text-sm font-medium">Barca *</label><select name="boat_id" required className={input}><option value="">Seleziona</option>{(boats ?? []).map((boat) => <option key={boat.id} value={boat.id}>{boat.name}{boat.operator_passenger_limit ? ` · max ${boat.operator_passenger_limit}` : ""}</option>)}</select></div>
-              <div><label className="mb-2 block text-sm font-medium">Offerta legale *</label><select name="legal_offering_id" required className={input}><option value="">Seleziona</option>{(offerings ?? []).map((offering) => <option key={offering.id} value={offering.id}>{offering.legal_type} · {offering.skipper_mode}</option>)}</select><p className="mt-2 text-xs text-[#64748B]">L&apos;offerta deve appartenere alla barca selezionata; il DB verifica la coerenza.</p></div>
-              <div><label className="mb-2 block text-sm font-medium">Sede di partenza *</label><select name="pickup_location_id" required className={input}><option value="">Seleziona</option>{(locations ?? []).map((location) => <option key={location.id} value={location.id}>{location.name}{location.city ? ` · ${location.city}` : ""}</option>)}</select></div>
-              <div><label className="mb-2 block text-sm font-medium">Passeggeri *</label><input name="passenger_count" type="number" min={1} required className={input} /></div>
-              <div><label className="mb-2 block text-sm font-medium">Inizio *</label><input name="starts_at" type="datetime-local" required className={input} /></div>
-              <div><label className="mb-2 block text-sm font-medium">Fine *</label><input name="ends_at" type="datetime-local" required className={input} /></div>
-              <div><label className="mb-2 block text-sm font-medium">Totale concordato (€) *</label><input name="total" inputMode="decimal" required placeholder="350,00" className={input} /></div>
-            </div>
+        {(boats ?? []).length === 0 ? (
+          <section className="mt-7 rounded-3xl border border-dashed border-[#B8B2D7] bg-white p-8 text-center">
+            <h2 className="text-xl font-semibold">Prima serve una barca attiva</h2>
+            <p className="mt-2 text-sm text-[#676B80]">Aggiungi o attiva un’imbarcazione dalla flotta.</p>
+            <Link href={`/operator/fleet?operator=${operator.id}`} className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-[#171A2B] px-5 text-sm font-semibold text-white">
+              Apri la flotta
+            </Link>
           </section>
-
-          <section className="border-t border-[#DEE5E8] pt-6">
-            <h2 className="text-xl font-semibold">Cliente</h2>
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              <div><label className="mb-2 block text-sm font-medium">Nome / denominazione *</label><input name="customer_name" required className={input} /></div>
-              <div><label className="mb-2 block text-sm font-medium">Email</label><input name="customer_email" type="email" className={input} /></div>
-              <div><label className="mb-2 block text-sm font-medium">Telefono</label><input name="customer_phone" className={input} /></div>
-            </div>
-            <div className="mt-5"><label className="mb-2 block text-sm font-medium">Nota operatore</label><textarea name="operator_note" rows={3} className={input} /></div>
-          </section>
-
-          <div className="rounded-2xl bg-[#F1F5F4] p-4 text-sm leading-6 text-[#475569]">La prenotazione viene registrata come <strong>MANUAL + CONFIRMED</strong>, crea immediatamente l&apos;occupancy e blocca sovrapposizioni. Il pagamento resta esterno a Boatly.</div>
-          <button type="submit" className="rounded-xl bg-[#14B8A6] px-6 py-3 text-sm font-semibold text-white">Registra prenotazione</button>
-        </form>
+        ) : (
+          <div className="mt-7">
+            <ManualBookingForm
+              operatorId={operator.id}
+              operatorActive={operator.status === "ACTIVE"}
+              boats={(boats ?? []).map((boat) => ({
+                id: boat.id,
+                name: boat.name,
+                passengerLimit: boat.operator_passenger_limit,
+              }))}
+              offerings={(offerings ?? []).map((offering) => ({
+                id: offering.id,
+                boatId: offering.boat_id,
+                label: offeringLabel(offering.legal_type, offering.skipper_mode),
+              }))}
+              customers={(customers ?? []).map((customer) => ({
+                id: customer.id,
+                name: customer.display_name,
+                email: customer.email,
+                phone: customer.phone,
+              }))}
+              locations={(locations ?? []).map((location) => ({
+                id: location.id,
+                label: `${location.name}${location.city ? ` · ${location.city}` : ""}`,
+              }))}
+              initialDate={initialDate}
+              initialBoatId={query.boat}
+              initialCustomerId={query.customer}
+            />
+          </div>
+        )}
       </div>
     </main>
   );

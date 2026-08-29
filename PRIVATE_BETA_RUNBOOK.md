@@ -17,6 +17,13 @@ della flotta, aggiornare note CRM, analizzare ricavi e scaricare un CSV
 dimostrativo. Nessuna azione interroga o modifica operatori, clienti, pagamenti
 o prenotazioni reali.
 
+Il gestionale persistente è disponibile su `/operator`. Un noleggiatore che ha
+ricevuto l’accesso beta può creare il proprio account da `/sign-up`, completare
+l’onboarding e inviare il fascicolo. Il workspace resta `DRAFT` o
+`PENDING_VERIFICATION` finché un amministratore Boatly non lo approva; solo lo
+stato `ACTIVE` abilita prenotazioni, CRM e finanza operative. I dati reali sono
+multi-tenant su Supabase e sincronizzati tra dispositivi.
+
 Il modulo di nuova prenotazione accetta sia clienti già presenti sia un nuovo
 nominativo inserito manualmente. In quest'ultimo caso nome, email e telefono
 vengono trasformati automaticamente in una nuova scheda CRM collegata al
@@ -103,8 +110,9 @@ ruotare `BETA_ACCESS_TOKEN` su Vercel e creare un nuovo deployment. Tutti i
 cookie di invito precedenti diventano automaticamente non validi.
 
 Gli utenti che hanno già creato e confermato un account continuano ad accedere
-tramite login. Per revocare anche un singolo account occorre disabilitarlo o
-eliminarlo in Supabase Auth dopo avere valutato i dati associati.
+tramite login. Per sospendere un’attività usare prima il lifecycle in
+`/admin/operators/[id]`; per revocare anche l’identità occorre poi disabilitare
+le sessioni o l’utente in Supabase Auth, dopo avere valutato i dati associati.
 
 ## Percorsi tecnici volutamente raggiungibili senza invito
 
@@ -127,6 +135,25 @@ assegnato esclusivamente lato database. L'account del fondatore deve accedere
 da `/sign-in`; la card `Boatly Admin` appare in `/account` solo quando esiste un
 ruolo valido in `platform_user_roles`.
 
+La coda `/admin/verifications` approva ogni nuovo noleggiatore. Il control center
+`/admin/operators/[id]` consente a `SUPER_ADMIN`/`ADMIN` di correggere profilo,
+sede, dati legali e membri, oltre a sospendere o riattivare il workspace. Ogni
+comando richiede una motivazione ed è registrato in `audit_logs`.
+
+## Gestionale reale
+
+- calendario a matrice con 45 giorni e imbarcazioni in verticale;
+- prenotazioni manuali atomiche e protezione DB contro sovrapposizioni;
+- CRM modificabile, identità univoche e import CSV fino a 500 righe;
+- flotta, disponibilità, extra, foto, prezzi e pubblicazione;
+- riprogrammazione immutabile delle prenotazioni prive di movimenti attivi;
+- team con inviti email-bound, ruoli e lifecycle;
+- registro off-platform per acconti, saldi, cauzioni e rimborsi;
+- storni append-only, saldi in calendario e CSV mensile per il commercialista.
+
+Il registro manuale non muove denaro e non sostituisce Stripe. Le cauzioni sono
+separate dai ricavi; sovraincassi e rimborsi eccessivi sono bloccati dal DB.
+
 ## Protezioni della beta
 
 - `robots.txt` blocca ogni crawler;
@@ -140,11 +167,12 @@ ruolo valido in `platform_user_roles`.
 ## Rotte marketplace sospese
 
 Con `MARKETPLACE_ENABLED=false`, `/`, `/cerca`, `/search`, `/barche`,
-`/come-funziona`, `/checkout`, `/prenotazioni` e `/sign-up` non rendono più il
-marketplace. Le visite GET vengono portate a `/demo-gestionale`; eventuali POST
-ricevono `404 marketplace-offline`. I pulsanti dal gestionale verso il
-marketplace sono rimossi. `/admin`, `/operator`, `/account` e il login restano
-disponibili, ma continuano a richiedere i rispettivi account e ruoli.
+`/come-funziona`, `/checkout` e `/prenotazioni` non rendono più il marketplace.
+Le visite GET vengono portate a `/demo-gestionale`; eventuali POST ricevono
+`404 marketplace-offline`. `/sign-up` è invece la registrazione Boatly Ops e
+resta raggiungibile solo da chi ha già superato il cancello beta.
+`/admin`, `/operator`, `/account` e il login richiedono i rispettivi account e
+ruoli.
 
 ## Checklist dopo ogni rilascio
 
@@ -166,10 +194,16 @@ disponibili, ma continuano a richiedere i rispettivi account e ruoli.
    prenotazioni collegate.
 9. Marketplace → `/`, ricerca, schede barca, checkout, prenotazioni cliente e
    registrazione devono riportare al gestionale senza mostrare contenuti.
-10. Login fondatore → account → accesso `/admin` e `/operator`.
-11. `robots.txt` → `Disallow: /`.
-12. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
-13. Stripe → chiavi e pagamenti esclusivamente TEST.
-14. Telefono → configurazione iniziale, barra gestionale inferiore, schede
+10. Registrazione Ops → onboarding → stato pendente → approvazione admin →
+    workspace ACTIVE.
+11. Calendario reale → matrice 45 giorni, popup booking e saldo, creazione dalla
+    cella, conflitto parziale bloccato.
+12. Finanza reale → acconto/saldo/cauzione, sovraincasso bloccato, storno
+    Owner/Manager e CSV mensile.
+13. Login fondatore → account → accesso `/admin` e `/operator`.
+14. `robots.txt` → `Disallow: /`.
+15. Header globale → `X-Robots-Tag: noindex, nofollow, noarchive`.
+16. Stripe → chiavi e pagamenti esclusivamente TEST.
+17. Telefono → configurazione iniziale, barra gestionale inferiore, schede
    booking e modali della flotta utilizzabili
    senza zoom o scorrimento orizzontale della pagina.

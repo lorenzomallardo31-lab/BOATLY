@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import OperatorNav from "@/components/operator/operator-nav";
 import { createClient } from "@/lib/supabase/server";
 
 type FleetPageProps = {
@@ -342,34 +343,11 @@ export default async function FleetPage({
     );
 
   return (
-    <main className="min-h-screen bg-[#FCFBF8] px-4 py-8 text-[#0B1F33] sm:px-6 sm:py-10">
+    <main className="min-h-screen bg-[#F7F6FB] pb-28 text-[#171A2B] lg:pb-12">
 
-      <div className="mx-auto max-w-6xl">
+      <OperatorNav operatorId={selectedOperator.id} operatorName={selectedOperator.name} />
 
-        <header className="flex flex-wrap items-center justify-between gap-4">
-
-          <div>
-            <Link
-              href="/"
-              className="text-2xl font-bold tracking-tight"
-            >
-              Boatly
-            </Link>
-
-            <p className="mt-1 text-sm text-[#64748B]">
-              Fleet Management
-            </p>
-          </div>
-
-          <Link
-            href="/account"
-            className="text-sm font-medium text-[#64748B] hover:text-[#0B1F33]"
-          >
-            Il tuo account
-          </Link>
-
-        </header>
-
+      <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
 
         {params.created === "1" ? (
           <div className="mt-8 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 p-4 text-sm">

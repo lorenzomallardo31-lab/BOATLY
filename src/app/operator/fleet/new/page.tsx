@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import OperatorNav from "@/components/operator/operator-nav";
 import { createClient } from "@/lib/supabase/server";
 
 import { createBoatDraft } from "./actions";
@@ -54,6 +55,12 @@ function errorMessage(
 
     case "invalid-location":
       return "Seleziona una sede operativa valida.";
+
+    case "invalid-engine-power":
+      return "Inserisci una potenza motore valida e maggiore di zero.";
+
+    case "invalid-license-required":
+      return "Indica se per condurre la barca è richiesta la patente.";
 
     case "invalid-internal-code":
       return "Il codice interno inserito è troppo lungo.";
@@ -286,42 +293,19 @@ export default async function NewBoatPage({
     );
 
   const inputClassName =
-    "w-full rounded-xl border border-[#DEE5E8] bg-white px-4 py-3 outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20";
+    "w-full rounded-xl border border-[#D8D5E5] bg-white px-4 py-3 outline-none transition focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/20";
 
   return (
-    <main className="min-h-screen bg-[#FCFBF8] px-4 py-8 text-[#0B1F33] sm:px-6 sm:py-10">
+    <main className="min-h-screen bg-[#F7F6FB] pb-28 text-[#171A2B] lg:pb-12">
 
-      <div className="mx-auto max-w-3xl">
+      <OperatorNav operatorId={selectedOperator.id} operatorName={selectedOperator.name} />
 
-        <header className="flex flex-wrap items-center justify-between gap-4">
+      <div className="mx-auto max-w-3xl px-4 py-7 sm:px-6 sm:py-9">
 
-          <div>
-            <Link
-              href="/"
-              className="text-2xl font-bold tracking-tight"
-            >
-              Boatly
-            </Link>
+        <div>
 
-            <p className="mt-1 text-sm text-[#64748B]">
-              Fleet Management
-            </p>
-          </div>
-
-          <Link
-            href={`/operator/fleet?operator=${selectedOperator.id}`}
-            className="text-sm font-medium text-[#64748B] hover:text-[#0B1F33]"
-          >
-            Torna alla flotta
-          </Link>
-
-        </header>
-
-
-        <div className="mt-10">
-
-          <p className="text-sm font-semibold text-[#14B8A6]">
-            Nuova barca
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6D5DFB]">
+            Flotta · Nuova barca
           </p>
 
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -329,8 +313,9 @@ export default async function NewBoatPage({
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-[#64748B]">
-            Iniziamo dalle informazioni essenziali.
-            La barca verrà creata come bozza e potrai completarla nei passaggi successivi.
+            Nome, cavalli e obbligo di patente sono gli unici dati obbligatori.
+            La barca verrà salvata come bozza: potrai completare scheda, foto,
+            dotazioni, extra, prezzi e disponibilità nei passaggi successivi.
           </p>
 
         </div>
@@ -361,8 +346,8 @@ export default async function NewBoatPage({
 
           <section className="rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm">
 
-            <p className="text-sm font-semibold text-[#14B8A6]">
-              Informazioni iniziali
+            <p className="text-sm font-semibold text-[#6D5DFB]">
+              Dati obbligatori
             </p>
 
             <div className="mt-6 space-y-5">
@@ -388,6 +373,59 @@ export default async function NewBoatPage({
                   }
                 />
 
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="engine_power_hp"
+                    className="mb-2 block text-sm font-medium"
+                  >
+                    Potenza motore (CV) *
+                  </label>
+
+                  <input
+                    id="engine_power_hp"
+                    name="engine_power_hp"
+                    type="number"
+                    min="0.1"
+                    max="100000"
+                    step="0.1"
+                    inputMode="decimal"
+                    required
+                    placeholder="Es. 40"
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="license_required"
+                    className="mb-2 block text-sm font-medium"
+                  >
+                    Patente nautica richiesta? *
+                  </label>
+
+                  <select
+                    id="license_required"
+                    name="license_required"
+                    required
+                    defaultValue=""
+                    className={inputClassName}
+                  >
+                    <option value="" disabled>
+                      Seleziona una risposta
+                    </option>
+                    <option value="false">No, non è richiesta</option>
+                    <option value="true">Sì, è richiesta</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border-t border-[#ECEAF1] pt-5">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#676B80]">
+                  Dati facoltativi
+                </p>
               </div>
 
 
@@ -424,13 +462,12 @@ export default async function NewBoatPage({
                   htmlFor="boat_type_id"
                   className="mb-2 block text-sm font-medium"
                 >
-                  Tipo di barca *
+                  Tipo di barca
                 </label>
 
                 <select
                   id="boat_type_id"
                   name="boat_type_id"
-                  required
                   defaultValue=""
                   className={
                     inputClassName
@@ -439,9 +476,8 @@ export default async function NewBoatPage({
 
                   <option
                     value=""
-                    disabled
                   >
-                    Seleziona il tipo
+                    Da definire
                   </option>
 
                   {boatTypes.map(
@@ -472,13 +508,12 @@ export default async function NewBoatPage({
                   htmlFor="primary_location_id"
                   className="mb-2 block text-sm font-medium"
                 >
-                  Sede principale *
+                  Sede principale
                 </label>
 
                 <select
                   id="primary_location_id"
                   name="primary_location_id"
-                  required
                   defaultValue={
                     locations.find(
                       (location) =>
@@ -492,9 +527,8 @@ export default async function NewBoatPage({
 
                   <option
                     value=""
-                    disabled
                   >
-                    Seleziona la sede
+                    Da definire
                   </option>
 
                   {locations.map(
@@ -538,7 +572,7 @@ export default async function NewBoatPage({
 
             <button
               type="submit"
-              className="rounded-xl bg-[#14B8A6] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+              className="rounded-xl bg-[#6D5DFB] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#5849DE]"
             >
               Crea barca
             </button>

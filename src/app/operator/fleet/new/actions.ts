@@ -72,6 +72,15 @@ export async function createBoatDraft(
       "internal_code",
     );
 
+  const enginePowerHp = Number(
+    readText(formData, "engine_power_hp").replace(",", "."),
+  );
+
+  const licenseRequiredRaw = readText(
+    formData,
+    "license_required",
+  );
+
   if (!operatorId) {
     redirect(
       "/operator/fleet",
@@ -88,17 +97,17 @@ export async function createBoatDraft(
     );
   }
 
-  if (!boatTypeId) {
+  if (!Number.isFinite(enginePowerHp) || enginePowerHp <= 0 || enginePowerHp > 100000) {
     redirectWithError(
       operatorId,
-      "invalid-boat-type",
+      "invalid-engine-power",
     );
   }
 
-  if (!primaryLocationId) {
+  if (licenseRequiredRaw !== "true" && licenseRequiredRaw !== "false") {
     redirectWithError(
       operatorId,
-      "invalid-location",
+      "invalid-license-required",
     );
   }
 
@@ -199,60 +208,31 @@ export async function createBoatDraft(
     );
   }
 
-  const {
-    data: boatType,
-    error: boatTypeError,
-  } = await supabase
-    .from("boat_types")
-    .select("id")
-    .eq(
-      "id",
-      boatTypeId,
-    )
-    .eq(
-      "is_active",
-      true,
-    )
-    .maybeSingle();
+  if (boatTypeId) {
+    const { data: boatType, error: boatTypeError } = await supabase
+      .from("boat_types")
+      .select("id")
+      .eq("id", boatTypeId)
+      .eq("is_active", true)
+      .maybeSingle();
 
-  if (
-    boatTypeError ||
-    !boatType
-  ) {
-    redirectWithError(
-      operatorId,
-      "invalid-boat-type",
-    );
+    if (boatTypeError || !boatType) {
+      redirectWithError(operatorId, "invalid-boat-type");
+    }
   }
 
-  const {
-    data: location,
-    error: locationError,
-  } = await supabase
-    .from("operator_locations")
-    .select("id")
-    .eq(
-      "id",
-      primaryLocationId,
-    )
-    .eq(
-      "operator_id",
-      operatorId,
-    )
-    .eq(
-      "is_active",
-      true,
-    )
-    .maybeSingle();
+  if (primaryLocationId) {
+    const { data: location, error: locationError } = await supabase
+      .from("operator_locations")
+      .select("id")
+      .eq("id", primaryLocationId)
+      .eq("operator_id", operatorId)
+      .eq("is_active", true)
+      .maybeSingle();
 
-  if (
-    locationError ||
-    !location
-  ) {
-    redirectWithError(
-      operatorId,
-      "invalid-location",
-    );
+    if (locationError || !location) {
+      redirectWithError(operatorId, "invalid-location");
+    }
   }
 
   const {
@@ -265,10 +245,10 @@ export async function createBoatDraft(
         operatorId,
 
       primary_location_id:
-        primaryLocationId,
+        primaryLocationId || null,
 
       boat_type_id:
-        boatTypeId,
+        boatTypeId || null,
 
       status:
         "DRAFT",
@@ -277,6 +257,12 @@ export async function createBoatDraft(
         internalCode || null,
 
       name,
+
+      engine_power_hp:
+        enginePowerHp,
+
+      license_required:
+        licenseRequiredRaw === "true",
     })
     .select("id")
     .single();

@@ -22,7 +22,7 @@ export async function signUp(formData: FormData) {
     redirect("/sign-up?error=invalid-email");
   }
 
-  if (password.length < 8) {
+  if (password.length < 12) {
     redirect("/sign-up?error=password-too-short");
   }
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { logServerEvent } from "@/lib/observability";
+
 export const dynamic = "force-dynamic";
 
 const RESPONSE_HEADERS = {
@@ -19,6 +21,7 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !publishableKey) {
+    logServerEvent("error", "health_configuration_missing", { component: "supabase" });
     return healthResponse(false, 503);
   }
 
@@ -32,11 +35,13 @@ export async function GET() {
     });
 
     if (!response.ok) {
+      logServerEvent("error", "health_dependency_unavailable", { component: "supabase_auth", status: response.status });
       return healthResponse(false, 502);
     }
 
     return healthResponse(true, 200);
   } catch {
+    logServerEvent("error", "health_dependency_timeout", { component: "supabase_auth" });
     return healthResponse(false, 502);
   }
 }

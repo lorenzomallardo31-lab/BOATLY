@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import OperatorNav from "@/components/operator/operator-nav";
+import { requireOperatorBoatContext } from "@/lib/operator/context";
+
 type BoatLayoutProps = {
   children: React.ReactNode;
   params: Promise<{
@@ -12,6 +15,7 @@ export default async function BoatLayout({
   params,
 }: BoatLayoutProps) {
   const { boatId } = await params;
+  const { operator } = await requireOperatorBoatContext(boatId);
 
   const items = [
     ["Scheda", `/operator/fleet/${boatId}`],
@@ -27,7 +31,8 @@ export default async function BoatLayout({
 
   return (
     <>
-      <div className="bg-[#FCFBF8] px-4 pt-5 sm:px-6">
+      <OperatorNav operatorId={operator.id} operatorName={operator.name} />
+      <div className="bg-[#F7F6FB] px-4 pt-5 sm:px-6">
         <nav className="mx-auto flex max-w-5xl flex-wrap gap-2 rounded-2xl border border-[#DEE5E8] bg-white p-2 shadow-sm">
           {items.map(([label, href]) => (
             <Link

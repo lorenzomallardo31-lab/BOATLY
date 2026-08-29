@@ -7,7 +7,6 @@ const MARKETPLACE_PATHS = [
   "/come-funziona",
   "/prenotazioni",
   "/search",
-  "/sign-up",
 ] as const;
 
 const MANAGEMENT_DESTINATIONS = [

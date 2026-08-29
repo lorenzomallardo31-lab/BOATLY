@@ -23,27 +23,21 @@ export default async function AccountPage() {
   const isPlatformUser = Boolean(platformRoles?.length);
 
   return (
-    <main className="min-h-screen bg-[#FCFBF8] px-4 py-12 text-[#0B1F33]">
+    <main className="min-h-screen bg-[#F7F6FB] px-4 py-12 text-[#171A2B]">
       <div className="mx-auto max-w-4xl">
-        <Link href="/" className="text-2xl font-bold tracking-tight">Boatly</Link>
+        <Link href="/account" className="text-2xl font-bold tracking-tight">Boatly Ops</Link>
 
         <section className="mt-10 rounded-3xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-sm font-medium text-[#14B8A6]">Account Boatly</p>
+          <p className="text-sm font-medium text-[#6D5DFB]">Account gestionale</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Il tuo account</h1>
           <p className="mt-4 text-[#64748B]">Sei autenticato come:</p>
           <p className="mt-1 font-semibold">{email}</p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-[#DEE5E8] bg-[#F1F5F4] p-5">
-              <p className="font-semibold">Le tue prenotazioni</p>
-              <p className="mt-2 text-sm leading-6 text-[#64748B]">Consulta prenotazioni, dettagli economici e richieste di cancellazione.</p>
-              <Link href="/prenotazioni" className="mt-5 inline-flex rounded-xl bg-[#14B8A6] px-5 py-3 text-sm font-semibold text-white">Vai alle prenotazioni</Link>
-            </div>
-
-            <div className="rounded-2xl border border-[#DEE5E8] bg-white p-5">
+            <div className="rounded-2xl border border-[#D8D5E5] bg-[#F4F2FA] p-5">
               <p className="font-semibold">Area operatore</p>
               <p className="mt-2 text-sm leading-6 text-[#64748B]">Dashboard, booking, CRM, calendario e flotta.</p>
-              <Link href={operatorMembership ? `/operator/dashboard?operator=${operatorMembership.operator_id}` : "/operator/onboarding"} className="mt-5 inline-flex rounded-xl border border-[#DEE5E8] px-5 py-3 text-sm font-semibold hover:bg-[#F1F5F4]">{operatorMembership ? "Apri dashboard" : "Avvia onboarding"}</Link>
+              <Link href={operatorMembership ? `/operator/dashboard?operator=${operatorMembership.operator_id}` : "/operator/onboarding"} className="mt-5 inline-flex rounded-xl bg-[#6D5DFB] px-5 py-3 text-sm font-semibold text-white">{operatorMembership ? "Apri dashboard" : "Configura attività"}</Link>
             </div>
 
             {isPlatformUser ? (

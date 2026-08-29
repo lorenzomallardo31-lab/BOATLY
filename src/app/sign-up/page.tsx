@@ -15,7 +15,7 @@ function getErrorMessage(error?: string) {
       return "Inserisci un indirizzo email valido.";
 
     case "password-too-short":
-      return "La password deve contenere almeno 8 caratteri.";
+      return "La password deve contenere almeno 12 caratteri.";
 
     case "invalid-form":
       return "Controlla i dati inseriti e riprova.";
@@ -47,8 +47,8 @@ export default async function SignUpPage({
         </Link>
 
         <div className="rounded-2xl border border-[#DEE5E8] bg-white p-6 shadow-sm sm:p-8">
-          <p className="mb-2 text-sm font-medium text-[#14B8A6]">
-            Trova. Prenota. Naviga.
+          <p className="mb-2 text-sm font-medium text-[#6D5DFB]">
+            Boatly Ops
           </p>
 
           <h1 className="text-3xl font-semibold tracking-tight">
@@ -56,7 +56,7 @@ export default async function SignUpPage({
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[#64748B]">
-            Registrati per iniziare a utilizzare Boatly.
+            Crea il tuo accesso e configura l’attività. Il workspace diventerà operativo soltanto dopo la verifica dell’amministratore Boatly.
           </p>
 
           {checkEmail ? (
@@ -91,7 +91,7 @@ export default async function SignUpPage({
                   autoComplete="email"
                   required
                   placeholder="nome@email.it"
-                  className="w-full rounded-xl border border-[#DEE5E8] bg-white px-4 py-3 outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20"
+                  className="w-full rounded-xl border border-[#DEE5E8] bg-white px-4 py-3 outline-none transition focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/20"
                 />
               </div>
 
@@ -109,19 +109,19 @@ export default async function SignUpPage({
                   type="password"
                   autoComplete="new-password"
                   required
-                  minLength={8}
-                  placeholder="Almeno 8 caratteri"
-                  className="w-full rounded-xl border border-[#DEE5E8] bg-white px-4 py-3 outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20"
+                  minLength={12}
+                  placeholder="Almeno 12 caratteri"
+                  className="w-full rounded-xl border border-[#DEE5E8] bg-white px-4 py-3 outline-none transition focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/20"
                 />
 
                 <p className="mt-2 text-xs text-[#64748B]">
-                  Usa almeno 8 caratteri.
+                  Usa almeno 12 caratteri e una password unica.
                 </p>
               </div>
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-[#14B8A6] px-4 py-3 font-semibold text-white transition hover:opacity-90"
+                className="w-full rounded-xl bg-[#6D5DFB] px-4 py-3 font-semibold text-white transition hover:opacity-90"
               >
                 Crea account
               </button>
