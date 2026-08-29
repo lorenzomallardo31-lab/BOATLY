@@ -98,7 +98,15 @@ function longDateLabel(dayKey: string) {
 }
 
 function overlapsDay(item: ScheduleItem, day: ScheduleDay) {
-  return item.startsAt < day.end && item.endsAt > day.start;
+  const itemStart = new Date(item.startsAt).getTime();
+  const itemEnd = new Date(item.endsAt).getTime();
+  const dayStart = new Date(day.start).getTime();
+  const dayEnd = new Date(day.end).getTime();
+
+  return Number.isFinite(itemStart)
+    && Number.isFinite(itemEnd)
+    && itemStart < dayEnd
+    && itemEnd > dayStart;
 }
 
 function cellKey(boatId: string, dayKey: string) {
@@ -266,9 +274,22 @@ export default function OperatorSchedule({
                         >
                           <span>{appearance.label}</span>
                           {firstItem ? (
-                            <span className="mt-1 max-w-full truncate text-[9px] font-medium opacity-80">
-                              {timeLabel(firstItem.startsAt, timezone)}
-                            </span>
+                            <>
+                              {firstItem.kind === "BOOKING" ? (
+                                <span className="mt-1 max-w-full truncate text-[9px] font-semibold leading-3 opacity-90">
+                                  {firstItem.title}
+                                </span>
+                              ) : null}
+                              {firstItem.notes ? (
+                                <span className="mt-1 max-w-full truncate text-[9px] font-medium leading-3 opacity-80">
+                                  {firstItem.notes}
+                                </span>
+                              ) : firstItem.kind === "BOOKING" ? (
+                                <span className="mt-1 max-w-full truncate text-[9px] font-medium opacity-80">
+                                  {timeLabel(firstItem.startsAt, timezone)}
+                                </span>
+                              ) : null}
+                            </>
                           ) : null}
                         </button>
                       </td>
@@ -342,7 +363,6 @@ export default function OperatorSchedule({
                           passengerLimit={selectedBoat.passengerLimit}
                           offerings={offerings.filter((offering) => offering.boatId === selectedBoat.id)}
                           customers={customers}
-                          locations={locations}
                         />
                       </div>
                     </details>

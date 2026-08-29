@@ -46,8 +46,7 @@ export async function createManualBooking(
 ): Promise<ManualBookingActionState> {
   const operatorId = text(formData, "operator_id");
   const boatId = text(formData, "boat_id");
-  const legalOfferingId = text(formData, "legal_offering_id");
-  const pickupLocationId = text(formData, "pickup_location_id");
+  const legalOfferingId = text(formData, "legal_offering_id") || null;
   const date = text(formData, "date");
   const startsAtLocal = `${date}T${text(formData, "start_time")}`;
   const endsAtLocal = `${date}T${text(formData, "end_time")}`;
@@ -64,8 +63,6 @@ export async function createManualBooking(
   if (
     !operatorId ||
     !boatId ||
-    !legalOfferingId ||
-    !pickupLocationId ||
     !date ||
     !text(formData, "start_time") ||
     !text(formData, "end_time")
@@ -101,17 +98,16 @@ export async function createManualBooking(
     return { status: "error", code: "invalid-window" };
   }
 
-  const { data, error } = await supabase.rpc("operator_create_manual_booking", {
+  const { data, error } = await supabase.rpc("operator_create_calendar_booking", {
     p_operator_id: operator.id,
     p_boat_id: boatId,
-    p_legal_offering_id: legalOfferingId,
-    p_pickup_location_id: pickupLocationId,
-    p_starts_at: startsAt,
-    p_ends_at: endsAt,
-    p_passenger_count: passengerCount,
     p_customer_name: customerName,
     p_customer_email: customerEmail || null,
     p_customer_phone: customerPhone || null,
+    p_legal_offering_id: legalOfferingId,
+    p_starts_at: startsAt,
+    p_ends_at: endsAt,
+    p_passenger_count: passengerCount,
     p_total_cents: Math.round(total * 100),
     p_operator_note: operatorNote || null,
     p_operator_customer_id: operatorCustomerId || null,

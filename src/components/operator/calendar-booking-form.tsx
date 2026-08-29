@@ -15,7 +15,6 @@ type Props = {
   passengerLimit: number | null;
   offerings: Array<{ id: string; label: string }>;
   customers: Array<{ id: string; name: string; email: string | null; phone: string | null }>;
-  locations: Array<{ id: string; label: string }>;
 };
 
 const initialState: ManualBookingActionState = { status: "idle" };
@@ -60,13 +59,12 @@ export default function CalendarBookingForm({
   passengerLimit,
   offerings,
   customers,
-  locations,
 }: Props) {
   const [state, action] = useActionState(createManualBooking, initialState);
   const [mode, setMode] = useState<"EXISTING" | "NEW">(customers.length ? "EXISTING" : "NEW");
   const [customerId, setCustomerId] = useState(customers[0]?.id ?? "");
   const error = state.code ? errors[state.code] ?? errors["save-failed"] : null;
-  const disabled = !offerings.length || !locations.length || (mode === "EXISTING" && !customerId);
+  const disabled = mode === "EXISTING" && !customerId;
 
   return (
     <form action={action} className="space-y-4">
@@ -84,12 +82,6 @@ export default function CalendarBookingForm({
       ) : null}
       {error ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium leading-6 text-rose-800">{error}</div> : null}
 
-      {!offerings.length || !locations.length ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          Completa almeno una formula della barca e una sede operativa prima di prenotare.
-        </div>
-      ) : null}
-
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">
           Partenza *
@@ -104,15 +96,10 @@ export default function CalendarBookingForm({
           <input name="passenger_count" type="number" min={1} max={passengerLimit ?? undefined} defaultValue={1} required className={fieldClass} />
         </label>
         <label className="grid gap-2 text-sm font-semibold">
-          Formula *
-          <select name="legal_offering_id" required defaultValue={offerings[0]?.id ?? ""} className={fieldClass}>
+          Formula <span className="font-normal text-[#777285]">(facoltativa)</span>
+          <select name="legal_offering_id" defaultValue="" className={fieldClass}>
+            <option value="">Usa la formula operativa predefinita</option>
             {offerings.map((offering) => <option key={offering.id} value={offering.id}>{offering.label}</option>)}
-          </select>
-        </label>
-        <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
-          Sede *
-          <select name="pickup_location_id" required defaultValue={locations[0]?.id ?? ""} className={fieldClass}>
-            {locations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
           </select>
         </label>
       </div>
