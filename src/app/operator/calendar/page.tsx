@@ -239,13 +239,19 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
     passengerLimit: boat.operator_passenger_limit,
   }));
 
-  const items: ScheduleItem[] = occupancies.map((occupancy) => {
+  const items: ScheduleItem[] = occupancies.flatMap((occupancy) => {
     const booking = occupancy.booking_id
       ? bookingById.get(occupancy.booking_id) ?? null
       : null;
-    const isBooking = Boolean(booking);
+
+    // A booking-linked occupancy must never be reinterpreted as an operator
+    // block. The database trigger repairs terminal rows; this guard keeps the
+    // UI truthful even during a delayed migration or an external write.
+    if (occupancy.booking_id && !booking) return [];
+
+    const isBooking = occupancy.booking_id !== null;
     const customer = booking ? customerById.get(booking.operator_customer_id) ?? null : null;
-    return {
+    return [{
       id: occupancy.id,
       boatId: occupancy.boat_id,
       kind: isBooking ? "BOOKING" : "BLOCK",
@@ -273,7 +279,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       startsAtLocal: booking ? localDateTimeInTimeZone(booking.starts_at, operator.timezone) : null,
       endsAtLocal: booking ? localDateTimeInTimeZone(booking.ends_at, operator.timezone) : null,
       total: booking ? ((booking.customer_total_cents_snapshot ?? 0) / 100).toFixed(2).replace(".", ",") : null,
-    };
+    }];
   });
 
   for (const booking of bookings) {
@@ -362,8 +368,8 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-[11px] font-semibold">
-              <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-[#FFF0D6] ring-1 ring-[#F6C76D]" /> Prenotata</span>
-              <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-[#EDE9FE] ring-1 ring-[#C8C0FF]" /> Blocco</span>
+              <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-emerald-100 ring-1 ring-emerald-300" /> Prenotata</span>
+              <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-rose-100 ring-1 ring-rose-300" /> Blocco</span>
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded border border-[#D8D5E5] bg-white" /> Libera</span>
             </div>
           </div>

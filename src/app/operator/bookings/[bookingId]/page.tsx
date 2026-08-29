@@ -12,7 +12,7 @@ import {
 import { localDateTimeInTimeZone } from "@/lib/operator/date-time";
 import { requireOperatorWorkspaceContext } from "@/lib/operator/workspace-context";
 
-import { changeBookingStatus, resolveCancellationRequest } from "./actions";
+import { resolveCancellationRequest } from "./actions";
 import { voidManualPayment } from "../../finance/actions";
 
 type PageProps = {
@@ -261,22 +261,6 @@ export default async function OperatorBookingDetailPage({ params, searchParams }
               </details>
             ) : null}
 
-            {["CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
-              <section className="rounded-3xl border border-[#DEE5E8] bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold">Stato operativo</h2>
-                <form action={changeBookingStatus} className="mt-4 space-y-3">
-                  <input type="hidden" name="operator_id" value={operator.id} />
-                  <input type="hidden" name="booking_id" value={booking.id} />
-                  <textarea name="note" rows={2} placeholder="Nota opzionale" className="w-full rounded-xl border border-[#DEE5E8] px-3 py-2 text-sm" />
-                  <div className="flex flex-wrap gap-2">
-                    {booking.status === "CONFIRMED" ? <button name="target_status" value="IN_PROGRESS" className="rounded-xl bg-[#6D5DFB] px-4 py-2 text-sm font-semibold text-white">Avvia</button> : null}
-                    <button name="target_status" value="COMPLETED" className="rounded-xl border border-[#DEE5E8] px-4 py-2 text-sm font-semibold">Completa</button>
-                    <button name="target_status" value="NO_SHOW" className="rounded-xl border border-[#DEE5E8] px-4 py-2 text-sm font-semibold">No show</button>
-                    <button name="target_status" value="CANCELLED_BY_OPERATOR" className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700">Cancella</button>
-                  </div>
-                </form>
-              </section>
-            ) : null}
           </div>
         </div>
       </div>

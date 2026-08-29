@@ -82,27 +82,29 @@ export async function releaseCalendarDay(
   return { status: "success" };
 }
 
-export async function changeCalendarBookingStatus(
+export async function cancelCalendarBooking(
   _previousState: CalendarActionState,
   formData: FormData,
 ): Promise<CalendarActionState> {
   const operatorId = text(formData, "operator_id");
   const bookingId = text(formData, "booking_id");
-  const targetStatus = text(formData, "target_status");
-  const note = text(formData, "note");
   if (!operatorId || !bookingId) return { status: "error", code: "missing-fields" };
-  if (!["IN_PROGRESS", "COMPLETED", "CANCELLED_BY_OPERATOR", "NO_SHOW"].includes(targetStatus)) {
-    return { status: "error", code: "invalid-status" };
-  }
 
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
-  const { error } = await supabase.rpc("operator_change_booking_status", {
+  const { error } = await supabase.rpc("operator_cancel_calendar_booking", {
     p_operator_id: operator.id,
     p_booking_id: bookingId,
-    p_status: targetStatus,
-    p_note: note || null,
   });
-  if (error) return { status: "error", code: "status-failed" };
+  if (error) {
+    return {
+      status: "error",
+      code: error.message.includes("marketplace_booking_requires_financial_cancellation")
+        ? "financial-cancellation-required"
+        : error.message.includes("booking_not_cancellable")
+          ? "not-cancellable"
+          : "cancel-failed",
+    };
+  }
 
   refreshCalendar(operator.id);
   return { status: "success" };

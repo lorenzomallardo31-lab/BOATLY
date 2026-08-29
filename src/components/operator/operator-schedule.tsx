@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 
 import CalendarBookingForm from "@/components/operator/calendar-booking-form";
 import {
-  CalendarBookingStatusForm,
+  CalendarCancelBookingForm,
   CalendarDayBlockForm,
   CalendarReleaseBlockForm,
 } from "@/components/operator/calendar-cell-actions";
@@ -125,14 +125,14 @@ function cellAppearance(items: ScheduleItem[], active: boolean) {
   if (bookings.length > 0) {
     return {
       label: bookings.length === 1 ? "Prenotata" : `${bookings.length} prenotazioni`,
-      className: "bg-[#FFF0D6] text-[#9A4A08] ring-1 ring-inset ring-[#F6C76D]",
+      className: "bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300",
     };
   }
 
   if (items.length > 0) {
     return {
       label: items.length === 1 ? "Blocco" : `${items.length} blocchi`,
-      className: "bg-[#EDE9FE] text-[#4C3FC2] ring-1 ring-inset ring-[#C8C0FF]",
+      className: "bg-rose-100 text-rose-900 ring-1 ring-inset ring-rose-300",
     };
   }
 
@@ -383,8 +383,8 @@ export default function OperatorSchedule({
                     key={item.id}
                     className={`rounded-2xl border p-4 ${
                       item.kind === "BOOKING"
-                        ? "border-[#F6C76D] bg-[#FFF8EA]"
-                        : "border-[#C8C0FF] bg-[#F4F1FF]"
+                        ? "border-emerald-300 bg-emerald-50"
+                        : "border-rose-300 bg-rose-50"
                     }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -476,12 +476,11 @@ export default function OperatorSchedule({
                           </details>
                         ) : null}
 
-                        <details className="rounded-xl bg-white/80 p-3">
-                          <summary className="cursor-pointer text-sm font-semibold text-[#4C3FC2]">Aggiorna stato</summary>
-                          <div className="mt-4 border-t border-[#ECEAF1] pt-4">
-                            <CalendarBookingStatusForm operatorId={operatorId} bookingId={item.bookingId} status={item.rawStatus} />
+                        {item.source === "MANUAL" ? (
+                          <div className="rounded-xl bg-white/80 p-3">
+                            <CalendarCancelBookingForm operatorId={operatorId} bookingId={item.bookingId} />
                           </div>
-                        </details>
+                        ) : null}
                       </div>
                     ) : null}
                   </article>

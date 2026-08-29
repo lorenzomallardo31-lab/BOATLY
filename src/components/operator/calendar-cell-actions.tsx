@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import {
   blockCalendarDay,
-  changeCalendarBookingStatus,
+  cancelCalendarBooking,
   releaseCalendarDay,
   type CalendarActionState,
 } from "@/app/operator/calendar/actions";
@@ -25,8 +25,9 @@ function Feedback({ state }: { state: CalendarActionState }) {
     conflict: "La barca è già occupata in questa giornata: prima gestisci la prenotazione o il blocco esistente.",
     "not-allowed": "Non hai i permessi per modificare questa barca.",
     "release-failed": "Non è stato possibile rendere nuovamente libera la barca.",
-    "status-failed": "Non è stato possibile aggiornare lo stato della prenotazione.",
-    "invalid-status": "Lo stato richiesto non è valido.",
+    "cancel-failed": "Non è stato possibile eliminare la prenotazione e liberare la barca.",
+    "not-cancellable": "Questa prenotazione non può più essere eliminata dal calendario.",
+    "financial-cancellation-required": "Questa prenotazione ha un flusso marketplace e richiede la gestione del pagamento.",
   };
   return <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-800">{labels[state.code ?? ""] ?? "Operazione non riuscita."}</p>;
 }
@@ -58,21 +59,22 @@ export function CalendarReleaseBlockForm({ operatorId, boatId, occupancyId }: { 
   );
 }
 
-export function CalendarBookingStatusForm({ operatorId, bookingId, status }: { operatorId: string; bookingId: string; status: string }) {
-  const [state, action] = useActionState(changeCalendarBookingStatus, initialState);
-  if (!["CONFIRMED", "IN_PROGRESS"].includes(status)) return null;
+export function CalendarCancelBookingForm({ operatorId, bookingId }: { operatorId: string; bookingId: string }) {
+  const [state, action] = useActionState(cancelCalendarBooking, initialState);
   return (
-    <form action={action} className="space-y-3">
+    <form
+      action={action}
+      className="space-y-3"
+      onSubmit={(event) => {
+        if (!window.confirm("Eliminare questa prenotazione e rendere nuovamente libera la barca?")) {
+          event.preventDefault();
+        }
+      }}
+    >
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="booking_id" value={bookingId} />
       <Feedback state={state} />
-      <textarea name="note" rows={2} maxLength={1000} className={`${fieldClass} py-3`} placeholder="Nota opzionale sul cambio di stato" />
-      <div className="flex flex-wrap gap-2">
-        {status === "CONFIRMED" ? <button name="target_status" value="IN_PROGRESS" className="min-h-11 rounded-xl bg-[#6D5DFB] px-4 text-sm font-semibold text-white">Avvia</button> : null}
-        <button name="target_status" value="COMPLETED" className="min-h-11 rounded-xl border border-[#D8D5E5] bg-white px-4 text-sm font-semibold">Completa</button>
-        <button name="target_status" value="NO_SHOW" className="min-h-11 rounded-xl border border-[#D8D5E5] bg-white px-4 text-sm font-semibold">No show</button>
-        <button name="target_status" value="CANCELLED_BY_OPERATOR" className="min-h-11 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700">Cancella</button>
-      </div>
+      <PendingButton className="min-h-11 rounded-xl border border-rose-300 bg-rose-50 px-4 text-sm font-semibold text-rose-800 hover:bg-rose-100">Elimina prenotazione</PendingButton>
     </form>
   );
 }

@@ -110,36 +110,6 @@ export async function rescheduleManualBooking(
   redirect(`/operator/bookings/${data}?operator=${encodeURIComponent(operator.id)}&rescheduled=1`);
 }
 
-export async function changeBookingStatus(formData: FormData) {
-  const operatorId = text(formData, "operator_id");
-  const bookingId = text(formData, "booking_id");
-  const targetStatus = text(formData, "target_status");
-  const note = text(formData, "note");
-
-  if (!operatorId || !bookingId) redirect("/operator/bookings");
-  if (!["IN_PROGRESS", "COMPLETED", "CANCELLED_BY_OPERATOR", "NO_SHOW"].includes(targetStatus)) {
-    redirect(detailUrl(operatorId, bookingId, "error=invalid-status"));
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("operator_change_booking_status", {
-    p_operator_id: operatorId,
-    p_booking_id: bookingId,
-    p_status: targetStatus,
-    p_note: note || null,
-  });
-
-  if (error) {
-    console.error("Unable to change booking status.", error);
-    redirect(detailUrl(operatorId, bookingId, "error=status-change-failed"));
-  }
-
-  revalidatePath("/operator/dashboard");
-  revalidatePath("/operator/bookings");
-  revalidatePath(`/operator/bookings/${bookingId}`);
-  redirect(detailUrl(operatorId, bookingId, `changed=${targetStatus}`));
-}
-
 export async function resolveCancellationRequest(formData: FormData) {
   const operatorId = text(formData, "operator_id");
   const bookingId = text(formData, "booking_id");
