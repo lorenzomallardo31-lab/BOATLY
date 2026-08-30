@@ -7,10 +7,41 @@ import {
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireOperatorBoatContext } from "@/lib/operator/context";
 
 const MANAGEABLE_OPERATOR_STATUSES = [
   "ACTIVE",
 ];
+
+export async function duplicateBoat(formData: FormData) {
+  const operatorId = readText(formData, "operator_id");
+  const boatId = readText(formData, "boat_id");
+  if (!operatorId || !boatId) redirect("/operator/fleet");
+
+  const { supabase, operator, canManage } = await requireOperatorBoatContext(
+    boatId,
+    operatorId,
+  );
+  if (!canManage || operator.id !== operatorId) {
+    redirectWithError(boatId, operatorId, "not-allowed");
+  }
+
+  const { data: newBoatId, error } = await supabase.rpc("operator_duplicate_boat", {
+    p_operator_id: operator.id,
+    p_source_boat_id: boatId,
+  });
+
+  if (error || typeof newBoatId !== "string") {
+    redirectWithError(boatId, operatorId, "duplicate-failed");
+  }
+
+  revalidatePath("/operator/calendar");
+  revalidatePath("/operator/fleet");
+  revalidatePath(`/operator/fleet/${newBoatId}`);
+  redirect(
+    `/operator/fleet/${encodeURIComponent(newBoatId)}?operator=${encodeURIComponent(operator.id)}&duplicated=1`,
+  );
+}
 
 export async function saveBoatEssentials(formData: FormData) {
   const operatorId = readText(formData, "operator_id");

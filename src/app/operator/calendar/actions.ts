@@ -80,6 +80,53 @@ export async function markCalendarBookingDeparted(
   return { status: "success", code: "departed" };
 }
 
+export async function markCalendarBookingReturned(
+  _previousState: CalendarActionState,
+  formData: FormData,
+): Promise<CalendarActionState> {
+  const operatorId = text(formData, "operator_id");
+  const bookingId = text(formData, "booking_id");
+  if (!operatorId || !bookingId) return { status: "error", code: "missing-fields" };
+
+  const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
+  const { data: booking, error: bookingError } = await supabase
+    .from("bookings")
+    .select("id, status")
+    .eq("id", bookingId)
+    .eq("operator_id", operator.id)
+    .maybeSingle();
+
+  if (bookingError || !booking) return { status: "error", code: "return-failed" };
+  if (booking.status === "COMPLETED") {
+    refreshCalendar(operator.id);
+    return { status: "success", code: "returned" };
+  }
+  if (booking.status !== "IN_PROGRESS") {
+    return { status: "error", code: "return-not-allowed" };
+  }
+
+  const { error } = await supabase.rpc("operator_change_booking_status", {
+    p_operator_id: operator.id,
+    p_booking_id: bookingId,
+    p_status: "COMPLETED",
+    p_note: null,
+  });
+
+  if (error) {
+    return {
+      status: "error",
+      code: error.message.includes("invalid_booking_status_transition")
+        ? "already-updated"
+        : error.message.includes("not_allowed")
+          ? "not-allowed"
+          : "return-failed",
+    };
+  }
+
+  refreshCalendar(operator.id);
+  return { status: "success", code: "returned" };
+}
+
 export async function blockCalendarDay(
   _previousState: CalendarActionState,
   formData: FormData,
@@ -126,14 +173,27 @@ export async function releaseCalendarDay(
   const operatorId = text(formData, "operator_id");
   const boatId = text(formData, "boat_id");
   const occupancyId = text(formData, "occupancy_id");
-  if (!operatorId || !boatId || !occupancyId) return { status: "error", code: "missing-fields" };
+  const dayKey = text(formData, "day_key");
+  const scope = text(formData, "scope").toUpperCase();
+  if (
+    !operatorId
+    || !boatId
+    || !occupancyId
+    || !["ALL", "DAY"].includes(scope)
+    || (scope === "DAY" && !dayKey)
+  ) return { status: "error", code: "missing-fields" };
 
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
-  const { error } = await supabase.rpc("release_operator_boat_occupancy", {
+  const bounds = scope === "DAY" ? zonedDayBounds(dayKey, operator.timezone) : null;
+  if (scope === "DAY" && !bounds) return { status: "error", code: "invalid-day" };
+
+  const { error } = await supabase.rpc("operator_release_boat_occupancy_scope", {
     p_operator_id: operator.id,
     p_boat_id: boatId,
     p_occupancy_id: occupancyId,
-    p_reason: "RELEASED_FROM_CALENDAR",
+    p_scope: scope,
+    p_day_start: bounds?.start ?? null,
+    p_day_end: bounds?.end ?? null,
   });
   if (error) return { status: "error", code: "release-failed" };
 

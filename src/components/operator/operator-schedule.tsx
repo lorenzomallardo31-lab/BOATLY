@@ -7,6 +7,8 @@ import CalendarBookingForm from "@/components/operator/calendar-booking-form";
 import {
   CalendarCancelBookingForm,
   CalendarDayBlockForm,
+  CalendarMarkDepartedForm,
+  CalendarMarkReturnedForm,
   CalendarReleaseBlockForm,
 } from "@/components/operator/calendar-cell-actions";
 import CustomerForm from "@/components/operator/customer-form";
@@ -41,6 +43,7 @@ export type ScheduleItem = {
   occupancyId: string | null;
   startsAt: string;
   endsAt: string;
+  completedAt: string | null;
   status: string;
   rawStatus: string;
   title: string;
@@ -124,9 +127,23 @@ function cellAppearance(items: ScheduleItem[], active: boolean) {
 
   const bookings = items.filter((item) => item.kind === "BOOKING");
   if (bookings.length > 0) {
+    if (bookings.some((item) => item.rawStatus === "IN_PROGRESS")) {
+      return {
+        label: "IN MARE",
+        className: "bg-emerald-600 text-white ring-1 ring-inset ring-emerald-800",
+      };
+    }
+
+    if (bookings.some((item) => item.rawStatus !== "COMPLETED")) {
+      return {
+        label: bookings.length === 1 ? "Prenotata" : `${bookings.length} prenotazioni`,
+        className: "bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300",
+      };
+    }
+
     return {
-      label: bookings.length === 1 ? "Prenotata" : `${bookings.length} prenotazioni`,
-      className: "bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300",
+      label: "RIENTRATA",
+      className: "bg-teal-100 text-teal-950 ring-1 ring-inset ring-teal-400",
     };
   }
 
@@ -141,6 +158,19 @@ function cellAppearance(items: ScheduleItem[], active: boolean) {
     label: "Libera",
     className: "bg-white text-[#A19CAB] hover:bg-[#F7F6FB] hover:text-[#4C3FC2]",
   };
+}
+
+function primaryCellItem(items: ScheduleItem[]) {
+  return [...items].sort((left, right) => {
+    const priority = (item: ScheduleItem) => {
+      if (item.kind === "BLOCK") return 4;
+      if (item.rawStatus === "IN_PROGRESS") return 0;
+      if (item.rawStatus === "COMPLETED") return 2;
+      return 1;
+    };
+    return priority(left) - priority(right)
+      || new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime();
+  })[0];
 }
 
 export default function OperatorSchedule({
@@ -271,7 +301,7 @@ export default function OperatorSchedule({
                   {days.map((day) => {
                     const cellItems = itemsByCell.get(cellKey(boat.id, day.key)) ?? [];
                     const appearance = cellAppearance(cellItems, active);
-                    const firstItem = cellItems[0];
+                    const firstItem = primaryCellItem(cellItems);
 
                     return (
                       <td
@@ -439,11 +469,28 @@ export default function OperatorSchedule({
                     {item.notes ? <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm text-[#4A4758]">{item.notes}</p> : null}
 
                     {item.kind === "BLOCK" && item.occupancyId && canManageFleet ? (
-                      <CalendarReleaseBlockForm operatorId={operatorId} boatId={selectedBoat.id} occupancyId={item.occupancyId} />
+                      <CalendarReleaseBlockForm
+                        operatorId={operatorId}
+                        boatId={selectedBoat.id}
+                        occupancyId={item.occupancyId}
+                        dayKey={selectedDay.key}
+                        isMultiDay={
+                          new Date(item.startsAt).getTime() < new Date(selectedDay.start).getTime()
+                          || new Date(item.endsAt).getTime() > new Date(selectedDay.end).getTime()
+                        }
+                      />
                     ) : null}
 
                     {item.bookingId ? (
                       <div className="mt-4 space-y-3 border-t border-black/10 pt-4">
+                        {selectedDay.today && item.rawStatus === "CONFIRMED" ? (
+                          <CalendarMarkDepartedForm operatorId={operatorId} bookingId={item.bookingId} />
+                        ) : null}
+
+                        {selectedDay.today && item.rawStatus === "IN_PROGRESS" ? (
+                          <CalendarMarkReturnedForm operatorId={operatorId} bookingId={item.bookingId} />
+                        ) : null}
+
                         {item.operatorCustomerId ? (
                           <details className="rounded-xl bg-white/80 p-3">
                             <summary className="cursor-pointer rounded-lg px-1 py-2 text-sm font-semibold text-[#4C3FC2] transition hover:bg-[#F5F2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:opacity-70">Modifica cliente</summary>
@@ -489,7 +536,7 @@ export default function OperatorSchedule({
                           </details>
                         ) : null}
 
-                        {item.source === "MANUAL" ? (
+                        {item.source === "MANUAL" && item.rawStatus === "CONFIRMED" ? (
                           <div className="rounded-xl bg-white/80 p-3">
                             <CalendarCancelBookingForm operatorId={operatorId} bookingId={item.bookingId} />
                           </div>

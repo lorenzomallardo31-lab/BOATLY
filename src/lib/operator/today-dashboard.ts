@@ -10,6 +10,7 @@ export type TodayDashboardItem = {
   kind: "BOOKING" | "BLOCK";
   startsAt: string;
   endsAt: string;
+  completedAt?: string | null;
   customer: string | null;
   passengers: number | null;
   notes: string | null;
@@ -23,7 +24,7 @@ export type TodayDashboardEvent = {
   itemId: string;
   boatId: string;
   at: string;
-  kind: "DEPARTURE" | "RETURN" | "IN_USE" | "BLOCK";
+  kind: "DEPARTURE" | "RETURN" | "RETURNED" | "IN_USE" | "BLOCK";
 };
 
 export type TodayDashboardEventGroup = {
@@ -94,6 +95,22 @@ export function buildTodayDashboard(
     const startsAt = timestamp(item.startsAt)!;
     const endsAt = timestamp(item.endsAt)!;
     let eventCount = 0;
+    if (item.rawStatus === "COMPLETED") {
+      const completedAt = timestamp(item.completedAt ?? item.endsAt) ?? endsAt;
+      events.push({
+        id: `${item.id}:returned`,
+        itemId: item.id,
+        boatId: item.boatId,
+        at: completedAt < dayStart
+          ? day.start
+          : completedAt >= dayEnd
+            ? new Date(dayEnd - 1).toISOString()
+            : new Date(completedAt).toISOString(),
+        kind: "RETURNED",
+      });
+      continue;
+    }
+
     if (startsAt >= dayStart && startsAt < dayEnd && item.rawStatus !== "IN_PROGRESS") {
       events.push({
         id: `${item.id}:departure`,
@@ -146,7 +163,7 @@ export function buildTodayDashboard(
   events.sort((left, right) => {
     const timeDifference = timestamp(left.at)! - timestamp(right.at)!;
     if (timeDifference !== 0) return timeDifference;
-    const priority = { DEPARTURE: 0, IN_USE: 1, BLOCK: 2, RETURN: 3 };
+    const priority = { DEPARTURE: 0, IN_USE: 1, BLOCK: 2, RETURN: 3, RETURNED: 4 };
     return priority[left.kind] - priority[right.kind];
   });
   const eventGroups = groupTodayDashboardEvents(events);

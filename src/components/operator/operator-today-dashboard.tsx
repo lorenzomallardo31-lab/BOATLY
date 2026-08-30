@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 
-import { CalendarMarkDepartedForm } from "@/components/operator/calendar-cell-actions";
+import {
+  CalendarMarkDepartedForm,
+  CalendarMarkReturnedForm,
+} from "@/components/operator/calendar-cell-actions";
 import type {
   ScheduleBoat,
   ScheduleDay,
@@ -33,6 +36,7 @@ const interactiveClass = "cursor-pointer transition duration-150 hover:-translat
 const eventLabels = {
   DEPARTURE: "Partenza da confermare",
   RETURN: "Rientro",
+  RETURNED: "Rientrata",
   IN_USE: "In navigazione",
   BLOCK: "Non disponibile",
 } as const;
@@ -66,11 +70,12 @@ function groupHeadline(group: TodayDashboardEventGroup) {
       result[event.kind] += 1;
       return result;
     },
-    { DEPARTURE: 0, RETURN: 0, IN_USE: 0, BLOCK: 0 },
+    { DEPARTURE: 0, RETURN: 0, RETURNED: 0, IN_USE: 0, BLOCK: 0 },
   );
   const parts = [
     counts.DEPARTURE ? plural(counts.DEPARTURE, "partenza", "partenze") : null,
     counts.RETURN ? plural(counts.RETURN, "rientro", "rientri") : null,
+    counts.RETURNED ? plural(counts.RETURNED, "rientrata", "rientrate") : null,
     counts.IN_USE ? plural(counts.IN_USE, "barca in navigazione", "barche in navigazione") : null,
     counts.BLOCK ? plural(counts.BLOCK, "indisponibilità", "indisponibilità") : null,
   ].filter(Boolean);
@@ -84,6 +89,9 @@ function eventTone(group: TodayDashboardEventGroup) {
   }
   if (kinds.size === 1 && kinds.has("IN_USE")) {
     return "border-sky-300/25 bg-sky-300/10 hover:bg-sky-300/15";
+  }
+  if (kinds.size === 1 && kinds.has("RETURNED")) {
+    return "border-teal-300/25 bg-teal-300/10 hover:bg-teal-300/15";
   }
   return "border-emerald-300/20 bg-emerald-300/10 hover:bg-emerald-300/15";
 }
@@ -182,6 +190,9 @@ function DashboardModal({
                 const pendingDeparture = event.kind === "DEPARTURE"
                   && item.rawStatus === "CONFIRMED"
                   && Boolean(item.bookingId);
+                const pendingReturn = event.kind === "RETURN"
+                  && item.rawStatus === "IN_PROGRESS"
+                  && Boolean(item.bookingId);
                 return (
                   <article
                     key={event.id}
@@ -190,6 +201,8 @@ function DashboardModal({
                         ? "border-rose-200 bg-rose-50"
                         : event.kind === "IN_USE"
                           ? "border-sky-200 bg-sky-50"
+                          : event.kind === "RETURNED"
+                            ? "border-teal-300 bg-teal-50"
                           : "border-emerald-200 bg-emerald-50"
                     }`}
                   >
@@ -226,9 +239,15 @@ function DashboardModal({
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       {pendingDeparture && item.bookingId ? (
                         <CalendarMarkDepartedForm operatorId={operatorId} bookingId={item.bookingId} />
+                      ) : pendingReturn && item.bookingId ? (
+                        <CalendarMarkReturnedForm operatorId={operatorId} bookingId={item.bookingId} />
                       ) : event.kind === "IN_USE" ? (
                         <p role="status" className="flex min-h-11 items-center justify-center rounded-xl bg-sky-100 px-4 text-center text-sm font-semibold text-sky-900">
                           ✓ Partenza già registrata
+                        </p>
+                      ) : event.kind === "RETURNED" ? (
+                        <p role="status" className="flex min-h-11 items-center justify-center rounded-xl bg-teal-100 px-4 text-center text-sm font-semibold text-teal-900">
+                          ✓ Rientro già registrato
                         </p>
                       ) : <div />}
                       <button
@@ -309,11 +328,27 @@ export default function OperatorTodayDashboard({
   const boatById = useMemo(() => new Map(boats.map((boat) => [boat.id, boat])), [boats]);
   const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
   const firstDeparture = overview.events.find((event) => event.kind === "DEPARTURE");
-  const lastReturn = overview.events.findLast((event) => event.kind === "RETURN");
-  const nextDepartureGroup = overview.eventGroups.find((group) =>
-    group.events.some((event) => event.kind === "DEPARTURE"),
+  const lastReturn = overview.events.findLast((event) => event.kind === "RETURN" || event.kind === "RETURNED");
+  const nextActionGroup = overview.eventGroups.find((group) =>
+    group.events.some((event) => {
+      const item = itemById.get(event.itemId);
+      return (event.kind === "DEPARTURE" && item?.rawStatus === "CONFIRMED")
+        || (event.kind === "RETURN" && item?.rawStatus === "IN_PROGRESS");
+    }),
   );
-  const pendingDepartures = nextDepartureGroup?.events.filter((event) => event.kind === "DEPARTURE").length ?? 0;
+  const pendingDepartures = nextActionGroup?.events.filter((event) => {
+    const item = itemById.get(event.itemId);
+    return event.kind === "DEPARTURE" && item?.rawStatus === "CONFIRMED";
+  }).length ?? 0;
+  const pendingReturns = nextActionGroup?.events.filter((event) => {
+    const item = itemById.get(event.itemId);
+    return event.kind === "RETURN" && item?.rawStatus === "IN_PROGRESS";
+  }).length ?? 0;
+  const pendingActionLabel = pendingDepartures && pendingReturns
+    ? `${pendingDepartures + pendingReturns} operazioni`
+    : pendingDepartures
+      ? plural(pendingDepartures, "partenza", "partenze")
+      : plural(pendingReturns, "rientro", "rientri");
 
   const metrics: Array<{ key: MetricKey; label: string; value: number }> = [
     { key: "BOOKINGS", label: "Prenotazioni", value: overview.bookings.length },
@@ -340,15 +375,15 @@ export default function OperatorTodayDashboard({
           <button
             type="button"
             onClick={() => {
-              if (nextDepartureGroup) setPanel({ kind: "GROUP", groupId: nextDepartureGroup.id });
+              if (nextActionGroup) setPanel({ kind: "GROUP", groupId: nextActionGroup.id });
             }}
-            disabled={!nextDepartureGroup}
+            disabled={!nextActionGroup}
             aria-haspopup="dialog"
-            className={`min-h-11 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold hover:bg-white/20 disabled:cursor-default disabled:opacity-45 ${nextDepartureGroup ? interactiveClass : ""}`}
+            className={`min-h-11 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold hover:bg-white/20 disabled:cursor-default disabled:opacity-45 ${nextActionGroup ? interactiveClass : ""}`}
           >
-            {nextDepartureGroup
-              ? `Prossimo impegno: ${plural(pendingDepartures, "partenza", "partenze")} · ${timeLabel(nextDepartureGroup.at, timezone)}`
-              : "Nessuna partenza da confermare"}
+            {nextActionGroup
+              ? `Prossimo impegno: ${pendingActionLabel} · ${timeLabel(nextActionGroup.at, timezone)}`
+              : "Nessuna operazione da confermare"}
           </button>
         </div>
 

@@ -33,6 +33,7 @@ type BookingRow = {
   status: string;
   starts_at: string;
   ends_at: string;
+  completed_at: string | null;
   passenger_count: number;
   customer_snapshot: unknown;
   operator_note: string | null;
@@ -68,6 +69,7 @@ const ACTIVE_BOOKING_STATUSES = [
   "PAYMENT_PROCESSING",
   "CONFIRMED",
   "IN_PROGRESS",
+  "COMPLETED",
 ];
 
 function dateFromKey(dateKey: string) {
@@ -101,7 +103,8 @@ function bookingStatusLabel(status: string) {
     PENDING_PAYMENT: "In attesa",
     PAYMENT_PROCESSING: "Pagamento",
     CONFIRMED: "Confermata",
-    IN_PROGRESS: "In corso",
+    IN_PROGRESS: "In mare",
+    COMPLETED: "Rientrata",
   };
   return labels[status] ?? status;
 }
@@ -187,7 +190,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       .order("name"),
     supabase
       .from("bookings")
-      .select("id, boat_id, operator_customer_id, legal_offering_id, pickup_location_id, source, reference, status, starts_at, ends_at, passenger_count, customer_snapshot, operator_note, customer_total_cents_snapshot")
+      .select("id, boat_id, operator_customer_id, legal_offering_id, pickup_location_id, source, reference, status, starts_at, ends_at, completed_at, passenger_count, customer_snapshot, operator_note, customer_total_cents_snapshot")
       .eq("operator_id", operator.id)
       .in("status", ACTIVE_BOOKING_STATUSES)
       .lt("starts_at", queryEndsAt)
@@ -282,6 +285,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       occupancyId: occupancy.id,
       startsAt: occupancy.starts_at,
       endsAt: occupancy.ends_at,
+      completedAt: booking?.completed_at ?? null,
       status: booking ? bookingStatusLabel(booking.status) : occupancyLabel(occupancy.occupancy_type),
       rawStatus: booking?.status ?? occupancy.occupancy_type,
       title: booking ? customer?.display_name ?? customerName(booking.customer_snapshot) : occupancy.title ?? occupancyLabel(occupancy.occupancy_type),
@@ -316,6 +320,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       occupancyId: null,
       startsAt: booking.starts_at,
       endsAt: booking.ends_at,
+      completedAt: booking.completed_at,
       status: bookingStatusLabel(booking.status),
       rawStatus: booking.status,
       title: customer?.display_name ?? customerName(booking.customer_snapshot),
@@ -391,6 +396,8 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
             </div>
             <div className="flex flex-wrap gap-3 text-[11px] font-semibold">
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-emerald-100 ring-1 ring-emerald-300" /> Prenotata</span>
+              <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-emerald-600 ring-1 ring-emerald-800" /> In mare</span>
+              <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-teal-100 ring-1 ring-teal-400" /> Rientrata</span>
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-rose-100 ring-1 ring-rose-300" /> Blocco</span>
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded border border-[#D8D5E5] bg-white" /> Libera</span>
             </div>

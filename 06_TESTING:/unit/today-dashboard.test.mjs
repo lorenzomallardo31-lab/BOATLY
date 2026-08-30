@@ -20,6 +20,7 @@ function booking(overrides = {}) {
     kind: "BOOKING",
     startsAt: "2026-09-03T08:00:00.000Z",
     endsAt: "2026-09-03T16:00:00.000Z",
+    completedAt: null,
     customer: "Mario Rossi",
     passengers: 4,
     notes: null,
@@ -105,4 +106,16 @@ test("replaces a completed departure task with an in-use movement", () => {
 
   assert.deepEqual(overview.events.map((event) => event.kind), ["IN_USE", "RETURN"]);
   assert.equal(overview.events.some((event) => event.kind === "DEPARTURE"), false);
+});
+
+test("shows a completed booking only as returned", () => {
+  const overview = buildTodayDashboard([
+    booking({
+      rawStatus: "COMPLETED",
+      completedAt: "2026-09-03T15:42:00.000Z",
+    }),
+  ], boats, day);
+
+  assert.deepEqual(overview.events.map((event) => event.kind), ["RETURNED"]);
+  assert.equal(overview.events[0].at, "2026-09-03T15:42:00.000Z");
 });

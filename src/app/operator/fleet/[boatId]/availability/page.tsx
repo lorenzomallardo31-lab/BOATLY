@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import OperatorNav from "@/components/operator/operator-nav";
 import { requireOperatorBoatContext } from "@/lib/operator/context";
 
 import { createCalendarBlock, releaseCalendarBlock } from "./actions";
@@ -40,7 +39,7 @@ export default async function AvailabilityPage({ params, searchParams }: PagePro
   const { boatId } = await params;
   const query = await searchParams;
   const { supabase, boat, operator, canManage } = await requireOperatorBoatContext(boatId, query.operator);
-  const timezone = "Europe/Rome";
+  const timezone = operator.timezone;
 
   const from = new Date();
   from.setDate(from.getDate() - 1);
@@ -61,7 +60,6 @@ export default async function AvailabilityPage({ params, searchParams }: PagePro
 
   return (
     <main className="min-h-screen bg-[#F7F6FB] pb-28 text-[#171A2B] lg:pb-12">
-      <OperatorNav operatorId={operator.id} operatorName={operator.name} />
       <div className="mx-auto max-w-4xl px-4 py-7 sm:px-6 sm:py-10">
         <Link href={`/operator/fleet/${boat.id}?operator=${operator.id}`} className="text-sm font-semibold text-[#676B80]">← Torna a {boat.name}</Link>
         <p className="mt-6 text-xs font-bold uppercase tracking-[0.1em] text-[#6D5DFB]">Periodi e blocchi</p>

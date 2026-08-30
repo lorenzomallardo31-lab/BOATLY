@@ -1,12 +1,13 @@
 import Link from "next/link";
 
+import DuplicateBoatForm from "@/components/operator/duplicate-boat-form";
 import { requireOperatorBoatContext } from "@/lib/operator/context";
 
 import { saveBoatEssentials } from "./actions";
 
 type BoatPageProps = {
   params: Promise<{ boatId: string }>;
-  searchParams: Promise<{ operator?: string; saved?: string; error?: string }>;
+  searchParams: Promise<{ operator?: string; saved?: string; duplicated?: string; error?: string }>;
 };
 
 function errorMessage(error?: string) {
@@ -20,6 +21,7 @@ function errorMessage(error?: string) {
     "duplicate-value": "Il codice interno è già usato da un’altra barca.",
     "not-allowed": "Non hai i permessi necessari per modificare questa barca.",
     "save-failed": "Non è stato possibile salvare le modifiche.",
+    "duplicate-failed": "Non è stato possibile duplicare la barca. Riprova senza modificare l’originale.",
   };
   return error ? messages[error] ?? "Operazione non completata." : null;
 }
@@ -53,6 +55,7 @@ export default async function BoatPage({ params, searchParams }: BoatPageProps) 
         </div>
 
         {query.saved === "1" ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Modifiche salvate.</div> : null}
+        {query.duplicated === "1" ? <div className="mt-5 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm font-medium text-teal-900">Imbarcazione duplicata. Questa è la nuova unità: rinominala o modifica il codice interno se necessario.</div> : null}
         {error ? <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div> : null}
 
         <form action={saveBoatEssentials} className="mt-7 space-y-5">
@@ -88,6 +91,16 @@ export default async function BoatPage({ params, searchParams }: BoatPageProps) 
           <Link href={`/operator/fleet/${boat.id}/services?operator=${operator.id}`} className="rounded-2xl border border-[#D8D5E5] bg-white p-5 font-semibold shadow-sm">Gestisci servizi e optional →</Link>
           <Link href={`/operator/fleet/${boat.id}/status?operator=${operator.id}`} className="rounded-2xl border border-[#D8D5E5] bg-white p-5 font-semibold shadow-sm">Disponibilità ed eliminazione →</Link>
         </section>
+
+        {canManage ? (
+          <section className="mt-7 rounded-3xl border border-[#C8C0FF] bg-[#F5F2FF] p-6 sm:flex sm:items-center sm:justify-between sm:gap-6">
+            <div>
+              <h2 className="text-lg font-semibold">Hai un’altra barca uguale?</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-[#676B80]">Duplica dati, servizi, modalità di noleggio, prezzi e disponibilità settimanale. Prenotazioni, blocchi, foto, documenti e storico non vengono copiati.</p>
+            </div>
+            <DuplicateBoatForm operatorId={operator.id} boatId={boat.id} boatName={boat.name} />
+          </section>
+        ) : null}
       </div>
     </main>
   );

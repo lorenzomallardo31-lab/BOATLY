@@ -21,6 +21,7 @@ export type OperatorBoatContext = {
     id: string;
     name: string;
     status: string;
+    timezone: string;
   };
   membership: {
     role: string;
@@ -98,7 +99,7 @@ export async function requireOperatorBoatContext(
     error: operatorError,
   } = await supabase
     .from("operators")
-    .select("id, name, status")
+    .select("id, name, status, timezone")
     .eq("id", boatRow.operator_id)
     .is("deleted_at", null)
     .maybeSingle();
