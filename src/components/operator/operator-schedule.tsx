@@ -14,6 +14,7 @@ import {
 import CustomerForm from "@/components/operator/customer-form";
 import RescheduleBookingForm from "@/components/operator/reschedule-booking-form";
 import OperatorTodayDashboard from "@/components/operator/operator-today-dashboard";
+import WhatsAppBookingLink from "@/components/operator/whatsapp-booking-link";
 
 export type ScheduleDay = {
   key: string;
@@ -67,6 +68,7 @@ export type ScheduleItem = {
 
 type OperatorScheduleProps = {
   operatorId: string;
+  operatorName: string;
   timezone: string;
   today: ScheduleDay;
   days: ScheduleDay[];
@@ -175,6 +177,7 @@ function primaryCellItem(items: ScheduleItem[]) {
 
 export default function OperatorSchedule({
   operatorId,
+  operatorName,
   timezone,
   today,
   days,
@@ -228,6 +231,7 @@ export default function OperatorSchedule({
     <>
       <OperatorTodayDashboard
         operatorId={operatorId}
+        operatorName={operatorName}
         today={today}
         boats={boats}
         items={items}
@@ -483,6 +487,22 @@ export default function OperatorSchedule({
 
                     {item.bookingId ? (
                       <div className="mt-4 space-y-3 border-t border-black/10 pt-4">
+                        {item.customerPhone ? (
+                          <WhatsAppBookingLink
+                            phone={item.customerPhone}
+                            countryCode={item.customerCountryCode}
+                            customerName={item.customer ?? "Cliente"}
+                            operatorName={operatorName}
+                            boatName={selectedBoat.name}
+                            startsAt={item.startsAt}
+                            endsAt={item.endsAt}
+                            timezone={timezone}
+                            passengers={item.passengers}
+                            label="Invia riepilogo WhatsApp"
+                            className="w-full"
+                          />
+                        ) : null}
+
                         {selectedDay.today && item.rawStatus === "CONFIRMED" ? (
                           <CalendarMarkDepartedForm operatorId={operatorId} bookingId={item.bookingId} />
                         ) : null}

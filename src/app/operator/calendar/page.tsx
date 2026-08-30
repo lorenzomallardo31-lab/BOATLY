@@ -435,6 +435,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
           ) : (
             <OperatorSchedule
               operatorId={operator.id}
+              operatorName={operator.name}
               timezone={operator.timezone}
               today={todayDay}
               days={days}

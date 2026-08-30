@@ -6,6 +6,7 @@ import {
   CalendarMarkDepartedForm,
   CalendarMarkReturnedForm,
 } from "@/components/operator/calendar-cell-actions";
+import WhatsAppBookingLink from "@/components/operator/whatsapp-booking-link";
 import type {
   ScheduleBoat,
   ScheduleDay,
@@ -24,6 +25,7 @@ type DashboardPanel =
 
 type OperatorTodayDashboardProps = {
   operatorId: string;
+  operatorName: string;
   today: ScheduleDay;
   boats: ScheduleBoat[];
   items: ScheduleItem[];
@@ -102,6 +104,7 @@ function DashboardModal({
   itemById,
   boatById,
   operatorId,
+  operatorName,
   timezone,
   onClose,
   onOpenCell,
@@ -111,6 +114,7 @@ function DashboardModal({
   itemById: Map<string, ScheduleItem>;
   boatById: Map<string, ScheduleBoat>;
   operatorId: string;
+  operatorName: string;
   timezone: string;
   onClose: () => void;
   onOpenCell: (boatId: string) => void;
@@ -237,6 +241,21 @@ function DashboardModal({
                     ) : null}
 
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {item.kind === "BOOKING" && item.customerPhone ? (
+                        <WhatsAppBookingLink
+                          phone={item.customerPhone}
+                          countryCode={item.customerCountryCode}
+                          customerName={item.customer ?? "Cliente"}
+                          operatorName={operatorName}
+                          boatName={boat?.name ?? "Imbarcazione"}
+                          startsAt={item.startsAt}
+                          endsAt={item.endsAt}
+                          timezone={timezone}
+                          passengers={item.passengers}
+                          kind={event.kind === "DEPARTURE" ? "DEPARTURE_REMINDER" : event.kind === "RETURN" ? "RETURN_REMINDER" : "BOOKING_SUMMARY"}
+                          label={event.kind === "DEPARTURE" ? "Promemoria WhatsApp" : event.kind === "RETURN" ? "Ricorda il rientro" : "Contatta su WhatsApp"}
+                        />
+                      ) : null}
                       {pendingDeparture && item.bookingId ? (
                         <CalendarMarkDepartedForm operatorId={operatorId} bookingId={item.bookingId} />
                       ) : pendingReturn && item.bookingId ? (
@@ -314,6 +333,7 @@ function DashboardModal({
 
 export default function OperatorTodayDashboard({
   operatorId,
+  operatorName,
   today,
   boats,
   items,
@@ -470,6 +490,7 @@ export default function OperatorTodayDashboard({
           itemById={itemById}
           boatById={boatById}
           operatorId={operatorId}
+          operatorName={operatorName}
           timezone={timezone}
           onClose={() => setPanel(null)}
           onOpenCell={onOpenCell}
