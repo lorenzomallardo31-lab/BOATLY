@@ -11,7 +11,7 @@ import {
 } from "@/components/operator/calendar-cell-actions";
 import CustomerForm from "@/components/operator/customer-form";
 import RescheduleBookingForm from "@/components/operator/reschedule-booking-form";
-import { buildTodayDashboard } from "@/lib/operator/today-dashboard";
+import OperatorTodayDashboard from "@/components/operator/operator-today-dashboard";
 
 export type ScheduleDay = {
   key: string;
@@ -143,164 +143,6 @@ function cellAppearance(items: ScheduleItem[], active: boolean) {
   };
 }
 
-function TodayDashboard({
-  today,
-  boats,
-  items,
-  timezone,
-  onOpen,
-}: {
-  today: ScheduleDay;
-  boats: ScheduleBoat[];
-  items: ScheduleItem[];
-  timezone: string;
-  onOpen: (boatId: string) => void;
-}) {
-  const overview = useMemo(
-    () => buildTodayDashboard(items, boats, today),
-    [boats, items, today],
-  );
-  const boatById = useMemo(
-    () => new Map(boats.map((boat) => [boat.id, boat])),
-    [boats],
-  );
-  const itemById = useMemo(
-    () => new Map(items.map((item) => [item.id, item])),
-    [items],
-  );
-  const firstDeparture = overview.events.find((event) => event.kind === "DEPARTURE");
-  const lastReturn = overview.events.findLast((event) => event.kind === "RETURN");
-  const eventLabels = {
-    DEPARTURE: "Partenza",
-    RETURN: "Rientro",
-    IN_USE: "Già in uscita",
-    BLOCK: "Non disponibile",
-  } as const;
-
-  return (
-    <section className="border-b border-[#E2DFEB] bg-gradient-to-br from-[#17142C] via-[#211D3A] to-[#31285B] px-4 py-5 text-white sm:px-6 sm:py-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#BDB5FF]">
-            Cruscotto operativo · Oggi
-          </p>
-          <h2 className="mt-1 text-2xl font-semibold capitalize">
-            {longDateLabel(today.key)}
-          </h2>
-          <p className="mt-2 text-sm text-[#D6D2E7]">
-            {firstDeparture || lastReturn
-              ? `${firstDeparture ? `Prima partenza ${timeLabel(firstDeparture.at, timezone)}` : "Nessuna partenza"} · ${lastReturn ? `ultimo rientro ${timeLabel(lastReturn.at, timezone)}` : "nessun rientro"}`
-              : "Nessun movimento programmato: la giornata è libera."}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            const firstItem = overview.bookings[0] ?? overview.blocks[0];
-            if (firstItem) onOpen(firstItem.boatId);
-          }}
-          disabled={overview.bookings.length === 0 && overview.blocks.length === 0}
-          className="min-h-11 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold transition hover:bg-white/15 disabled:cursor-default disabled:opacity-45"
-        >
-          Apri il primo impegno
-        </button>
-      </div>
-
-      <dl className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {[
-          ["Prenotazioni", overview.bookings.length],
-          ["Barche bloccate", overview.blockedBoatCount],
-          ["Clienti", overview.customerCount],
-          ["Senza telefono", overview.missingPhoneCount],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.08] p-3 sm:p-4">
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-[#BDB8CE]">{label}</dt>
-            <dd className="mt-1 text-2xl font-semibold">{value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-5 grid gap-3 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-semibold">Agenda di oggi</h3>
-            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-[#D6D2E7]">
-              {overview.events.length} movimenti
-            </span>
-          </div>
-          {overview.events.length === 0 ? (
-            <p className="mt-4 rounded-xl border border-dashed border-white/20 p-4 text-sm text-[#D6D2E7]">
-              Nessuna partenza, rientro o indisponibilità per oggi.
-            </p>
-          ) : (
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {overview.events.map((event) => {
-                const item = itemById.get(event.itemId);
-                const boat = boatById.get(event.boatId);
-                const isBlock = event.kind === "BLOCK";
-                return (
-                  <button
-                    key={event.id}
-                    type="button"
-                    onClick={() => onOpen(event.boatId)}
-                    className={`min-h-[88px] rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${
-                      isBlock
-                        ? "border-rose-300/25 bg-rose-300/10 hover:bg-rose-300/15"
-                        : "border-emerald-300/20 bg-emerald-300/10 hover:bg-emerald-300/15"
-                    }`}
-                  >
-                    <span className="flex items-center justify-between gap-3">
-                      <span className={`text-[10px] font-bold uppercase tracking-wide ${isBlock ? "text-rose-200" : "text-emerald-200"}`}>
-                        {eventLabels[event.kind]}
-                      </span>
-                      <span className="text-sm font-semibold">{timeLabel(event.at, timezone)}</span>
-                    </span>
-                    <span className="mt-1 block truncate text-sm font-semibold">{boat?.name ?? "Imbarcazione"}</span>
-                    <span className="mt-1 block truncate text-xs text-[#D6D2E7]">
-                      {item?.kind === "BOOKING"
-                        ? `${item.customer ?? "Cliente"}${item.passengers ? ` · ${item.passengers} pax` : ""}`
-                        : item?.notes || item?.title || "Indisponibilità"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-semibold">Da controllare</h3>
-            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${overview.alerts.length ? "bg-amber-300/15 text-amber-100" : "bg-emerald-300/15 text-emerald-100"}`}>
-              {overview.alerts.length || "Tutto ok"}
-            </span>
-          </div>
-          {overview.alerts.length === 0 ? (
-            <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4">
-              <p className="text-sm font-semibold text-emerald-100">Nessuna criticità operativa</p>
-              <p className="mt-1 text-xs leading-5 text-[#D6D2E7]">Orari, flotta e disponibilità risultano coerenti.</p>
-            </div>
-          ) : (
-            <div className="mt-3 space-y-2">
-              {overview.alerts.slice(0, 6).map((alert) => (
-                <button
-                  key={alert.id}
-                  type="button"
-                  onClick={() => onOpen(alert.boatId)}
-                  className={`w-full rounded-xl border p-3 text-left ${alert.tone === "danger" ? "border-rose-300/25 bg-rose-300/10" : "border-amber-300/20 bg-amber-300/10"}`}
-                >
-                  <span className="block text-sm font-semibold">{alert.title}</span>
-                  <span className="mt-1 block text-xs text-[#D6D2E7]">{alert.detail}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function OperatorSchedule({
   operatorId,
   timezone,
@@ -354,12 +196,13 @@ export default function OperatorSchedule({
 
   return (
     <>
-      <TodayDashboard
+      <OperatorTodayDashboard
+        operatorId={operatorId}
         today={today}
         boats={boats}
         items={items}
         timezone={timezone}
-        onOpen={(boatId) => setSelected({ boatId, dayKey: today.key })}
+        onOpenCell={(boatId) => setSelected({ boatId, dayKey: today.key })}
       />
       <div className="max-h-[70vh] overflow-auto overscroll-contain">
         <table className="min-w-max border-separate border-spacing-0 text-left">
@@ -405,7 +248,7 @@ export default function OperatorSchedule({
                   >
                     <Link
                       href={`/operator/fleet/${boat.id}?operator=${operatorId}`}
-                      className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB]"
+                      className="block cursor-pointer rounded-lg transition duration-150 hover:-translate-y-0.5 hover:bg-[#F5F2FF] hover:ring-2 hover:ring-[#C8C0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:translate-y-0 active:scale-[0.99]"
                     >
                       <span className="block truncate text-sm font-semibold text-[#171A2B]">
                         {boat.name}
@@ -441,7 +284,7 @@ export default function OperatorSchedule({
                           type="button"
                           onClick={() => setSelected({ boatId: boat.id, dayKey: day.key })}
                           aria-label={`${boat.name}, ${longDateLabel(day.key)}: ${appearance.label}`}
-                          className={`flex h-full min-h-[70px] w-full flex-col items-center justify-center rounded-xl px-1.5 py-2 text-center text-[10px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] ${appearance.className}`}
+                          className={`flex h-full min-h-[70px] w-full cursor-pointer flex-col items-center justify-center rounded-xl px-1.5 py-2 text-center text-[10px] font-bold transition duration-150 hover:-translate-y-0.5 hover:ring-2 hover:ring-[#AFA5FF] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:translate-y-0 active:scale-[0.97] ${appearance.className}`}
                         >
                           <span>{appearance.label}</span>
                           {firstItem ? (
@@ -503,7 +346,7 @@ export default function OperatorSchedule({
                 type="button"
                 onClick={() => setSelected(null)}
                 aria-label="Chiudi dettaglio"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F1F0F6] text-xl text-[#4A4758] hover:bg-[#E7E4EF]"
+                className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full bg-[#F1F0F6] text-xl text-[#4A4758] transition hover:scale-105 hover:bg-[#E7E4EF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:scale-95"
               >
                 ×
               </button>
@@ -525,7 +368,7 @@ export default function OperatorSchedule({
 
                   {selectedBoatIsActive ? (
                     <details open className="rounded-2xl border border-[#C8C0FF] bg-white p-4">
-                      <summary className="cursor-pointer text-base font-semibold text-[#4C3FC2]">+ Crea prenotazione</summary>
+                      <summary className="cursor-pointer rounded-lg px-1 py-2 text-base font-semibold text-[#4C3FC2] transition hover:bg-[#F5F2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:opacity-70">+ Crea prenotazione</summary>
                       <div className="mt-4 border-t border-[#ECEAF1] pt-4">
                         <CalendarBookingForm
                           operatorId={operatorId}
@@ -540,7 +383,7 @@ export default function OperatorSchedule({
 
                   {selectedBoatIsActive && canManageFleet ? (
                     <details className="rounded-2xl border border-[#D8D5E5] bg-white p-4">
-                      <summary className="cursor-pointer text-base font-semibold text-[#4A4758]">Rendi non disponibile</summary>
+                      <summary className="cursor-pointer rounded-lg px-1 py-2 text-base font-semibold text-[#4A4758] transition hover:bg-[#F7F6FB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:opacity-70">Rendi non disponibile</summary>
                       <div className="mt-4 border-t border-[#ECEAF1] pt-4">
                         <CalendarDayBlockForm operatorId={operatorId} boatId={selectedBoat.id} dayKey={selectedDay.key} />
                       </div>
@@ -603,7 +446,7 @@ export default function OperatorSchedule({
                       <div className="mt-4 space-y-3 border-t border-black/10 pt-4">
                         {item.operatorCustomerId ? (
                           <details className="rounded-xl bg-white/80 p-3">
-                            <summary className="cursor-pointer text-sm font-semibold text-[#4C3FC2]">Modifica cliente</summary>
+                            <summary className="cursor-pointer rounded-lg px-1 py-2 text-sm font-semibold text-[#4C3FC2] transition hover:bg-[#F5F2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:opacity-70">Modifica cliente</summary>
                             <div className="mt-4 border-t border-[#ECEAF1] pt-4">
                               <CustomerForm
                                 operatorId={operatorId}
@@ -624,7 +467,7 @@ export default function OperatorSchedule({
 
                         {item.source === "MANUAL" && item.rawStatus === "CONFIRMED" && item.legalOfferingId && item.pickupLocationId && item.startsAtLocal && item.endsAtLocal && item.total !== null ? (
                           <details className="rounded-xl bg-white/80 p-3">
-                            <summary className="cursor-pointer text-sm font-semibold text-[#4C3FC2]">Cambia barca, giorno o orario</summary>
+                            <summary className="cursor-pointer rounded-lg px-1 py-2 text-sm font-semibold text-[#4C3FC2] transition hover:bg-[#F5F2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:opacity-70">Cambia barca, giorno o orario</summary>
                             <RescheduleBookingForm
                               operatorId={operatorId}
                               bookingId={item.bookingId}
@@ -661,11 +504,11 @@ export default function OperatorSchedule({
             <div className="mt-6 grid gap-3 border-t border-[#ECEAF1] pt-5 sm:grid-cols-2">
               <Link
                 href={`/operator/fleet/${selectedBoat.id}?operator=${operatorId}`}
-                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#D8D5E5] px-4 text-center text-sm font-semibold text-[#171A2B] hover:bg-[#F7F6FB]"
+                className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-[#D8D5E5] px-4 text-center text-sm font-semibold text-[#171A2B] transition hover:-translate-y-0.5 hover:bg-[#F7F6FB] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:translate-y-0 active:scale-[0.98]"
               >
                 {canManageFleet ? "Gestisci barca" : "Vedi barca"}
               </Link>
-              <button type="button" onClick={() => setSelected(null)} className="min-h-12 rounded-xl bg-[#171A2B] px-4 text-sm font-semibold text-white">Chiudi</button>
+              <button type="button" onClick={() => setSelected(null)} className="min-h-12 cursor-pointer rounded-xl bg-[#171A2B] px-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#292D45] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:translate-y-0 active:scale-[0.98]">Chiudi</button>
             </div>
           </section>
         </div>

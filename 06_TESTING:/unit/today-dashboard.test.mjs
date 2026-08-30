@@ -25,6 +25,7 @@ function booking(overrides = {}) {
     notes: null,
     customerPhone: "+393331234567",
     operatorCustomerId: "customer-a",
+    rawStatus: "CONFIRMED",
     ...overrides,
   };
 }
@@ -81,4 +82,27 @@ test("keeps a multi-day booking visible as already in use", () => {
   ], boats, day);
 
   assert.deepEqual(overview.events.map((event) => event.kind), ["IN_USE"]);
+});
+
+test("groups every movement scheduled at the same time", () => {
+  const overview = buildTodayDashboard([
+    booking(),
+    booking({ id: "booking-b", boatId: "boat-b", operatorCustomerId: "customer-b" }),
+  ], boats, day);
+
+  assert.equal(overview.eventGroups.length, 2);
+  assert.equal(overview.eventGroups[0].events.length, 2);
+  assert.deepEqual(overview.eventGroups[0].events.map((event) => event.kind), [
+    "DEPARTURE",
+    "DEPARTURE",
+  ]);
+});
+
+test("replaces a completed departure task with an in-use movement", () => {
+  const overview = buildTodayDashboard([
+    booking({ rawStatus: "IN_PROGRESS" }),
+  ], boats, day);
+
+  assert.deepEqual(overview.events.map((event) => event.kind), ["IN_USE", "RETURN"]);
+  assert.equal(overview.events.some((event) => event.kind === "DEPARTURE"), false);
 });

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { zonedDayBounds } from "@/lib/operator/date-time";
+import { todayInTimeZone, zonedDayBounds } from "@/lib/operator/date-time";
 import { requireOperatorWorkspaceContext } from "@/lib/operator/workspace-context";
 
 export type CalendarActionState = {
@@ -18,7 +18,66 @@ function text(formData: FormData, key: string) {
 function refreshCalendar(operatorId: string) {
   revalidatePath("/operator/calendar");
   revalidatePath(`/operator/calendar?operator=${operatorId}`);
+  revalidatePath("/operator/dashboard");
   revalidatePath("/operator/fleet");
+}
+
+export async function markCalendarBookingDeparted(
+  _previousState: CalendarActionState,
+  formData: FormData,
+): Promise<CalendarActionState> {
+  const operatorId = text(formData, "operator_id");
+  const bookingId = text(formData, "booking_id");
+  if (!operatorId || !bookingId) return { status: "error", code: "missing-fields" };
+
+  const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
+  const todayBounds = zonedDayBounds(
+    todayInTimeZone(operator.timezone),
+    operator.timezone,
+  );
+  if (!todayBounds) return { status: "error", code: "departure-failed" };
+
+  const { data: booking, error: bookingError } = await supabase
+    .from("bookings")
+    .select("id, status, starts_at")
+    .eq("id", bookingId)
+    .eq("operator_id", operator.id)
+    .maybeSingle();
+  if (bookingError || !booking) return { status: "error", code: "departure-failed" };
+  if (booking.status === "IN_PROGRESS") {
+    refreshCalendar(operator.id);
+    return { status: "success", code: "departed" };
+  }
+  const startsAt = new Date(booking.starts_at).getTime();
+  if (
+    booking.status !== "CONFIRMED"
+    || !Number.isFinite(startsAt)
+    || startsAt < new Date(todayBounds.start).getTime()
+    || startsAt >= new Date(todayBounds.end).getTime()
+  ) {
+    return { status: "error", code: "outside-today" };
+  }
+
+  const { error } = await supabase.rpc("operator_change_booking_status", {
+    p_operator_id: operator.id,
+    p_booking_id: bookingId,
+    p_status: "IN_PROGRESS",
+    p_note: null,
+  });
+
+  if (error) {
+    return {
+      status: "error",
+      code: error.message.includes("invalid_booking_status_transition")
+        ? "already-updated"
+        : error.message.includes("not_allowed")
+          ? "not-allowed"
+          : "departure-failed",
+    };
+  }
+
+  refreshCalendar(operator.id);
+  return { status: "success", code: "departed" };
 }
 
 export async function blockCalendarDay(

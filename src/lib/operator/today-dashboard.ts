@@ -15,6 +15,7 @@ export type TodayDashboardItem = {
   notes: string | null;
   customerPhone: string | null;
   operatorCustomerId: string | null;
+  rawStatus?: string;
 };
 
 export type TodayDashboardEvent = {
@@ -23,6 +24,12 @@ export type TodayDashboardEvent = {
   boatId: string;
   at: string;
   kind: "DEPARTURE" | "RETURN" | "IN_USE" | "BLOCK";
+};
+
+export type TodayDashboardEventGroup = {
+  id: string;
+  at: string;
+  events: TodayDashboardEvent[];
 };
 
 export type TodayDashboardAlert = {
@@ -38,6 +45,7 @@ export type TodayDashboardOverview = {
   bookings: TodayDashboardItem[];
   blocks: TodayDashboardItem[];
   events: TodayDashboardEvent[];
+  eventGroups: TodayDashboardEventGroup[];
   alerts: TodayDashboardAlert[];
   customerCount: number;
   missingPhoneCount: number;
@@ -61,6 +69,7 @@ export function buildTodayDashboard(
       bookings: [],
       blocks: [],
       events: [],
+      eventGroups: [],
       alerts: [],
       customerCount: 0,
       missingPhoneCount: 0,
@@ -85,13 +94,22 @@ export function buildTodayDashboard(
     const startsAt = timestamp(item.startsAt)!;
     const endsAt = timestamp(item.endsAt)!;
     let eventCount = 0;
-    if (startsAt >= dayStart && startsAt < dayEnd) {
+    if (startsAt >= dayStart && startsAt < dayEnd && item.rawStatus !== "IN_PROGRESS") {
       events.push({
         id: `${item.id}:departure`,
         itemId: item.id,
         boatId: item.boatId,
         at: item.startsAt,
         kind: "DEPARTURE",
+      });
+      eventCount += 1;
+    } else if (item.rawStatus === "IN_PROGRESS") {
+      events.push({
+        id: `${item.id}:in-use`,
+        itemId: item.id,
+        boatId: item.boatId,
+        at: startsAt < dayStart ? day.start : item.startsAt,
+        kind: "IN_USE",
       });
       eventCount += 1;
     }
@@ -131,6 +149,7 @@ export function buildTodayDashboard(
     const priority = { DEPARTURE: 0, IN_USE: 1, BLOCK: 2, RETURN: 3 };
     return priority[left.kind] - priority[right.kind];
   });
+  const eventGroups = groupTodayDashboardEvents(events);
 
   const alerts: TodayDashboardAlert[] = [];
   for (const booking of bookings) {
@@ -196,6 +215,7 @@ export function buildTodayDashboard(
     bookings,
     blocks,
     events,
+    eventGroups,
     alerts,
     customerCount: new Set(
       bookings.map((booking) => booking.operatorCustomerId ?? booking.id),
@@ -203,4 +223,25 @@ export function buildTodayDashboard(
     missingPhoneCount: bookings.filter((booking) => !booking.customerPhone).length,
     blockedBoatCount: new Set(blocks.map((block) => block.boatId)).size,
   };
+}
+
+export function groupTodayDashboardEvents(
+  events: TodayDashboardEvent[],
+): TodayDashboardEventGroup[] {
+  const groups = new Map<string, TodayDashboardEvent[]>();
+
+  for (const event of events) {
+    const key = event.at;
+    const current = groups.get(key);
+    if (current) current.push(event);
+    else groups.set(key, [event]);
+  }
+
+  return [...groups.entries()]
+    .sort(([left], [right]) => timestamp(left)! - timestamp(right)!)
+    .map(([at, groupedEvents]) => ({
+      id: at,
+      at,
+      events: groupedEvents,
+    }));
 }

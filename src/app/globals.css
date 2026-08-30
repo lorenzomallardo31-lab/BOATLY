@@ -87,3 +87,15 @@ select {
 a {
   text-decoration: none;
 }
+
+button:not(:disabled),
+a[href],
+summary {
+  cursor: pointer;
+}
+
+button:not(:disabled):active,
+a[href]:active,
+summary:active {
+  opacity: 0.78;
+}
