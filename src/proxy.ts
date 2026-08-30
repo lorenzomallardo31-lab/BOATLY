@@ -17,7 +17,6 @@ const PUBLIC_BETA_PATHS = [
   "/forgot-password",
   "/robots.txt",
   "/sign-in",
-  "/team/invite",
   "/update-password",
 ];
 

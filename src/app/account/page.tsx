@@ -14,13 +14,15 @@ export default async function AccountPage() {
   const userId = data.claims.sub;
   const email = typeof data.claims.email === "string" ? data.claims.email : "Account Boatly";
 
-  const [{ data: memberships }, { data: platformRoles }] = await Promise.all([
+  const [{ data: memberships }, { data: platformRoles }, { data: staffAccount }] = await Promise.all([
     supabase.from("operator_members").select("operator_id, role, status").eq("user_id", userId).eq("status", "ACTIVE"),
     supabase.from("platform_user_roles").select("role").eq("user_id", userId),
+    supabase.from("operator_staff_accounts").select("username").eq("user_id", userId).maybeSingle(),
   ]);
 
   const operatorMembership = memberships?.[0];
   const isPlatformUser = Boolean(platformRoles?.length);
+  const accountLabel = staffAccount?.username ? `@${staffAccount.username}` : email;
 
   return (
     <main className="min-h-screen bg-[#F7F6FB] px-4 py-12 text-[#171A2B]">
@@ -31,13 +33,14 @@ export default async function AccountPage() {
           <p className="text-sm font-medium text-[#6D5DFB]">Account gestionale</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Il tuo account</h1>
           <p className="mt-4 text-[#64748B]">Sei autenticato come:</p>
-          <p className="mt-1 font-semibold">{email}</p>
+          <p className="mt-1 font-semibold">{accountLabel}</p>
+          <p className="mt-1 text-xs text-[#64748B]">{staffAccount?.username ? "Operatore del noleggio" : "Proprietario del noleggio"}</p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-[#D8D5E5] bg-[#F4F2FA] p-5">
               <p className="font-semibold">Area operatore</p>
               <p className="mt-2 text-sm leading-6 text-[#64748B]">Dashboard, booking, CRM, calendario e flotta.</p>
-              <Link href={operatorMembership ? `/operator/dashboard?operator=${operatorMembership.operator_id}` : "/operator/onboarding"} className="mt-5 inline-flex rounded-xl bg-[#6D5DFB] px-5 py-3 text-sm font-semibold text-white">{operatorMembership ? "Apri dashboard" : "Configura attività"}</Link>
+              <Link href={operatorMembership ? `/operator/calendar?operator=${operatorMembership.operator_id}` : "/operator/onboarding"} className="mt-5 inline-flex rounded-xl bg-[#6D5DFB] px-5 py-3 text-sm font-semibold text-white">{operatorMembership ? "Apri calendario" : "Configura attività"}</Link>
             </div>
 
             {isPlatformUser ? (

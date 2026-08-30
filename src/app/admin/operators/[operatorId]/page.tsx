@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import AdminNav from "@/components/admin/admin-nav";
 import { requirePlatformContext } from "@/lib/admin/context";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 import {
   deleteOperatorAccount,
@@ -56,6 +57,11 @@ type ProfileRow = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+};
+
+type StaffIdentityRow = {
+  user_id: string;
+  username: string;
 };
 
 const inputClass =
@@ -165,6 +171,13 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
     : { data: [], error: null };
   if (profilesError) throw new Error(`Unable to load operator members: ${profilesError.message}`);
   const profileById = new Map(((profileData ?? []) as ProfileRow[]).map((profile) => [profile.id, profile]));
+  const admin = createAdminClient();
+  const { data: staffIdentityData, error: staffIdentityError } = await admin
+    .from("operator_staff_accounts")
+    .select("user_id, username")
+    .eq("operator_id", operatorId);
+  if (staffIdentityError) throw new Error(`Unable to load operator staff identities: ${staffIdentityError.message}`);
+  const staffByUserId = new Map(((staffIdentityData ?? []) as StaffIdentityRow[]).map((staff) => [staff.user_id, staff]));
   const errorMessage = message(query.error, query.scope);
 
   return (
@@ -339,11 +352,16 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
               <div className="mt-5 space-y-4">
                 {members.map((member) => {
                   const profile = profileById.get(member.user_id);
-                  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Profilo senza nome";
+                  const staffIdentity = staffByUserId.get(member.user_id);
+                  const displayName = staffIdentity
+                    ? `@${staffIdentity.username}`
+                    : [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Proprietario";
+                  const roleLabel = member.role === "OWNER" ? "PROPRIETARIO" : member.role === "EMPLOYEE" ? "OPERATORE" : member.role;
                   return (
                     <article key={member.user_id} className="rounded-2xl border border-[#E0E7EA] p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{displayName}</p><p className="mt-1 break-all text-xs text-[#6D8190]">{member.user_id}</p></div><div className="flex gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold">{member.role}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${statusClasses(member.status)}`}>{member.status}</span></div></div>
+                      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{displayName}</p><p className="mt-1 break-all text-xs text-[#6D8190]">{staffIdentity ? "Credenziali gestite dal proprietario" : member.user_id}</p></div><div className="flex gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold">{roleLabel}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${statusClasses(member.status)}`}>{member.status}</span></div></div>
                       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
+                          {!staffIdentity ? (
                           <form action={updateOperatorMemberProfile} className="grid gap-3 sm:grid-cols-3">
                             <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="user_id" value={member.user_id} />
                             <label><span className={labelClass}>Nome</span><input name="first_name" defaultValue={value(profile?.first_name)} className={inputClass} /></label>
@@ -352,6 +370,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                             <label className="sm:col-span-2"><span className={labelClass}>Motivo correzione *</span><input name="reason" required maxLength={1000} className={inputClass} /></label>
                             <button className="min-h-12 rounded-xl border border-[#0B1F33] px-4 text-sm font-semibold">Salva profilo</button>
                           </form>
+                          ) : <p className="rounded-xl bg-[#F6F8F9] p-4 text-sm text-[#587083]">Username e password vengono gestiti dal proprietario nella sezione Operatori.</p>}
                           <form action={setOperatorMemberStatus} className="grid gap-3">
                             <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="user_id" value={member.user_id} />
                             <select name="status" defaultValue={member.status} className={inputClass}>{["ACTIVE", "SUSPENDED", "REMOVED"].map((status) => <option key={status}>{status}</option>)}</select>

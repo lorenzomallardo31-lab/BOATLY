@@ -155,7 +155,7 @@ workspace. Ogni comando richiede una motivazione ed è registrato in
 - flotta con soli stati Disponibile/Non disponibile, servizi, dotazioni,
   periodi, blocchi e prezzi;
 - riprogrammazione immutabile delle prenotazioni prive di movimenti attivi;
-- team con inviti email-bound, ruoli e lifecycle;
+- proprietario via email e operatori creati dal proprietario con username/password, senza inviti email;
 - registro off-platform per acconti, saldi, cauzioni e rimborsi;
 - storni append-only, saldi in calendario e CSV mensile per il commercialista.
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requirePlatformContext } from "@/lib/admin/context";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -188,6 +189,20 @@ export async function setOperatorMemberStatus(formData: FormData) {
     redirect("/admin/operators");
   }
   const { supabase } = await requirePlatformContext();
+  const admin = createAdminClient();
+  const { data: staffIdentity } = await admin
+    .from("operator_staff_accounts")
+    .select("user_id")
+    .eq("operator_id", operatorId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (staffIdentity && status !== "REMOVED") {
+    const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: status === "SUSPENDED" ? "876000h" : "none",
+    });
+    if (authError) fail(operatorId, "member-auth", authError.message);
+  }
   const { error } = await supabase.rpc("admin_set_operator_member_status", {
     p_operator_id: operatorId,
     p_user_id: userId,
@@ -195,7 +210,18 @@ export async function setOperatorMemberStatus(formData: FormData) {
     p_reason: null,
   });
 
-  if (error) fail(operatorId, "member-status", error.message);
+  if (error) {
+    if (staffIdentity && status !== "REMOVED") {
+      await admin.auth.admin.updateUserById(userId, {
+        ban_duration: status === "SUSPENDED" ? "none" : "876000h",
+      });
+    }
+    fail(operatorId, "member-status", error.message);
+  }
+  if (staffIdentity && status === "REMOVED") {
+    const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+    if (deleteError) fail(operatorId, "member-auth", deleteError.message);
+  }
   refreshOperator(operatorId);
   redirect(operatorUrl(operatorId, `saved=member-${status.toLowerCase()}`));
 }

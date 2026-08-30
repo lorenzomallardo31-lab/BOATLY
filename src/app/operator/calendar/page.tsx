@@ -349,9 +349,9 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
     <main className="min-h-screen bg-[#F7F6FB] pb-28 text-[#171A2B] lg:pb-12">
       <OperatorNav operatorId={operator.id} operatorName={operator.name} />
 
-      <div className="mx-auto max-w-[1800px] px-3 py-6 sm:px-6 sm:py-9 lg:px-8">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div>
+      <div className="mx-auto max-w-[1800px] px-2 py-3 sm:px-6 sm:py-9 lg:px-8">
+        <div className="flex flex-col gap-3 sm:gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="hidden sm:block">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6D5DFB]">
               Planning operativo
             </p>
@@ -364,7 +364,16 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-between gap-2 sm:hidden">
+            <div><p className="text-[10px] font-bold uppercase tracking-wide text-[#6D5DFB]">Planning</p><h1 className="text-lg font-semibold">Calendario flotta</h1></div>
+            <div className="flex gap-1">
+              <Link href={scheduleHref(operator.id, addDays(startDate, -NAVIGATION_STEP_DAYS))} aria-label="20 giorni indietro" className="grid h-9 w-9 place-items-center rounded-lg border border-[#D8D5E5] bg-white text-sm font-bold">←</Link>
+              <Link href={scheduleHref(operator.id, today)} className="inline-flex h-9 items-center rounded-lg bg-[#EDE9FE] px-2.5 text-xs font-semibold text-[#4C3FC2]">Oggi</Link>
+              <Link href={scheduleHref(operator.id, addDays(startDate, NAVIGATION_STEP_DAYS))} aria-label="20 giorni avanti" className="grid h-9 w-9 place-items-center rounded-lg border border-[#D8D5E5] bg-white text-sm font-bold">→</Link>
+            </div>
+          </div>
+
+          <div className="hidden flex-wrap gap-2 sm:flex">
             <Link
               href={scheduleHref(operator.id, addDays(startDate, -NAVIGATION_STEP_DAYS))}
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#D8D5E5] bg-white px-4 text-sm font-semibold hover:bg-[#F1F0F6]"
@@ -386,21 +395,30 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
           </div>
         </div>
 
-        <section className="mt-7 overflow-hidden rounded-3xl border border-[#D8D5E5] bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-[#E2DFEB] bg-[#F0EEFF] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <section className="mt-3 overflow-hidden rounded-2xl border border-[#D8D5E5] bg-white shadow-sm sm:mt-7 sm:rounded-3xl">
+          <div className="flex flex-col gap-2 border-b border-[#E2DFEB] bg-[#F0EEFF] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
             <div>
               <p className="font-semibold capitalize">{rangeLabel(startDate, endDate)}</p>
-              <p className="mt-1 text-xs text-[#676B80]">
+              <p className="mt-1 hidden text-xs text-[#676B80] sm:block">
                 {boats.length} imbarcazioni · scorri orizzontalmente per esplorare tutti i giorni
               </p>
             </div>
-            <div className="flex flex-wrap gap-3 text-[11px] font-semibold">
+            <div className="hidden flex-wrap gap-3 text-[11px] font-semibold sm:flex">
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-emerald-100 ring-1 ring-emerald-300" /> Prenotata</span>
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-emerald-600 ring-1 ring-emerald-800" /> In mare</span>
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-teal-100 ring-1 ring-teal-400" /> Rientrata</span>
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-rose-100 ring-1 ring-rose-300" /> Blocco</span>
               <span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded border border-[#D8D5E5] bg-white" /> Libera</span>
             </div>
+            <details className="group sm:hidden">
+              <summary className="cursor-pointer list-none text-[10px] font-semibold text-[#4C3FC2]">Legenda colori <span className="group-open:hidden">↓</span><span className="hidden group-open:inline">↑</span></summary>
+              <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-semibold">
+                <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded bg-emerald-100 ring-1 ring-emerald-300" /> Prenotata</span>
+                <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded bg-emerald-600" /> In mare</span>
+                <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded bg-teal-100 ring-1 ring-teal-400" /> Rientrata</span>
+                <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded bg-rose-100 ring-1 ring-rose-300" /> Blocco</span>
+              </div>
+            </details>
           </div>
 
           {boats.length === 0 ? (

@@ -234,11 +234,11 @@ export default function OperatorSchedule({
         timezone={timezone}
         onOpenCell={(boatId) => setSelected({ boatId, dayKey: today.key })}
       />
-      <div className="max-h-[70vh] overflow-auto overscroll-contain">
+      <div className="max-h-[calc(100dvh-13rem)] overflow-auto overscroll-contain lg:max-h-[70vh]">
         <table className="min-w-max border-separate border-spacing-0 text-left">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-40 w-44 min-w-44 border-b border-r border-[#D8D5E5] bg-[#211D3A] px-4 py-3 text-xs font-bold uppercase tracking-[0.08em] text-white sm:w-56 sm:min-w-56">
+              <th className="sticky left-0 top-0 z-40 w-28 min-w-28 border-b border-r border-[#D8D5E5] bg-[#211D3A] px-2 py-3 text-[10px] font-bold uppercase tracking-[0.05em] text-white sm:w-56 sm:min-w-56 sm:px-4 sm:text-xs sm:tracking-[0.08em]">
                 Imbarcazione
               </th>
               {days.map((day) => (
@@ -274,16 +274,16 @@ export default function OperatorSchedule({
                 <tr key={boat.id}>
                   <th
                     scope="row"
-                    className="sticky left-0 z-20 w-44 min-w-44 border-b border-r border-[#D8D5E5] bg-white px-4 py-3 align-middle shadow-[5px_0_10px_-10px_rgba(23,26,43,0.65)] sm:w-56 sm:min-w-56"
+                    className="sticky left-0 z-20 w-28 min-w-28 border-b border-r border-[#D8D5E5] bg-white px-2 py-2 align-middle shadow-[5px_0_10px_-10px_rgba(23,26,43,0.65)] sm:w-56 sm:min-w-56 sm:px-4 sm:py-3"
                   >
                     <Link
                       href={`/operator/fleet/${boat.id}?operator=${operatorId}`}
                       className="block cursor-pointer rounded-lg transition duration-150 hover:-translate-y-0.5 hover:bg-[#F5F2FF] hover:ring-2 hover:ring-[#C8C0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:translate-y-0 active:scale-[0.99]"
                     >
-                      <span className="block truncate text-sm font-semibold text-[#171A2B]">
+                      <span className="block truncate text-xs font-semibold text-[#171A2B] sm:text-sm">
                         {boat.name}
                       </span>
-                      <span className="mt-1 block truncate text-[10px] text-[#777285]">
+                      <span className="mt-1 hidden truncate text-[10px] text-[#777285] sm:block">
                         {boat.detail}
                       </span>
                       <span

@@ -1,19 +1,15 @@
 import { redirect } from "next/navigation";
 
 import OperatorNav from "@/components/operator/operator-nav";
-import TeamInvitationForm from "@/components/operator/team-invitation-form";
+import StaffAccountForm from "@/components/operator/staff-account-form";
+import StaffMemberControls from "@/components/operator/staff-member-controls";
 import { requireOperatorWorkspaceContext } from "@/lib/operator/workspace-context";
-
-import { revokeTeamInvitation, updateTeamMember } from "./actions";
 
 type PageProps = { searchParams: Promise<{ operator?: string; saved?: string; error?: string }> };
 
-type RosterMember = {
+type StaffMember = {
   user_id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  role: string;
+  username: string;
   status: string;
   joined_at: string;
 };
@@ -22,75 +18,87 @@ function when(value: string, timezone: string) {
   return new Intl.DateTimeFormat("it-IT", { dateStyle: "medium", timeStyle: "short", timeZone: timezone }).format(new Date(value));
 }
 
+const SAVED_MESSAGES: Record<string, string> = {
+  password: "Nuova password salvata.",
+  suspend: "Accesso sospeso immediatamente.",
+  activate: "Accesso riattivato.",
+  remove: "Operatore eliminato definitivamente.",
+};
+
+const ERROR_MESSAGES: Record<string, string> = {
+  "staff-not-found": "L’operatore non appartiene più a questo gestionale.",
+  "password-too-short": "La password deve contenere almeno 12 caratteri.",
+  "password-mismatch": "Le due password non coincidono.",
+  "password-reset-failed": "La password non è stata aggiornata.",
+  "access-update-failed": "Non è stato possibile cambiare l’accesso. Lo stato precedente è stato mantenuto.",
+  "remove-failed": "Eliminazione non completata. L’accesso è stato comunque disattivato per sicurezza.",
+  "audit-failed": "Password modificata, ma la registrazione di sicurezza non è riuscita.",
+};
+
 export default async function OperatorTeamPage({ searchParams }: PageProps) {
   const query = await searchParams;
-  const { supabase, operator, membership, userId } = await requireOperatorWorkspaceContext(query.operator);
-  if (!new Set(["OWNER", "MANAGER"]).has(membership.role)) redirect(`/operator/dashboard?operator=${operator.id}`);
+  const { supabase, operator, membership } = await requireOperatorWorkspaceContext(query.operator);
+  if (membership.role !== "OWNER") redirect(`/operator/calendar?operator=${operator.id}`);
 
-  const [{ data: roster, error: rosterError }, { data: invitations, error: inviteError }] = await Promise.all([
-    supabase.rpc("operator_team_roster", { p_operator_id: operator.id }),
-    supabase.from("operator_invitations").select("id, email, role, expires_at, created_at").eq("operator_id", operator.id).is("accepted_at", null).is("revoked_at", null).gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }),
-  ]);
-  if (rosterError || inviteError) throw new Error("Unable to load operator team.");
+  const { data: roster, error: rosterError } = await supabase.rpc("operator_staff_roster", {
+    p_operator_id: operator.id,
+  });
+  if (rosterError) throw new Error("Unable to load operator staff accounts.");
+  const members = (roster ?? []) as StaffMember[];
+  const activeCount = members.filter((member) => member.status === "ACTIVE").length;
 
   return (
     <main className="min-h-screen bg-[#F7F6FB] pb-28 text-[#171A2B] lg:pb-12">
       <OperatorNav operatorId={operator.id} operatorName={operator.name} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6D5DFB]">Accessi e responsabilità</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Team</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#676B80]">Invita collaboratori, assegna il minimo ruolo necessario e revoca subito gli accessi non più autorizzati.</p>
+        <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#6D5DFB]">Accessi al gestionale</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Operatori</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#676B80]">
+          Tu resti il proprietario. Crea username e password per chi lavora con te: ogni modifica sarà salvata nello stesso calendario condiviso.
+        </p>
 
-        {query.saved ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Modifica salvata e registrata nell’audit.</div> : null}
-        {query.error ? <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Operazione non riuscita. Controlla il ruolo e lo stato del collaboratore.</div> : null}
+        {query.saved ? <div role="status" className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{SAVED_MESSAGES[query.saved] ?? "Modifica salvata."}</div> : null}
+        {query.error ? <div role="alert" className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{ERROR_MESSAGES[query.error] ?? "Operazione non riuscita. Riprova."}</div> : null}
 
         <section className="mt-6 rounded-3xl border border-[#E2DFEB] bg-white p-5 shadow-sm sm:p-7">
-          <h2 className="text-xl font-semibold">Invita un collaboratore</h2>
-          <p className="mt-1 text-sm text-[#676B80]">Il link contiene il segreto solo nel frammento URL, non viene inviato ai log del server e vale esclusivamente per l’email indicata.</p>
-          <div className="mt-5"><TeamInvitationForm operatorId={operator.id} canInviteManager={membership.role === "OWNER"} /></div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Crea un operatore</h2>
+              <p className="mt-1 text-sm text-[#676B80]">Niente inviti via email: le credenziali funzionano subito.</p>
+            </div>
+            <span className="rounded-full bg-[#EDE9FE] px-3 py-1.5 text-xs font-bold text-[#4C3FC2]">Nessun limite impostato</span>
+          </div>
+          <div className="mt-5"><StaffAccountForm operatorId={operator.id} /></div>
         </section>
 
-        {(invitations ?? []).length ? (
-          <section className="mt-6 rounded-3xl border border-[#E2DFEB] bg-white p-5 shadow-sm sm:p-7">
-            <h2 className="text-xl font-semibold">Inviti in attesa</h2>
-            <div className="mt-4 divide-y divide-[#E2DFEB]">
-              {(invitations ?? []).map((invite) => (
-                <article key={invite.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <div><p className="text-sm font-semibold">{invite.email}</p><p className="mt-1 text-xs text-[#676B80]">{invite.role} · scade {when(invite.expires_at, operator.timezone)}</p></div>
-                  <form action={revokeTeamInvitation}>
-                    <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="invitation_id" value={invite.id} />
-                    <button className="min-h-10 rounded-xl border border-rose-200 px-3 text-xs font-semibold text-rose-700">Revoca</button>
-                  </form>
+        <section className="mt-6 rounded-3xl border border-[#E2DFEB] bg-white p-5 shadow-sm sm:p-7">
+          <div className="flex items-end justify-between gap-4">
+            <div><h2 className="text-xl font-semibold">Accessi creati</h2><p className="mt-1 text-sm text-[#676B80]">{activeCount} attivi · {members.length} totali</p></div>
+            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">Tu · Proprietario</span>
+          </div>
+          {members.length ? (
+            <div className="mt-5 space-y-3">
+              {members.map((member) => (
+                <article key={member.user_id} className="rounded-2xl border border-[#E2DFEB] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">@{member.username}</p>
+                      <p className="mt-1 text-xs text-[#676B80]">Operatore · creato {when(member.joined_at, operator.timezone)}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${member.status === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : member.status === "SUSPENDED" ? "bg-amber-50 text-amber-800" : "bg-rose-50 text-rose-700"}`}>
+                      {member.status === "ACTIVE" ? "ACCESSO ATTIVO" : member.status === "SUSPENDED" ? "SOSPESO" : "DA ELIMINARE"}
+                    </span>
+                  </div>
+                  <StaffMemberControls operatorId={operator.id} userId={member.user_id} username={member.username} status={member.status} />
                 </article>
               ))}
             </div>
-          </section>
-        ) : null}
-
-        <section className="mt-6 rounded-3xl border border-[#E2DFEB] bg-white p-5 shadow-sm sm:p-7">
-          <div className="flex items-end justify-between gap-4"><div><h2 className="text-xl font-semibold">Membri</h2><p className="mt-1 text-sm text-[#676B80]">{(roster ?? []).length} account collegati</p></div></div>
-          <div className="mt-5 space-y-3">
-            {((roster ?? []) as RosterMember[]).map((member) => {
-              const isSelf = member.user_id === userId;
-              const protectedMember = isSelf || member.role === "OWNER" || (membership.role === "MANAGER" && member.role === "MANAGER");
-              const name = [member.first_name, member.last_name].filter(Boolean).join(" ");
-              return (
-                <article key={member.user_id} className="rounded-2xl border border-[#E2DFEB] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div><p className="font-semibold">{name || member.email}</p><p className="mt-1 text-xs text-[#676B80]">{member.email} · dal {when(member.joined_at, operator.timezone)}</p></div>
-                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${member.status === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{member.role} · {member.status}{isSelf ? " · TU" : ""}</span>
-                  </div>
-                  {!protectedMember ? (
-                    <form action={updateTeamMember} className="mt-4 grid gap-2 rounded-xl bg-[#F8F7FC] p-3 sm:grid-cols-[minmax(190px,0.7fr)_auto] sm:items-end">
-                      <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="user_id" value={member.user_id} />
-                      <label className="grid gap-1 text-xs font-semibold">Ruolo<select name="role" defaultValue={member.role} className="min-h-10 rounded-lg border border-[#D8D5E5] bg-white px-2 text-sm"><option value="EMPLOYEE">Operatore · calendario</option>{membership.role === "OWNER" ? <option value="MANAGER">Manager · flotta e team</option> : null}</select></label>
-                      <div className="flex flex-wrap gap-1"><button name="member_action" value="SET_ROLE" className="min-h-10 rounded-lg bg-[#6D5DFB] px-3 text-xs font-semibold text-white">Ruolo</button>{member.status === "ACTIVE" ? <><button name="member_action" value="SUSPEND" className="min-h-10 rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-amber-800">Sospendi</button><button name="member_action" value="REMOVE" className="min-h-10 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700">Rimuovi</button></> : <button name="member_action" value="ACTIVATE" className="min-h-10 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700">Riattiva</button>}</div>
-                    </form>
-                  ) : null}
-                </article>
-              );
-            })}
-          </div>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-dashed border-[#D8D5E5] bg-[#FAF9FC] p-6 text-center">
+              <p className="font-semibold">Nessun operatore creato</p>
+              <p className="mt-1 text-sm text-[#676B80]">Per ora solo tu puoi entrare nel gestionale.</p>
+            </div>
+          )}
         </section>
       </div>
     </main>

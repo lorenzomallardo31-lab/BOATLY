@@ -14,10 +14,16 @@ type SignInPageProps = {
 function getErrorMessage(error?: string) {
   switch (error) {
     case "invalid-credentials":
-      return "Email o password non corretti, oppure l'account non è ancora disponibile per l'accesso.";
+      return "Email/username o password non corretti, oppure l’accesso è stato sospeso.";
 
     case "invalid-form":
-      return "Inserisci email e password.";
+      return "Inserisci email o username e password.";
+
+    case "staff-disabled":
+      return "Questo accesso operatore è sospeso o è stato rimosso. Contatta il proprietario del noleggio.";
+
+    case "team-invites-retired":
+      return "I vecchi link di invito non sono più necessari. Il proprietario deve creare direttamente username e password dell’operatore.";
 
     case "confirmation-failed":
       return "Il link di autenticazione non è valido o è scaduto. Riprova.";
@@ -61,8 +67,7 @@ export default async function SignInPage({
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[#64748B]">
-            Inserisci email e password per accedere al tuo
-            account.
+            Proprietario: usa la tua email. Operatore: usa lo username creato dal proprietario.
           </p>
 
           {params.signedOut === "1" ? (
@@ -93,19 +98,19 @@ export default async function SignInPage({
 
             <div>
               <label
-                htmlFor="email"
+                htmlFor="identifier"
                 className="mb-2 block text-sm font-medium"
               >
-                Email
+                Email o username
               </label>
 
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                name="identifier"
+                type="text"
+                autoComplete="username"
                 required
-                placeholder="nome@email.it"
+                placeholder="nome@email.it oppure mario.rossi"
                 className="w-full rounded-xl border border-[#DEE5E8] bg-white px-4 py-3 outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20"
               />
             </div>
@@ -123,7 +128,7 @@ export default async function SignInPage({
                   href="/forgot-password"
                   className="text-sm font-medium text-[#14B8A6] hover:underline"
                 >
-                  Password dimenticata?
+                  Proprietario: password dimenticata?
                 </Link>
               </div>
 
@@ -146,7 +151,7 @@ export default async function SignInPage({
           </form>
 
           <div className="mt-8 border-t border-[#DEE5E8] pt-6 text-center text-sm text-[#64748B]">
-            Non hai ancora un account?{" "}
+            Sei il proprietario e non hai un account?{" "}
             <Link
               href="/sign-up"
               className="font-semibold text-[#0B1F33] underline underline-offset-4"

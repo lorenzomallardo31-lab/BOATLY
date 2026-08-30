@@ -357,127 +357,108 @@ export default function OperatorTodayDashboard({
     { key: "MISSING_PHONE", label: "Senza telefono", value: overview.missingPhoneCount },
   ];
 
+  const openNextAction = () => {
+    if (nextActionGroup) setPanel({ kind: "GROUP", groupId: nextActionGroup.id });
+  };
+
+  const metricButtons = (compact = false) => metrics.map((metric) => (
+    <button
+      key={metric.key}
+      type="button"
+      onClick={() => setPanel({ kind: "METRIC", metric: metric.key })}
+      aria-haspopup="dialog"
+      className={`${compact ? "min-w-0 px-1.5 py-2" : "px-3 py-2.5"} rounded-xl border border-white/10 bg-white/[0.08] text-left hover:border-[#AFA5FF]/70 hover:bg-white/[0.14] ${interactiveClass}`}
+    >
+      <span className="block truncate text-[9px] font-bold uppercase tracking-wide text-[#BDB8CE]">{metric.label}</span>
+      <span className={`${compact ? "text-lg" : "text-xl"} mt-0.5 block font-semibold leading-none`}>{metric.value}</span>
+    </button>
+  ));
+
+  const groupButtons = (compact = false) => overview.eventGroups.map((group) => (
+    <button
+      key={group.id}
+      type="button"
+      onClick={() => setPanel({ kind: "GROUP", groupId: group.id })}
+      aria-haspopup="dialog"
+      className={`${compact ? "min-w-[220px] p-2.5" : "min-w-[250px] p-3"} rounded-xl border text-left ${eventTone(group)} ${interactiveClass}`}
+    >
+      <span className="flex items-start justify-between gap-3">
+        <span className="truncate text-[9px] font-bold uppercase tracking-wide text-[#CFC9FF]">{groupHeadline(group)}</span>
+        <span className="text-xs font-semibold">{timeLabel(group.at, timezone)}</span>
+      </span>
+      <span className="mt-1.5 block truncate text-xs text-[#E3DFEE]">
+        {group.events.map((event) => {
+          const item = itemById.get(event.itemId);
+          const boat = boatById.get(event.boatId);
+          return `${boat?.name ?? "Imbarcazione"}${item?.kind === "BOOKING" ? ` · ${item.customer ?? "Cliente"}` : ` · ${item?.notes || "Blocco"}`}`;
+        }).join("  •  ")}
+      </span>
+    </button>
+  ));
+
+  const alertButtons = overview.alerts.map((alert) => (
+    <button
+      key={alert.id}
+      type="button"
+      onClick={() => onOpenCell(alert.boatId)}
+      className={`min-w-[220px] rounded-xl border p-2.5 text-left ${alert.tone === "danger" ? "border-rose-300/25 bg-rose-300/10 hover:bg-rose-300/15" : "border-amber-300/20 bg-amber-300/10 hover:bg-amber-300/15"} ${interactiveClass}`}
+    >
+      <span className="block truncate text-xs font-semibold">{alert.title}</span>
+      <span className="mt-1 block truncate text-[10px] text-[#D6D2E7]">{alert.detail}</span>
+    </button>
+  ));
+
   return (
     <>
-      <section className="border-b border-[#E2DFEB] bg-gradient-to-br from-[#17142C] via-[#211D3A] to-[#31285B] px-4 py-5 text-white sm:px-6 sm:py-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#BDB5FF]">
-              Cruscotto operativo · Oggi
-            </p>
-            <h2 className="mt-1 text-2xl font-semibold capitalize">{longDateLabel(today.key)}</h2>
-            <p className="mt-2 text-sm text-[#D6D2E7]">
-              {firstDeparture || lastReturn
-                ? `${firstDeparture ? `Prima partenza da confermare ${timeLabel(firstDeparture.at, timezone)}` : "Tutte le partenze registrate"} · ${lastReturn ? `ultimo rientro ${timeLabel(lastReturn.at, timezone)}` : "nessun rientro"}`
-                : "Nessun movimento programmato: la giornata è libera."}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (nextActionGroup) setPanel({ kind: "GROUP", groupId: nextActionGroup.id });
-            }}
-            disabled={!nextActionGroup}
-            aria-haspopup="dialog"
-            className={`min-h-11 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold hover:bg-white/20 disabled:cursor-default disabled:opacity-45 ${nextActionGroup ? interactiveClass : ""}`}
-          >
-            {nextActionGroup
-              ? `Prossimo impegno: ${pendingActionLabel} · ${timeLabel(nextActionGroup.at, timezone)}`
-              : "Nessuna operazione da confermare"}
-          </button>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {metrics.map((metric) => (
-            <button
-              key={metric.key}
-              type="button"
-              onClick={() => setPanel({ kind: "METRIC", metric: metric.key })}
-              aria-haspopup="dialog"
-              className={`rounded-2xl border border-white/10 bg-white/[0.08] p-3 text-left hover:border-[#AFA5FF]/70 hover:bg-white/[0.14] sm:p-4 ${interactiveClass}`}
-            >
-              <span className="block text-[10px] font-bold uppercase tracking-wide text-[#BDB8CE]">{metric.label}</span>
-              <span className="mt-1 block text-2xl font-semibold">{metric.value}</span>
-              <span className="mt-2 block text-[10px] font-semibold text-[#C8C0FF]">Apri dettagli →</span>
+      <section className="border-b border-[#E2DFEB] bg-gradient-to-br from-[#17142C] via-[#211D3A] to-[#31285B] text-white">
+        <div className="px-3 py-3 lg:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#BDB5FF]">Oggi · operatività</p>
+              <h2 className="truncate text-sm font-semibold capitalize">{longDateLabel(today.key)}</h2>
+            </div>
+            <button type="button" onClick={openNextAction} disabled={!nextActionGroup} aria-haspopup="dialog" className={`min-h-9 shrink-0 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-semibold disabled:cursor-default disabled:opacity-45 ${nextActionGroup ? interactiveClass : ""}`}>
+              {nextActionGroup ? `${pendingActionLabel} · ${timeLabel(nextActionGroup.at, timezone)}` : "Tutto fatto"}
             </button>
-          ))}
+          </div>
+          <div className="mt-2 grid grid-cols-4 gap-1.5">{metricButtons(true)}</div>
+          <details className="group mt-2 rounded-xl border border-white/10 bg-white/[0.06]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-white/10 active:bg-white/15">
+              <span>Agenda e controlli</span>
+              <span className="text-[10px] text-[#CFC9FF]">{overview.events.length} movimenti · {overview.alerts.length} avvisi <span className="group-open:hidden">↓</span><span className="hidden group-open:inline">↑</span></span>
+            </summary>
+            <div className="border-t border-white/10 p-2.5">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#BDB8CE]">Agenda</p>
+              {overview.eventGroups.length ? <div className="flex gap-2 overflow-x-auto pb-2">{groupButtons(true)}</div> : <p className="rounded-lg border border-dashed border-white/15 p-3 text-xs text-[#D6D2E7]">Nessun movimento programmato.</p>}
+              <p className="mb-2 mt-3 text-[10px] font-bold uppercase tracking-wide text-[#BDB8CE]">Da controllare</p>
+              {overview.alerts.length ? <div className="flex gap-2 overflow-x-auto pb-1">{alertButtons}</div> : <p className="rounded-lg bg-emerald-300/10 p-3 text-xs text-emerald-100">Nessuna criticità operativa.</p>}
+            </div>
+          </details>
         </div>
 
-        <div className="mt-5 grid gap-3 xl:grid-cols-[1.4fr_0.8fr]">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-semibold">Agenda di oggi</h3>
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-[#D6D2E7]">
-                {overview.events.length} movimenti · {overview.eventGroups.length} orari
-              </span>
-            </div>
-            {overview.eventGroups.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-dashed border-white/20 p-4 text-sm text-[#D6D2E7]">
-                Nessuna partenza, rientro o indisponibilità per oggi.
-              </p>
-            ) : (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {overview.eventGroups.map((group) => (
-                  <button
-                    key={group.id}
-                    type="button"
-                    onClick={() => setPanel({ kind: "GROUP", groupId: group.id })}
-                    aria-haspopup="dialog"
-                    className={`min-h-[104px] rounded-xl border p-3 text-left ${eventTone(group)} ${interactiveClass}`}
-                  >
-                    <span className="flex items-start justify-between gap-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-[#CFC9FF]">
-                        {groupHeadline(group)}
-                      </span>
-                      <span className="text-sm font-semibold">{timeLabel(group.at, timezone)}</span>
-                    </span>
-                    <span className="mt-2 block space-y-1">
-                      {group.events.slice(0, 3).map((event) => {
-                        const item = itemById.get(event.itemId);
-                        const boat = boatById.get(event.boatId);
-                        return (
-                          <span key={event.id} className="block truncate text-xs text-[#E3DFEE]">
-                            <strong className="text-white">{boat?.name ?? "Imbarcazione"}</strong>
-                            {item?.kind === "BOOKING" ? ` · ${item.customer ?? "Cliente"}` : ` · ${item?.notes || "Blocco"}`}
-                          </span>
-                        );
-                      })}
-                      {group.events.length > 3 ? <span className="block text-xs font-semibold text-[#C8C0FF]">+ altri {group.events.length - 3}</span> : null}
-                    </span>
-                  </button>
-                ))}
+        <div className="hidden px-5 py-4 lg:block">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#BDB5FF]">Cruscotto operativo · Oggi</p>
+                <span className="text-sm font-semibold capitalize">{longDateLabel(today.key)}</span>
               </div>
-            )}
+              <p className="mt-1 truncate text-xs text-[#D6D2E7]">{firstDeparture || lastReturn ? `${firstDeparture ? `Prima partenza ${timeLabel(firstDeparture.at, timezone)}` : "Partenze concluse"} · ${lastReturn ? `ultimo rientro ${timeLabel(lastReturn.at, timezone)}` : "nessun rientro"}` : "Nessun movimento programmato: la giornata è libera."}</p>
+            </div>
+            <button type="button" onClick={openNextAction} disabled={!nextActionGroup} aria-haspopup="dialog" className={`min-h-10 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-semibold hover:bg-white/20 disabled:cursor-default disabled:opacity-45 ${nextActionGroup ? interactiveClass : ""}`}>
+              {nextActionGroup ? `Prossimo: ${pendingActionLabel} · ${timeLabel(nextActionGroup.at, timezone)}` : "Nessuna operazione da confermare"}
+            </button>
           </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-semibold">Da controllare</h3>
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${overview.alerts.length ? "bg-amber-300/15 text-amber-100" : "bg-emerald-300/15 text-emerald-100"}`}>
-                {overview.alerts.length || "Tutto ok"}
-              </span>
+          <div className="mt-3 grid grid-cols-[360px_minmax(0,1fr)] gap-3">
+            <div className="grid grid-cols-4 gap-1.5">{metricButtons()}</div>
+            <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_minmax(280px,0.7fr)] gap-2">
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.06] p-2">
+                {overview.eventGroups.length ? <div className="flex gap-2 overflow-x-auto pb-1">{groupButtons(true)}</div> : <p className="p-3 text-xs text-[#D6D2E7]">Agenda libera.</p>}
+              </div>
+              <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.06] p-2">
+                {overview.alerts.length ? <div className="flex gap-2 overflow-x-auto pb-1">{alertButtons}</div> : <p className="p-3 text-xs font-semibold text-emerald-100">✓ Nessuna criticità operativa</p>}
+              </div>
             </div>
-            {overview.alerts.length === 0 ? (
-              <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4">
-                <p className="text-sm font-semibold text-emerald-100">Nessuna criticità operativa</p>
-                <p className="mt-1 text-xs leading-5 text-[#D6D2E7]">Orari, flotta e disponibilità risultano coerenti.</p>
-              </div>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {overview.alerts.slice(0, 6).map((alert) => (
-                  <button
-                    key={alert.id}
-                    type="button"
-                    onClick={() => onOpenCell(alert.boatId)}
-                    className={`w-full rounded-xl border p-3 text-left ${alert.tone === "danger" ? "border-rose-300/25 bg-rose-300/10 hover:bg-rose-300/15" : "border-amber-300/20 bg-amber-300/10 hover:bg-amber-300/15"} ${interactiveClass}`}
-                  >
-                    <span className="block text-sm font-semibold">{alert.title}</span>
-                    <span className="mt-1 block text-xs text-[#D6D2E7]">{alert.detail}</span>
-                    <span className="mt-2 block text-[10px] font-semibold text-[#C8C0FF]">Apri e correggi →</span>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </section>
