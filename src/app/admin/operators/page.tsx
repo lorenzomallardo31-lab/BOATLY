@@ -3,10 +3,8 @@ import Link from "next/link";
 import AdminNav from "@/components/admin/admin-nav";
 import { requirePlatformContext } from "@/lib/admin/context";
 
-import { cleanupPilotStorage } from "./actions";
-
 type PageProps = {
-  searchParams: Promise<{ q?: string; status?: string; deleted?: string; storageCleared?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; deleted?: string }>;
 };
 
 function visibleStatus(status: string) {
@@ -25,7 +23,7 @@ function statusClasses(status: string) {
 
 export default async function AdminOperatorsPage({ searchParams }: PageProps) {
   const query = await searchParams;
-  const { supabase } = await requirePlatformContext(["SUPER_ADMIN"]);
+  const { supabase } = await requirePlatformContext();
 
   let request = supabase
     .from("operators")
@@ -73,12 +71,6 @@ export default async function AdminOperatorsPage({ searchParams }: PageProps) {
           </div>
         ) : null}
 
-        {query.storageCleared !== undefined ? (
-          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-            Pulizia completata: {query.storageCleared} file TEST rimossi in modo sicuro.
-          </div>
-        ) : null}
-
         <section className="mt-7 grid gap-3 sm:grid-cols-4">
           {[
             ["Da verificare", counts.pending, "pending", "bg-amber-50 text-amber-900"],
@@ -123,13 +115,6 @@ export default async function AdminOperatorsPage({ searchParams }: PageProps) {
             {operators.length === 0 ? (
               <div className="p-10 text-center">
                 <p className="text-sm text-[#64748B]">Nessuna iscrizione in questa sezione.</p>
-                {!query.status && !query.q ? (
-                  <form action={cleanupPilotStorage} className="mt-5">
-                    <button className="min-h-11 rounded-xl border border-[#D7E0E5] bg-white px-4 text-sm font-semibold text-[#40596B] hover:bg-[#F6F8F9]">
-                      Completa pulizia file TEST
-                    </button>
-                  </form>
-                ) : null}
               </div>
             ) : null}
           </div>

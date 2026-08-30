@@ -38,11 +38,14 @@ export default function TeamInvitationForm({ operatorId, canInviteManager }: { o
           <p className="mt-2 text-xs leading-5 text-emerald-800">Scade tra 7 giorni e funziona solo con l’email invitata.</p>
         </div>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-[1fr_0.6fr_auto] sm:items-end">
+      <div className="grid gap-4 sm:grid-cols-[1fr_0.8fr_auto] sm:items-end">
         <label className="grid gap-2 text-sm font-semibold">Email collaboratore *<input name="email" type="email" required className="min-h-12 rounded-xl border border-[#D8D5E5] px-3 text-base sm:text-sm" /></label>
-        <label className="grid gap-2 text-sm font-semibold">Ruolo *<select name="role" className="min-h-12 rounded-xl border border-[#D8D5E5] bg-white px-3 text-sm"><option value="EMPLOYEE">Operatore</option><option value="SKIPPER">Skipper</option>{canInviteManager ? <option value="MANAGER">Manager</option> : null}</select></label>
+        <label className="grid gap-2 text-sm font-semibold">Ruolo *<select name="role" className="min-h-12 rounded-xl border border-[#D8D5E5] bg-white px-3 text-sm"><option value="EMPLOYEE">Operatore · calendario</option>{canInviteManager ? <option value="MANAGER">Manager · flotta e team</option> : null}</select></label>
         <Submit />
       </div>
+      <p className="text-xs leading-5 text-[#676B80]">
+        L’operatore lavora sul calendario. Il manager può anche configurare flotta e collaboratori.
+      </p>
     </form>
   );
 }

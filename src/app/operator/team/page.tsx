@@ -42,7 +42,7 @@ export default async function OperatorTeamPage({ searchParams }: PageProps) {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#676B80]">Invita collaboratori, assegna il minimo ruolo necessario e revoca subito gli accessi non più autorizzati.</p>
 
         {query.saved ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Modifica salvata e registrata nell’audit.</div> : null}
-        {query.error ? <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Operazione non riuscita. Controlla ruolo, motivazione e stato del membro.</div> : null}
+        {query.error ? <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Operazione non riuscita. Controlla il ruolo e lo stato del collaboratore.</div> : null}
 
         <section className="mt-6 rounded-3xl border border-[#E2DFEB] bg-white p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-semibold">Invita un collaboratore</h2>
@@ -57,9 +57,8 @@ export default async function OperatorTeamPage({ searchParams }: PageProps) {
               {(invitations ?? []).map((invite) => (
                 <article key={invite.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div><p className="text-sm font-semibold">{invite.email}</p><p className="mt-1 text-xs text-[#676B80]">{invite.role} · scade {when(invite.expires_at, operator.timezone)}</p></div>
-                  <form action={revokeTeamInvitation} className="flex gap-2">
+                  <form action={revokeTeamInvitation}>
                     <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="invitation_id" value={invite.id} />
-                    <input name="reason" required placeholder="Motivo revoca" className="min-h-10 min-w-0 rounded-xl border border-[#D8D5E5] px-3 text-sm" />
                     <button className="min-h-10 rounded-xl border border-rose-200 px-3 text-xs font-semibold text-rose-700">Revoca</button>
                   </form>
                 </article>
@@ -82,10 +81,9 @@ export default async function OperatorTeamPage({ searchParams }: PageProps) {
                     <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${member.status === "ACTIVE" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{member.role} · {member.status}{isSelf ? " · TU" : ""}</span>
                   </div>
                   {!protectedMember ? (
-                    <form action={updateTeamMember} className="mt-4 grid gap-2 rounded-xl bg-[#F8F7FC] p-3 sm:grid-cols-[0.65fr_1fr_auto] sm:items-end">
+                    <form action={updateTeamMember} className="mt-4 grid gap-2 rounded-xl bg-[#F8F7FC] p-3 sm:grid-cols-[minmax(190px,0.7fr)_auto] sm:items-end">
                       <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="user_id" value={member.user_id} />
-                      <label className="grid gap-1 text-xs font-semibold">Nuovo ruolo<select name="role" defaultValue={member.role} className="min-h-10 rounded-lg border border-[#D8D5E5] bg-white px-2 text-sm"><option value="EMPLOYEE">Operatore</option><option value="SKIPPER">Skipper</option>{membership.role === "OWNER" ? <option value="MANAGER">Manager</option> : null}</select></label>
-                      <label className="grid gap-1 text-xs font-semibold">Motivazione *<input name="reason" required className="min-h-10 rounded-lg border border-[#D8D5E5] bg-white px-2 text-sm" /></label>
+                      <label className="grid gap-1 text-xs font-semibold">Ruolo<select name="role" defaultValue={member.role} className="min-h-10 rounded-lg border border-[#D8D5E5] bg-white px-2 text-sm"><option value="EMPLOYEE">Operatore · calendario</option>{membership.role === "OWNER" ? <option value="MANAGER">Manager · flotta e team</option> : null}</select></label>
                       <div className="flex flex-wrap gap-1"><button name="member_action" value="SET_ROLE" className="min-h-10 rounded-lg bg-[#6D5DFB] px-3 text-xs font-semibold text-white">Ruolo</button>{member.status === "ACTIVE" ? <><button name="member_action" value="SUSPEND" className="min-h-10 rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-amber-800">Sospendi</button><button name="member_action" value="REMOVE" className="min-h-10 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700">Rimuovi</button></> : <button name="member_action" value="ACTIVATE" className="min-h-10 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700">Riattiva</button>}</div>
                     </form>
                   ) : null}

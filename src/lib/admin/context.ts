@@ -2,15 +2,9 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-export type PlatformRole =
-  | "SUPER_ADMIN"
-  | "ADMIN"
-  | "SUPPORT"
-  | "FINANCE"
-  | "MODERATOR"
-  | "COMPLIANCE";
+export type PlatformRole = "SUPER_ADMIN";
 
-export async function requirePlatformContext(allowedRoles?: PlatformRole[]) {
+export async function requirePlatformContext() {
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
 
@@ -34,11 +28,7 @@ export async function requirePlatformContext(allowedRoles?: PlatformRole[]) {
 
   const roles = (roleRows ?? []).map((row) => row.role as PlatformRole);
 
-  if (roles.length === 0) {
-    redirect("/account");
-  }
-
-  if (allowedRoles && !roles.some((role) => allowedRoles.includes(role))) {
+  if (!roles.includes("SUPER_ADMIN")) {
     redirect("/account");
   }
 

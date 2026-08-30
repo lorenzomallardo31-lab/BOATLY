@@ -9,15 +9,15 @@ type MorePageProps = {
 
 export default async function OperatorMorePage({ searchParams }: MorePageProps) {
   const query = await searchParams;
-  const { operator } = await requireOperatorWorkspaceContext(query.operator);
+  const { operator, membership } = await requireOperatorWorkspaceContext(query.operator);
   const suffix = `?operator=${encodeURIComponent(operator.id)}`;
   const items = [
-    {
+    ...(new Set(["OWNER", "MANAGER"]).has(membership.role) ? [{
       href: `/operator/team${suffix}`,
       title: "Collaboratori",
       description: "Gestisci chi può lavorare nel gestionale.",
       icon: "👥",
-    },
+    }] : []),
     {
       href: "/account",
       title: "Account",

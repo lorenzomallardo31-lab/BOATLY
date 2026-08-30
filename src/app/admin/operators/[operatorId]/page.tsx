@@ -102,19 +102,15 @@ function message(error?: string, scope?: string) {
 
 export default async function AdminOperatorDetailPage({ params, searchParams }: PageProps) {
   const [{ operatorId }, query] = await Promise.all([params, searchParams]);
-  const { supabase, userId } = await requirePlatformContext(["SUPER_ADMIN"]);
-  const canControl = true;
-
+  const { supabase, userId } = await requirePlatformContext();
   const [
     operatorResult,
     legalResult,
     locationsResult,
     membersResult,
-    verificationsResult,
     auditsResult,
     boatsResult,
     bookingsResult,
-    documentsResult,
   ] = await Promise.all([
     supabase
       .from("operators")
@@ -139,12 +135,6 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
       .eq("operator_id", operatorId)
       .order("role"),
     supabase
-      .from("operator_verifications")
-      .select("id, status, submitted_at, reviewed_at, decision_note")
-      .eq("operator_id", operatorId)
-      .order("submitted_at", { ascending: false })
-      .limit(8),
-    supabase
       .from("audit_logs")
       .select("id, action, entity_type, entity_id, reason, metadata, occurred_at")
       .eq("operator_id", operatorId)
@@ -152,10 +142,9 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
       .limit(30),
     supabase.from("boats").select("id", { count: "exact", head: true }).eq("operator_id", operatorId),
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("operator_id", operatorId),
-    supabase.from("operator_documents").select("id", { count: "exact", head: true }).eq("operator_id", operatorId),
   ]);
 
-  const results = [operatorResult, legalResult, locationsResult, membersResult, verificationsResult, auditsResult, boatsResult, bookingsResult, documentsResult];
+  const results = [operatorResult, legalResult, locationsResult, membersResult, auditsResult, boatsResult, bookingsResult];
   const firstError = results.find((result) => result.error)?.error;
   if (firstError) throw new Error(`Unable to load operator control center: ${firstError.message}`);
   if (!operatorResult.data) notFound();
@@ -176,10 +165,6 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
     : { data: [], error: null };
   if (profilesError) throw new Error(`Unable to load operator members: ${profilesError.message}`);
   const profileById = new Map(((profileData ?? []) as ProfileRow[]).map((profile) => [profile.id, profile]));
-  const verifications = verificationsResult.data ?? [];
-  const openVerification = verifications.find((review) =>
-    ["PENDING", "IN_REVIEW", "NEEDS_CHANGES"].includes(review.status),
-  );
   const errorMessage = message(query.error, query.scope);
 
   return (
@@ -207,14 +192,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
               >
                 Apri gestionale
               </Link>
-            ) : (
-              <Link
-                href={`/admin/bookings?operator=${operator.id}`}
-                className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-[#0B1F33]"
-              >
-                Vedi attività
-              </Link>
-            )}
+            ) : null}
           </div>
         </header>
 
@@ -229,13 +207,11 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
           </div>
         ) : null}
 
-        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <section className="mt-6 grid gap-3 sm:grid-cols-3">
           {[
             ["Flotta", boatsResult.count ?? 0],
             ["Prenotazioni", bookingsResult.count ?? 0],
-            ["Membri", members.length],
-            ["Documenti", documentsResult.count ?? 0],
-            ["Verifiche", verifications.length],
+            ["Collaboratori", members.length],
           ].map(([label, count]) => (
             <div key={label} className="rounded-2xl border border-[#DDE5E9] bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#6D8190]">{label}</p>
@@ -244,22 +220,9 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
           ))}
         </section>
 
-        {openVerification ? (
-          <section className="mt-6 flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-semibold text-amber-900">Verifica operatore: {openVerification.status}</p>
-              <p className="mt-1 text-sm text-amber-800">Usa la coda compliance per approvare o richiedere modifiche sul fascicolo.</p>
-            </div>
-            <Link href="/admin/verifications" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-900 px-4 text-sm font-semibold text-white">
-              Apri coda verifiche
-            </Link>
-          </section>
-        ) : null}
-
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <div className="space-y-6">
-            {canControl ? (
-              <section className="rounded-3xl border border-[#DDE5E9] bg-white p-5 shadow-sm sm:p-6">
+            <section className="rounded-3xl border border-[#DDE5E9] bg-white p-5 shadow-sm sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#14B8A6]">Lifecycle</p>
@@ -293,14 +256,12 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                     </button>
                   </form>
                 </div>
-              </section>
-            ) : null}
+            </section>
 
             <section className="rounded-3xl border border-[#DDE5E9] bg-white p-5 shadow-sm sm:p-6">
               <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#14B8A6]">Workspace</p>
               <h2 className="mt-1 text-xl font-semibold">Identità del gestionale</h2>
-              {canControl ? (
-                <form action={updateOperatorWorkspace} className="mt-5 grid gap-4 sm:grid-cols-2">
+              <form action={updateOperatorWorkspace} className="mt-5 grid gap-4 sm:grid-cols-2">
                   <input type="hidden" name="operator_id" value={operator.id} />
                   <label className="sm:col-span-2"><span className={labelClass}>Nome attività *</span><input name="name" required maxLength={160} defaultValue={operator.name} className={inputClass} /></label>
                   <label><span className={labelClass}>Paese *</span><input name="country_code" required maxLength={2} defaultValue={operator.country_code} className={inputClass} /></label>
@@ -308,15 +269,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                   <label className="sm:col-span-2"><span className={labelClass}>Timezone IANA *</span><input name="timezone" required defaultValue={operator.timezone} className={inputClass} /></label>
                   <label className="sm:col-span-2"><span className={labelClass}>Motivo correzione *</span><input name="reason" required maxLength={1000} placeholder="Perché stai correggendo questi dati?" className={inputClass} /></label>
                   <button className="min-h-12 rounded-xl bg-[#14B8A6] px-5 text-sm font-semibold text-white sm:col-span-2">Salva correzioni workspace</button>
-                </form>
-              ) : (
-                <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-                  <div><dt className="text-[#6D8190]">Nome</dt><dd className="font-semibold">{operator.name}</dd></div>
-                  <div><dt className="text-[#6D8190]">Paese / valuta</dt><dd className="font-semibold">{operator.country_code} · {operator.currency}</dd></div>
-                  <div><dt className="text-[#6D8190]">Timezone</dt><dd className="font-semibold">{operator.timezone}</dd></div>
-                  <div><dt className="text-[#6D8190]">Creato</dt><dd className="font-semibold">{dateTime(operator.created_at)}</dd></div>
-                </dl>
-              )}
+              </form>
             </section>
 
             <details className="group rounded-3xl border border-[#DDE5E9] bg-white shadow-sm" open={!legal.legal_name}>
@@ -325,8 +278,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                 <span className="text-sm font-semibold text-[#587083] group-open:hidden">Apri</span><span className="hidden text-sm font-semibold text-[#587083] group-open:inline">Chiudi</span>
               </summary>
               <div className="border-t border-[#E4EAED] p-5 sm:p-6">
-                {canControl ? (
-                  <form action={updateOperatorLegalProfile} className="grid gap-4 sm:grid-cols-2">
+                <form action={updateOperatorLegalProfile} className="grid gap-4 sm:grid-cols-2">
                     <input type="hidden" name="operator_id" value={operator.id} />
                     {[
                       ["legal_name", "Ragione sociale"], ["legal_form", "Forma giuridica"],
@@ -342,8 +294,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                     ))}
                     <label className="sm:col-span-2"><span className={labelClass}>Motivo correzione *</span><input name="reason" required maxLength={1000} className={inputClass} placeholder="Motivo amministrativo" /></label>
                     <button className="min-h-12 rounded-xl bg-[#0B1F33] px-5 text-sm font-semibold text-white sm:col-span-2">Salva profilo legale</button>
-                  </form>
-                ) : <p className="text-sm text-[#587083]">Accesso in sola lettura. Solo ADMIN e SUPER_ADMIN possono correggere questi dati.</p>}
+                </form>
               </div>
             </details>
 
@@ -357,8 +308,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                       <div><p className="font-semibold">{location.name}</p><p className="mt-1 text-xs text-[#6D8190]">{[location.city, location.administrative_area].filter(Boolean).join(" · ") || "Località da completare"}</p></div>
                       <div className="flex gap-2">{location.is_primary ? <span className="rounded-full bg-[#E7FAF6] px-2 py-1 text-[10px] font-bold text-[#087A69]">PRINCIPALE</span> : null}<span className={`rounded-full px-2 py-1 text-[10px] font-bold ${location.is_active ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{location.is_active ? "ATTIVA" : "DISATTIVA"}</span></div>
                     </summary>
-                    {canControl ? (
-                      <form action={updateOperatorLocation} className="grid gap-4 border-t border-[#E0E7EA] p-4 sm:grid-cols-2">
+                    <form action={updateOperatorLocation} className="grid gap-4 border-t border-[#E0E7EA] p-4 sm:grid-cols-2">
                         <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="location_id" value={location.id} />
                         {[
                           ["name", "Nome sede", location.name], ["address_line_1", "Indirizzo", location.address_line_1],
@@ -378,8 +328,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                         </div>
                         <label className="sm:col-span-2"><span className={labelClass}>Motivo correzione *</span><input name="reason" required maxLength={1000} className={inputClass} /></label>
                         <button className="min-h-12 rounded-xl bg-[#0B1F33] px-5 text-sm font-semibold text-white sm:col-span-2">Salva sede</button>
-                      </form>
-                    ) : null}
+                    </form>
                   </details>
                 ))}
               </div>
@@ -394,8 +343,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                   return (
                     <article key={member.user_id} className="rounded-2xl border border-[#E0E7EA] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{displayName}</p><p className="mt-1 break-all text-xs text-[#6D8190]">{member.user_id}</p></div><div className="flex gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold">{member.role}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${statusClasses(member.status)}`}>{member.status}</span></div></div>
-                      {canControl ? (
-                        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
+                      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
                           <form action={updateOperatorMemberProfile} className="grid gap-3 sm:grid-cols-3">
                             <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="user_id" value={member.user_id} />
                             <label><span className={labelClass}>Nome</span><input name="first_name" defaultValue={value(profile?.first_name)} className={inputClass} /></label>
@@ -407,11 +355,9 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
                           <form action={setOperatorMemberStatus} className="grid gap-3">
                             <input type="hidden" name="operator_id" value={operator.id} /><input type="hidden" name="user_id" value={member.user_id} />
                             <select name="status" defaultValue={member.status} className={inputClass}>{["ACTIVE", "SUSPENDED", "REMOVED"].map((status) => <option key={status}>{status}</option>)}</select>
-                            <input name="reason" required maxLength={1000} placeholder="Motivo blocco/sblocco" className={inputClass} />
                             <button className="min-h-12 rounded-xl bg-[#0B1F33] px-4 text-sm font-semibold text-white">Applica accesso</button>
                           </form>
-                        </div>
-                      ) : null}
+                      </div>
                     </article>
                   );
                 })}
@@ -420,16 +366,6 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
           </div>
 
           <aside className="space-y-6">
-            <section className="rounded-3xl border border-[#DDE5E9] bg-white p-5 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#14B8A6]">Verifiche</p>
-              <h2 className="mt-1 text-lg font-semibold">Storico decisioni</h2>
-              <div className="mt-4 space-y-3">
-                {verifications.length === 0 ? <p className="text-sm text-[#6D8190]">Nessuna verifica inviata.</p> : verifications.map((review) => (
-                  <div key={review.id} className="rounded-xl bg-[#F6F8F9] p-3 text-sm"><div className="flex justify-between gap-3"><strong>{review.status}</strong><span className="text-xs text-[#6D8190]">{dateTime(review.submitted_at)}</span></div>{review.decision_note ? <p className="mt-2 text-xs leading-5 text-[#587083]">{review.decision_note}</p> : null}</div>
-                ))}
-              </div>
-            </section>
-
             <section className="rounded-3xl border border-[#DDE5E9] bg-white p-5 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#14B8A6]">Audit</p>
               <h2 className="mt-1 text-lg font-semibold">Ultime azioni</h2>
@@ -442,8 +378,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
           </aside>
         </div>
 
-        {canControl ? (
-          <section className="mt-6 rounded-3xl border border-rose-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="mt-6 rounded-3xl border border-rose-200 bg-white p-5 shadow-sm sm:p-6">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-rose-700">Eliminazione account</p>
             <h2 className="mt-1 text-xl font-semibold">Elimina questo noleggiatore</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#6D8190]">L’accesso viene revocato e l’account scompare definitivamente dopo due minuti. Le informazioni tecniche indispensabili a eventuali documenti contabili già prodotti restano conservate senza essere più utilizzabili.</p>
@@ -454,8 +389,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
               <input name="reason" required maxLength={1000} placeholder="Motivo eliminazione" className={inputClass} />
               <button className="min-h-12 rounded-xl bg-rose-700 px-5 text-sm font-semibold text-white">Elimina account</button>
             </form>
-          </section>
-        ) : null}
+        </section>
       </div>
     </main>
   );

@@ -45,7 +45,7 @@ export async function createTeamInvitation(
   const email = text(formData, "email").toLowerCase();
   const role = text(formData, "role");
   if (!operatorId || !email.includes("@")) return { status: "error", code: "invalid-email" };
-  if (!new Set(["MANAGER", "EMPLOYEE", "SKIPPER"]).has(role)) return { status: "error", code: "role-not-allowed" };
+  if (!new Set(["MANAGER", "EMPLOYEE"]).has(role)) return { status: "error", code: "role-not-allowed" };
 
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
   const rawToken = randomBytes(32).toString("base64url");
@@ -70,13 +70,12 @@ export async function createTeamInvitation(
 export async function revokeTeamInvitation(formData: FormData) {
   const operatorId = text(formData, "operator_id");
   const invitationId = text(formData, "invitation_id");
-  const reason = text(formData, "reason");
   if (!operatorId || !invitationId) redirect("/operator/team");
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
   const { error } = await supabase.rpc("operator_revoke_invitation", {
     p_operator_id: operator.id,
     p_invitation_id: invitationId,
-    p_reason: reason,
+    p_reason: null,
   });
   revalidatePath("/operator/team");
   redirect(`/operator/team?operator=${operator.id}&${error ? "error=revoke-failed" : "saved=revoked"}`);
@@ -87,7 +86,6 @@ export async function updateTeamMember(formData: FormData) {
   const userId = text(formData, "user_id");
   const action = text(formData, "member_action");
   const role = text(formData, "role");
-  const reason = text(formData, "reason");
   if (!operatorId || !userId) redirect("/operator/team");
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
   const { error } = await supabase.rpc("operator_update_team_member", {
@@ -95,7 +93,7 @@ export async function updateTeamMember(formData: FormData) {
     p_user_id: userId,
     p_action: action,
     p_role: role || null,
-    p_reason: reason,
+    p_reason: null,
   });
   revalidatePath("/operator/team");
   redirect(`/operator/team?operator=${operator.id}&${error ? "error=member-update-failed" : "saved=member"}`);
