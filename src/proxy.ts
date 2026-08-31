@@ -6,12 +6,16 @@ import {
   verifyBetaAccessCookie,
 } from "@/lib/beta-access";
 import { isMarketplacePath, marketplaceEnabled } from "@/lib/marketplace-mode";
+import {
+  operatorEntryDestination,
+  realOperatorModeEnabled,
+} from "@/lib/product-mode";
 import { updateSession } from "@/lib/supabase/proxy";
 
 const PUBLIC_BETA_PATHS = [
   "/accesso-beta",
   "/api/beta-access",
-  "/api/health/supabase",
+  "/api/health",
   "/api/stripe/webhook",
   "/auth/confirm",
   "/forgot-password",
@@ -36,9 +40,13 @@ function copyResponseCookies(source: NextResponse, destination: NextResponse) {
   return destination;
 }
 
-function managementRedirect(request: NextRequest, response: NextResponse) {
+function managementRedirect(
+  request: NextRequest,
+  response: NextResponse,
+  authenticated: boolean,
+) {
   const destination = request.nextUrl.clone();
-  destination.pathname = "/demo-gestionale";
+  destination.pathname = operatorEntryDestination(authenticated);
   destination.search = "";
 
   const redirect = NextResponse.redirect(destination);
@@ -54,6 +62,29 @@ export async function proxy(request: NextRequest) {
   const hasInvitation = verifyBetaAccessCookie(
     request.cookies.get(BETA_ACCESS_COOKIE)?.value,
   );
+
+  if (realOperatorModeEnabled() && pathname === "/api/beta-access") {
+    return NextResponse.json(
+      { error: "not-found" },
+      {
+        status: 404,
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+        },
+      },
+    );
+  }
+
+  if (
+    realOperatorModeEnabled() &&
+    (pathname === "/accesso-beta" ||
+      pathname.startsWith("/accesso-beta/") ||
+      pathname === "/demo-gestionale" ||
+      pathname.startsWith("/demo-gestionale/"))
+  ) {
+    return managementRedirect(request, response, authenticated);
+  }
 
   if (privateBetaEnabled()) {
     const canAccessPrivateBeta =
@@ -98,7 +129,7 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    return managementRedirect(request, response);
+    return managementRedirect(request, response, authenticated);
   }
 
   return withPrivatePreviewHeaders(response);

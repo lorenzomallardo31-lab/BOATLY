@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import type { ReactNode } from "react";
 
 import BetaBanner from "@/components/beta/beta-banner";
+import PwaRegistration from "@/components/pwa/pwa-registration";
 
 import "./globals.css";
 
@@ -13,9 +14,10 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Boatly Ops",
   title: {
-    default: "Boatly",
-    template: "%s | Boatly",
+    default: "Boatly Ops",
+    template: "%s | Boatly Ops",
   },
   description:
     "Gestisci calendario, prenotazioni, flotta, clienti e ricavi con Boatly Ops.",
@@ -29,6 +31,21 @@ export const metadata: Metadata = {
       noimageindex: true,
     },
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Boatly Ops",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#171A2B",
+  viewportFit: "cover",
 };
 
 type RootLayoutProps = Readonly<{
@@ -41,6 +58,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body className={`${geist.variable} antialiased`}>
         <BetaBanner />
         {children}
+        <PwaRegistration />
       </body>
     </html>
   );

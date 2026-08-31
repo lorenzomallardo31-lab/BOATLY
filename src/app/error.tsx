@@ -14,7 +14,7 @@ export default function ApplicationError({ error, reset }: { error: Error & { di
         <h1 className="mt-5 text-2xl font-semibold">Qualcosa non ha funzionato</h1>
         <p className="mt-2 text-sm leading-6 text-[#676B80]">I dati non sono stati modificati automaticamente. Riprova oppure torna al gestionale.</p>
         {error.digest ? <p className="mt-3 text-xs text-[#8A8EA1]">Riferimento: {error.digest}</p> : null}
-        <div className="mt-6 grid gap-2 sm:grid-cols-2"><button onClick={reset} className="min-h-12 rounded-xl bg-[#6D5DFB] px-4 text-sm font-semibold text-white">Riprova</button><a href="/operator/dashboard" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#D8D5E5] px-4 text-sm font-semibold">Dashboard</a></div>
+        <div className="mt-6 grid gap-2 sm:grid-cols-2"><button onClick={reset} className="min-h-12 rounded-xl bg-[#6D5DFB] px-4 text-sm font-semibold text-white">Riprova</button><a href="/operator/calendar" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#D8D5E5] px-4 text-sm font-semibold">Torna al calendario</a></div>
       </section>
     </main>
   );

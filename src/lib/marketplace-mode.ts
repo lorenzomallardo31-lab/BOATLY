@@ -1,3 +1,5 @@
+import { operatorEntryDestination } from "@/lib/product-mode";
+
 const ENABLED_VALUES = new Set(["1", "true", "yes", "on"]);
 
 const MARKETPLACE_PATHS = [
@@ -36,7 +38,7 @@ export function isMarketplacePath(pathname: string) {
 
 export function safeManagementDestination(value?: string) {
   if (!value?.startsWith("/") || value.startsWith("//")) {
-    return "/demo-gestionale";
+    return operatorEntryDestination(false);
   }
 
   const pathname = value.split(/[?#]/, 1)[0];
@@ -44,5 +46,5 @@ export function safeManagementDestination(value?: string) {
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 
-  return allowed ? value : "/demo-gestionale";
+  return allowed ? value : operatorEntryDestination(false);
 }

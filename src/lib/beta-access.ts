@@ -1,11 +1,19 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
+import { realOperatorModeEnabled } from "@/lib/product-mode";
+
 export const BETA_ACCESS_COOKIE = "boatly_beta_access";
 export const BETA_ACCESS_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 const COOKIE_PURPOSE = "boatly-private-beta-v1";
 
 export function privateBetaEnabled() {
+  // A real pilot is protected by per-user authentication and workspace RLS,
+  // not by the shared preview link used by the browser-only demo.
+  if (realOperatorModeEnabled()) {
+    return false;
+  }
+
   const configured = process.env.BETA_PRIVATE_MODE?.trim().toLowerCase();
 
   if (configured === "false") {
