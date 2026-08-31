@@ -74,6 +74,24 @@ test("flags missing phone and a turnaround shorter than one hour", () => {
   assert.ok(overview.alerts.some((alert) => alert.title === "Rientro e partenza ravvicinati"));
 });
 
+test("flags only bookings explicitly waiting for a skipper", () => {
+  const overview = buildTodayDashboard([
+    booking({ skipperAssignmentState: "UNASSIGNED" }),
+    booking({
+      id: "booking-b",
+      boatId: "boat-b",
+      operatorCustomerId: "customer-b",
+      skipperAssignmentState: "ASSIGNED",
+      skipperName: "Anna Verdi",
+      skipperPhone: "+393331112222",
+    }),
+  ], boats, day);
+
+  const skipperAlerts = overview.alerts.filter((alert) => alert.title === "Skipper da assegnare");
+  assert.equal(skipperAlerts.length, 1);
+  assert.equal(skipperAlerts[0].itemId, "booking-a");
+});
+
 test("keeps a multi-day booking visible as already in use", () => {
   const overview = buildTodayDashboard([
     booking({

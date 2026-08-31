@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -14,6 +14,7 @@ type Props = {
   dayKey: string;
   passengerLimit: number | null;
   offerings: Array<{ id: string; label: string }>;
+  skippers: Array<{ id: string; name: string; phone: string | null }>;
 };
 
 const initialState: ManualBookingActionState = { status: "idle" };
@@ -34,6 +35,10 @@ const errors: Record<string, string> = {
   "customer-conflict": "Email e telefono appartengono a due persone diverse. Correggi uno dei contatti.",
   "customer-overlap": "Questo cliente ha già una prenotazione che si sovrappone, anche solo in parte.",
   "boat-overlap": "La barca è già occupata in questo intervallo, anche solo per una parte dell’orario.",
+  "skipper-overlap": "Questo skipper è già impegnato anche solo per una parte dell’orario. Scegline un altro o modifica gli orari.",
+  "skipper-unavailable": "Lo skipper selezionato non è più disponibile. Scegline un altro.",
+  "skipper-name": "Inserisci il nome dello skipper da aggiungere.",
+  "skipper-phone": "Il telefono dello skipper deve contenere da 8 a 15 cifre.",
   "save-failed": "Prenotazione non salvata. Nessun dato parziale è stato creato.",
 };
 
@@ -54,8 +59,10 @@ export default function CalendarBookingForm({
   dayKey,
   passengerLimit,
   offerings,
+  skippers,
 }: Props) {
   const [state, action] = useActionState(createSimpleCalendarBooking, initialState);
+  const [skipperChoice, setSkipperChoice] = useState("NONE");
   const error = state.code ? errors[state.code] ?? errors["save-failed"] : null;
 
   return (
@@ -102,6 +109,50 @@ export default function CalendarBookingForm({
         <p className="mt-3 text-xs leading-5 text-[#676B80]">
           Scrivi sempre il nome. Se aggiungi un contatto già noto, Boatly riconosce automaticamente la persona senza mostrarti lunghi elenchi.
         </p>
+      </div>
+
+      <div className="rounded-2xl border border-[#D8D5E5] bg-white p-4">
+        <label className="grid gap-2 text-sm font-semibold">
+          Skipper <span className="font-normal text-[#777285]">(facoltativo)</span>
+          <select
+            name="skipper_choice"
+            value={skipperChoice}
+            onChange={(event) => setSkipperChoice(event.target.value)}
+            className={fieldClass}
+          >
+            <option value="NONE">Nessuno · non serve</option>
+            <option value="UNASSIGNED">Da assegnare</option>
+            {skippers.map((skipper) => (
+              <option key={skipper.id} value={`EXISTING:${skipper.id}`}>
+                {skipper.name}{skipper.phone ? ` · ${skipper.phone}` : ""}
+              </option>
+            ))}
+            <option value="NEW">+ Aggiungi uno skipper</option>
+          </select>
+        </label>
+
+        {skipperChoice === "UNASSIGNED" ? (
+          <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+            La prenotazione viene salvata subito e il cruscotto Oggi ti ricorderà di assegnare uno skipper.
+          </p>
+        ) : null}
+
+        {skipperChoice === "NEW" ? (
+          <div className="mt-4 grid gap-4 border-t border-[#ECEAF1] pt-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-semibold">
+              Nome skipper *
+              <input name="new_skipper_name" required minLength={2} maxLength={160} className={fieldClass} />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold">
+              Telefono <span className="font-normal text-[#777285]">(facoltativo)</span>
+              <input name="new_skipper_phone" type="tel" autoComplete="tel" className={fieldClass} />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
+              Nota sullo skipper <span className="font-normal text-[#777285]">(facoltativa)</span>
+              <textarea name="new_skipper_notes" rows={2} maxLength={2000} className={`${fieldClass} py-3`} placeholder="Es. patente, lingua, preferenze operative…" />
+            </label>
+          </div>
+        ) : null}
       </div>
 
       <label className="grid gap-2 text-sm font-semibold">

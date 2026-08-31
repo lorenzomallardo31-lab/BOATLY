@@ -17,6 +17,9 @@ export type TodayDashboardItem = {
   customerPhone: string | null;
   operatorCustomerId: string | null;
   rawStatus?: string;
+  skipperAssignmentState?: string | null;
+  skipperName?: string | null;
+  skipperPhone?: string | null;
 };
 
 export type TodayDashboardEvent = {
@@ -189,6 +192,16 @@ export function buildTodayDashboard(
         tone: "danger",
         title: "Prenotazione su barca non disponibile",
         detail: boat.name,
+      });
+    }
+    if (booking.skipperAssignmentState === "UNASSIGNED") {
+      alerts.push({
+        id: `${booking.id}:skipper`,
+        boatId: booking.boatId,
+        itemId: booking.id,
+        tone: "attention",
+        title: "Skipper da assegnare",
+        detail: `${booking.customer ?? "Cliente"} · ${boat?.name ?? "Imbarcazione"}`,
       });
     }
   }

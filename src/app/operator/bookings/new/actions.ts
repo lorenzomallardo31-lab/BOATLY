@@ -36,8 +36,26 @@ function errorCode(message: string) {
     ["bookings_no_active_customer_overlap", "customer-overlap"],
     ["boat_booking_overlap", "boat-overlap"],
     ["boat_occupancies_no_active_overlap", "boat-overlap"],
+    ["skipper_booking_overlap", "skipper-overlap"],
+    ["skipper_not_available", "skipper-unavailable"],
+    ["skipper_name_required", "skipper-name"],
+    ["invalid_skipper_phone", "skipper-phone"],
   ];
   return mappings.find(([needle]) => message.includes(needle))?.[1] ?? "save-failed";
+}
+
+function skipperInput(formData: FormData) {
+  const choice = text(formData, "skipper_choice");
+  if (choice === "UNASSIGNED") {
+    return { mode: "UNASSIGNED", skipperId: null };
+  }
+  if (choice === "NEW") {
+    return { mode: "NEW", skipperId: null };
+  }
+  if (choice.startsWith("EXISTING:")) {
+    return { mode: "EXISTING", skipperId: choice.slice("EXISTING:".length) || null };
+  }
+  return { mode: "NONE", skipperId: null };
 }
 
 export async function createManualBooking(
@@ -59,6 +77,10 @@ export async function createManualBooking(
   const customerPhone = text(formData, "customer_phone");
   const operatorNote = text(formData, "operator_note");
   const total = Number(text(formData, "total").replace(",", "."));
+  const skipper = skipperInput(formData);
+  const newSkipperName = text(formData, "new_skipper_name");
+  const newSkipperPhone = text(formData, "new_skipper_phone");
+  const newSkipperNotes = text(formData, "new_skipper_notes");
 
   if (
     !operatorId ||
@@ -89,6 +111,12 @@ export async function createManualBooking(
   ) {
     return { status: "error", code: customerName ? "customer-contact" : "customer-name" };
   }
+  if (skipper.mode === "EXISTING" && !skipper.skipperId) {
+    return { status: "error", code: "skipper-unavailable" };
+  }
+  if (skipper.mode === "NEW" && newSkipperName.length < 2) {
+    return { status: "error", code: "skipper-name" };
+  }
 
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
   const startsAt = zonedDateTimeToIso(startsAtLocal, operator.timezone);
@@ -98,7 +126,7 @@ export async function createManualBooking(
     return { status: "error", code: "invalid-window" };
   }
 
-  const { data, error } = await supabase.rpc("operator_create_calendar_booking", {
+  const { data, error } = await supabase.rpc("operator_create_calendar_booking_with_internal_skipper", {
     p_operator_id: operator.id,
     p_boat_id: boatId,
     p_customer_name: customerName,
@@ -111,6 +139,11 @@ export async function createManualBooking(
     p_total_cents: Math.round(total * 100),
     p_operator_note: operatorNote || null,
     p_operator_customer_id: operatorCustomerId || null,
+    p_skipper_mode: skipper.mode,
+    p_skipper_id: skipper.skipperId,
+    p_new_skipper_name: newSkipperName || null,
+    p_new_skipper_phone: newSkipperPhone || null,
+    p_new_skipper_notes: newSkipperNotes || null,
   });
 
   if (error || typeof data !== "string") {
@@ -145,6 +178,10 @@ export async function createSimpleCalendarBooking(
   const customerPhone = text(formData, "customer_phone");
   const operatorNote = text(formData, "operator_note");
   const legalOfferingId = text(formData, "legal_offering_id") || null;
+  const skipper = skipperInput(formData);
+  const newSkipperName = text(formData, "new_skipper_name");
+  const newSkipperPhone = text(formData, "new_skipper_phone");
+  const newSkipperNotes = text(formData, "new_skipper_notes");
 
   if (!operatorId || !boatId || !date || !startTime || !endTime || !customerName) {
     return {
@@ -156,6 +193,12 @@ export async function createSimpleCalendarBooking(
   if (!Number.isInteger(passengerCount) || passengerCount <= 0) {
     return { status: "error", code: "invalid-values" };
   }
+  if (skipper.mode === "EXISTING" && !skipper.skipperId) {
+    return { status: "error", code: "skipper-unavailable" };
+  }
+  if (skipper.mode === "NEW" && newSkipperName.length < 2) {
+    return { status: "error", code: "skipper-name" };
+  }
 
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
   const startsAt = zonedDateTimeToIso(`${date}T${startTime}`, operator.timezone);
@@ -166,7 +209,7 @@ export async function createSimpleCalendarBooking(
   }
 
   const { data, error } = await supabase.rpc(
-    "operator_create_simple_calendar_booking",
+    "operator_create_simple_calendar_booking_with_internal_skipper",
     {
       p_operator_id: operator.id,
       p_boat_id: boatId,
@@ -179,6 +222,11 @@ export async function createSimpleCalendarBooking(
       p_total_cents: 0,
       p_operator_note: operatorNote || null,
       p_legal_offering_id: legalOfferingId,
+      p_skipper_mode: skipper.mode,
+      p_skipper_id: skipper.skipperId,
+      p_new_skipper_name: newSkipperName || null,
+      p_new_skipper_phone: newSkipperPhone || null,
+      p_new_skipper_notes: newSkipperNotes || null,
     },
   );
 

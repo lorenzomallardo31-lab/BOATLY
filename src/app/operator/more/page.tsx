@@ -12,6 +12,12 @@ export default async function OperatorMorePage({ searchParams }: MorePageProps) 
   const { operator, membership } = await requireOperatorWorkspaceContext(query.operator);
   const suffix = `?operator=${encodeURIComponent(operator.id)}`;
   const items = [
+    {
+      href: `/operator/skippers${suffix}`,
+      title: "Skipper",
+      description: "Salva i nominativi e assegnali alle uscite, senza creare altri account.",
+      icon: "⚓",
+    },
     ...(membership.role === "OWNER" ? [{
       href: `/operator/team${suffix}`,
       title: "Operatori",

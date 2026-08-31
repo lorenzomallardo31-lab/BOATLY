@@ -34,6 +34,12 @@ type LocationOption = {
   label: string;
 };
 
+type SkipperOption = {
+  id: string;
+  name: string;
+  phone: string | null;
+};
+
 type ManualBookingFormProps = {
   operatorId: string;
   operatorActive: boolean;
@@ -41,6 +47,7 @@ type ManualBookingFormProps = {
   offerings: OfferingOption[];
   customers: CustomerOption[];
   locations: LocationOption[];
+  skippers: SkipperOption[];
   initialDate: string;
   initialBoatId?: string;
   initialCustomerId?: string;
@@ -65,6 +72,10 @@ const ERROR_LABELS: Record<string, string> = {
   "customer-conflict": "Email e telefono rimandano a due clienti diversi. Correggi i dati prima di continuare.",
   "customer-overlap": "Questo cliente ha già una prenotazione che si sovrappone, anche solo in parte.",
   "boat-overlap": "La barca è già occupata in questo intervallo, anche solo per una parte dell’orario.",
+  "skipper-overlap": "Lo skipper è già impegnato anche solo per una parte dell’orario.",
+  "skipper-unavailable": "Lo skipper selezionato non è più disponibile.",
+  "skipper-name": "Inserisci il nome dello skipper.",
+  "skipper-phone": "Il telefono dello skipper deve contenere da 8 a 15 cifre.",
   "save-failed": "Non è stato possibile salvare la prenotazione. Riprova senza duplicare l’invio.",
 };
 
@@ -91,6 +102,7 @@ export function ManualBookingForm({
   offerings,
   customers,
   locations,
+  skippers,
   initialDate,
   initialBoatId,
   initialCustomerId,
@@ -115,6 +127,7 @@ export function ManualBookingForm({
     customers.length > 0 ? "EXISTING" : "NEW",
   );
   const [customerId, setCustomerId] = useState(firstCustomerId);
+  const [skipperChoice, setSkipperChoice] = useState("NONE");
 
   const selectedBoat = boats.find((boat) => boat.id === boatId);
   const boatOfferings = useMemo(
@@ -218,6 +231,25 @@ export function ManualBookingForm({
               <input name="end_time" type="time" required defaultValue="17:00" className={inputClass} />
             </label>
           </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-[#E2DFEB] bg-[#FAF9FC] p-4">
+          <label className="grid gap-2 text-sm font-semibold">
+            Skipper <span className="font-normal text-[#777285]">(facoltativo)</span>
+            <select name="skipper_choice" value={skipperChoice} onChange={(event) => setSkipperChoice(event.target.value)} className={inputClass}>
+              <option value="NONE">Nessuno · non serve</option>
+              <option value="UNASSIGNED">Da assegnare</option>
+              {skippers.map((skipper) => <option key={skipper.id} value={`EXISTING:${skipper.id}`}>{skipper.name}{skipper.phone ? ` · ${skipper.phone}` : ""}</option>)}
+              <option value="NEW">+ Aggiungi uno skipper</option>
+            </select>
+          </label>
+          {skipperChoice === "NEW" ? (
+            <div className="mt-4 grid gap-4 border-t border-[#E2DFEB] pt-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-semibold">Nome skipper *<input name="new_skipper_name" required minLength={2} maxLength={160} className={inputClass} /></label>
+              <label className="grid gap-2 text-sm font-semibold">Telefono <span className="font-normal text-[#777285]">(facoltativo)</span><input name="new_skipper_phone" type="tel" className={inputClass} /></label>
+              <label className="grid gap-2 text-sm font-semibold sm:col-span-2">Nota <span className="font-normal text-[#777285]">(facoltativa)</span><textarea name="new_skipper_notes" rows={2} maxLength={2000} className={`${inputClass} py-3`} /></label>
+            </div>
+          ) : null}
         </div>
       </section>
 

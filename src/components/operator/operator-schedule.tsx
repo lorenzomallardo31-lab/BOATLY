@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import CalendarBookingForm from "@/components/operator/calendar-booking-form";
+import BookingSkipperForm from "@/components/operator/booking-skipper-form";
 import {
   CalendarCancelBookingForm,
   CalendarDayBlockForm,
@@ -64,6 +65,16 @@ export type ScheduleItem = {
   startsAtLocal: string | null;
   endsAtLocal: string | null;
   total: string | null;
+  skipperAssignmentState: string | null;
+  skipperId: string | null;
+  skipperName: string | null;
+  skipperPhone: string | null;
+};
+
+export type InternalSkipperOption = {
+  id: string;
+  name: string;
+  phone: string | null;
 };
 
 type OperatorScheduleProps = {
@@ -76,6 +87,7 @@ type OperatorScheduleProps = {
   items: ScheduleItem[];
   offerings: Array<{ id: string; boatId: string; label: string }>;
   locations: Array<{ id: string; label: string }>;
+  skippers: InternalSkipperOption[];
   canManageFleet: boolean;
 };
 
@@ -185,6 +197,7 @@ export default function OperatorSchedule({
   items,
   offerings,
   locations,
+  skippers,
   canManageFleet,
 }: OperatorScheduleProps) {
   const [selected, setSelected] = useState<SelectedCell | null>(null);
@@ -337,6 +350,11 @@ export default function OperatorSchedule({
                                   {timeLabel(firstItem.startsAt, timezone)}
                                 </span>
                               ) : null}
+                              {firstItem.kind === "BOOKING" && (firstItem.skipperName || firstItem.skipperAssignmentState === "UNASSIGNED") ? (
+                                <span className="mt-1 max-w-full truncate text-[8px] font-semibold leading-3 opacity-90">
+                                  {firstItem.skipperName ? `⛵ ${firstItem.skipperName}` : "⛵ Da assegnare"}
+                                </span>
+                              ) : null}
                             </>
                           ) : null}
                         </button>
@@ -410,6 +428,7 @@ export default function OperatorSchedule({
                           dayKey={selectedDay.key}
                           passengerLimit={selectedBoat.passengerLimit}
                           offerings={offerings.filter((offering) => offering.boatId === selectedBoat.id)}
+                          skippers={skippers}
                         />
                       </div>
                     </details>
@@ -468,6 +487,15 @@ export default function OperatorSchedule({
                           <dd className="mt-0.5 font-semibold">{item.passengers}</dd>
                         </div>
                       ) : null}
+                      {item.kind === "BOOKING" ? (
+                        <div>
+                          <dt className="text-xs text-[#777285]">Skipper</dt>
+                          <dd className={`mt-0.5 font-semibold ${item.skipperAssignmentState === "UNASSIGNED" ? "text-amber-700" : ""}`}>
+                            {item.skipperName
+                              ?? (item.skipperAssignmentState === "UNASSIGNED" ? "Da assegnare" : "Nessuno")}
+                          </dd>
+                        </div>
+                      ) : null}
                     </dl>
 
                     {item.notes ? <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm text-[#4A4758]">{item.notes}</p> : null}
@@ -509,6 +537,27 @@ export default function OperatorSchedule({
 
                         {selectedDay.today && item.rawStatus === "IN_PROGRESS" ? (
                           <CalendarMarkReturnedForm operatorId={operatorId} bookingId={item.bookingId} />
+                        ) : null}
+
+                        {["DRAFT", "PENDING_PAYMENT", "PAYMENT_PROCESSING", "CONFIRMED", "IN_PROGRESS"].includes(item.rawStatus) ? (
+                          <details className="rounded-xl bg-white/80 p-3">
+                            <summary className="cursor-pointer rounded-lg px-1 py-2 text-sm font-semibold text-[#4C3FC2] transition hover:bg-[#F5F2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D5DFB] active:opacity-70">
+                              {item.skipperName || item.skipperAssignmentState === "UNASSIGNED" ? "Gestisci skipper" : "Aggiungi skipper"}
+                            </summary>
+                            <div className="mt-4 border-t border-[#ECEAF1] pt-4">
+                              <BookingSkipperForm
+                                operatorId={operatorId}
+                                bookingId={item.bookingId}
+                                skippers={skippers}
+                                current={{
+                                  state: item.skipperAssignmentState,
+                                  skipperId: item.skipperId,
+                                  name: item.skipperName,
+                                  phone: item.skipperPhone,
+                                }}
+                              />
+                            </div>
+                          </details>
                         ) : null}
 
                         {item.operatorCustomerId ? (

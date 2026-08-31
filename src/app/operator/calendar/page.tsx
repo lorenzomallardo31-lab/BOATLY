@@ -61,6 +61,20 @@ type OccupancyRow = {
   notes: string | null;
 };
 
+type InternalSkipperRow = {
+  id: string;
+  display_name: string;
+  phone: string | null;
+};
+
+type SkipperAssignmentRow = {
+  booking_id: string;
+  skipper_id: string | null;
+  assignment_state: string;
+  skipper_name_snapshot: string | null;
+  skipper_phone_snapshot: string | null;
+};
+
 const HORIZON_DAYS = 45;
 const NAVIGATION_STEP_DAYS = 20;
 const ACTIVE_BOOKING_STATUSES = [
@@ -181,6 +195,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
     { data: bookingData, error: bookingsError },
     { data: occupancyData, error: occupanciesError },
     { data: locationData, error: locationsError },
+    { data: skipperData, error: skippersError },
   ] = await Promise.all([
     supabase
       .from("boats")
@@ -210,9 +225,16 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       .eq("operator_id", operator.id)
       .eq("is_active", true)
       .order("is_primary", { ascending: false }),
+    supabase
+      .from("operator_internal_skippers")
+      .select("id, display_name, phone")
+      .eq("operator_id", operator.id)
+      .eq("is_active", true)
+      .is("removed_at", null)
+      .order("display_name"),
   ]);
 
-  if (boatsError || bookingsError || occupanciesError || locationsError) {
+  if (boatsError || bookingsError || occupanciesError || locationsError || skippersError) {
     throw new Error("Unable to load operator planning.");
   }
 
@@ -220,9 +242,11 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
   const occupancies = (occupancyData ?? []) as OccupancyRow[];
   const boatIds = (boatData ?? []).map((boat) => boat.id);
   const customerIds = [...new Set(bookings.map((booking) => booking.operator_customer_id))];
+  const bookingIds = bookings.map((booking) => booking.id);
   const [
     { data: customerData, error: customersError },
     { data: offeringData, error: offeringsError },
+    { data: assignmentData, error: assignmentsError },
   ] = await Promise.all([
     customerIds.length
       ? supabase
@@ -238,12 +262,23 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
           .in("boat_id", boatIds)
           .eq("is_active", true)
       : Promise.resolve({ data: [], error: null }),
+    bookingIds.length
+      ? supabase
+          .from("booking_internal_skipper_assignments")
+          .select("booking_id, skipper_id, assignment_state, skipper_name_snapshot, skipper_phone_snapshot")
+          .eq("operator_id", operator.id)
+          .in("booking_id", bookingIds)
+      : Promise.resolve({ data: [] as SkipperAssignmentRow[], error: null }),
   ]);
-  if (customersError || offeringsError) {
+  if (customersError || offeringsError || assignmentsError) {
     throw new Error("Unable to load planning relations.");
   }
   const customers = (customerData ?? []) as CustomerRow[];
+  const assignments = (assignmentData ?? []) as SkipperAssignmentRow[];
   const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+  const assignmentByBookingId = new Map(
+    assignments.map((assignment) => [assignment.booking_id, assignment]),
+  );
   const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
   const occupancyBookingIds = new Set(
     occupancies.flatMap((occupancy) => occupancy.booking_id ? [occupancy.booking_id] : []),
@@ -276,6 +311,9 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
 
     const isBooking = occupancy.booking_id !== null;
     const customer = booking ? customerById.get(booking.operator_customer_id) ?? null : null;
+    const skipperAssignment = booking
+      ? assignmentByBookingId.get(booking.id) ?? null
+      : null;
     return [{
       id: occupancy.id,
       boatId: occupancy.boat_id,
@@ -305,12 +343,17 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       startsAtLocal: booking ? localDateTimeInTimeZone(booking.starts_at, operator.timezone) : null,
       endsAtLocal: booking ? localDateTimeInTimeZone(booking.ends_at, operator.timezone) : null,
       total: booking ? ((booking.customer_total_cents_snapshot ?? 0) / 100).toFixed(2).replace(".", ",") : null,
+      skipperAssignmentState: skipperAssignment?.assignment_state ?? null,
+      skipperId: skipperAssignment?.skipper_id ?? null,
+      skipperName: skipperAssignment?.skipper_name_snapshot ?? null,
+      skipperPhone: skipperAssignment?.skipper_phone_snapshot ?? null,
     }];
   });
 
   for (const booking of bookings) {
     if (occupancyBookingIds.has(booking.id)) continue;
     const customer = customerById.get(booking.operator_customer_id) ?? null;
+    const skipperAssignment = assignmentByBookingId.get(booking.id) ?? null;
     items.push({
       id: `booking-${booking.id}`,
       boatId: booking.boat_id,
@@ -340,6 +383,10 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       startsAtLocal: localDateTimeInTimeZone(booking.starts_at, operator.timezone),
       endsAtLocal: localDateTimeInTimeZone(booking.ends_at, operator.timezone),
       total: ((booking.customer_total_cents_snapshot ?? 0) / 100).toFixed(2).replace(".", ","),
+      skipperAssignmentState: skipperAssignment?.assignment_state ?? null,
+      skipperId: skipperAssignment?.skipper_id ?? null,
+      skipperName: skipperAssignment?.skipper_name_snapshot ?? null,
+      skipperPhone: skipperAssignment?.skipper_phone_snapshot ?? null,
     });
   }
 
@@ -449,6 +496,11 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
               locations={(locationData ?? []).map((location) => ({
                 id: location.id,
                 label: `${location.name}${location.city ? ` · ${location.city}` : ""}`,
+              }))}
+              skippers={((skipperData ?? []) as InternalSkipperRow[]).map((skipper) => ({
+                id: skipper.id,
+                name: skipper.display_name,
+                phone: skipper.phone,
               }))}
               canManageFleet={canManageFleet}
             />

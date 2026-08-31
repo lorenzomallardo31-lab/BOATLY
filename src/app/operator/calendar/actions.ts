@@ -20,6 +20,67 @@ function refreshCalendar(operatorId: string) {
   revalidatePath(`/operator/calendar?operator=${operatorId}`);
   revalidatePath("/operator/dashboard");
   revalidatePath("/operator/fleet");
+  revalidatePath("/operator/skippers");
+}
+
+export async function setCalendarBookingSkipper(
+  _previousState: CalendarActionState,
+  formData: FormData,
+): Promise<CalendarActionState> {
+  const operatorId = text(formData, "operator_id");
+  const bookingId = text(formData, "booking_id");
+  const choice = text(formData, "skipper_choice");
+  const newSkipperName = text(formData, "new_skipper_name");
+  const newSkipperPhone = text(formData, "new_skipper_phone");
+  const newSkipperNotes = text(formData, "new_skipper_notes");
+  const mode = choice === "UNASSIGNED"
+    ? "UNASSIGNED"
+    : choice === "NEW"
+      ? "NEW"
+      : choice.startsWith("EXISTING:")
+        ? "EXISTING"
+        : "NONE";
+  const skipperId = mode === "EXISTING"
+    ? choice.slice("EXISTING:".length) || null
+    : null;
+
+  if (!operatorId || !bookingId) return { status: "error", code: "missing-fields" };
+  if (mode === "EXISTING" && !skipperId) {
+    return { status: "error", code: "skipper-unavailable" };
+  }
+  if (mode === "NEW" && newSkipperName.length < 2) {
+    return { status: "error", code: "skipper-name" };
+  }
+
+  const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
+  const { error } = await supabase.rpc("operator_set_booking_internal_skipper", {
+    p_operator_id: operator.id,
+    p_booking_id: bookingId,
+    p_mode: mode,
+    p_skipper_id: skipperId,
+    p_new_skipper_name: newSkipperName || null,
+    p_new_skipper_phone: newSkipperPhone || null,
+    p_new_skipper_notes: newSkipperNotes || null,
+  });
+
+  if (error) {
+    const mappings: Array<[string, string]> = [
+      ["skipper_booking_overlap", "skipper-overlap"],
+      ["skipper_not_available", "skipper-unavailable"],
+      ["skipper_name_required", "skipper-name"],
+      ["invalid_skipper_phone", "skipper-phone"],
+      ["booking_skipper_not_editable", "booking-not-editable"],
+      ["not_allowed", "not-allowed"],
+    ];
+    return {
+      status: "error",
+      code: mappings.find(([needle]) => error.message.includes(needle))?.[1]
+        ?? "skipper-save-failed",
+    };
+  }
+
+  refreshCalendar(operator.id);
+  return { status: "success", code: "skipper-saved" };
 }
 
 export async function markCalendarBookingDeparted(

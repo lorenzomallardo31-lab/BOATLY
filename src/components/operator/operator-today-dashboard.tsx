@@ -17,6 +17,7 @@ import {
   type TodayDashboardEvent,
   type TodayDashboardEventGroup,
 } from "@/lib/operator/today-dashboard";
+import { skipperWhatsAppHref } from "@/lib/operator/skipper-contact";
 
 type MetricKey = "BOOKINGS" | "BLOCKS" | "CUSTOMERS" | "MISSING_PHONE";
 type DashboardPanel =
@@ -197,6 +198,7 @@ function DashboardModal({
                 const pendingReturn = event.kind === "RETURN"
                   && item.rawStatus === "IN_PROGRESS"
                   && Boolean(item.bookingId);
+                const skipperWhatsApp = skipperWhatsAppHref(item.skipperPhone);
                 return (
                   <article
                     key={event.id}
@@ -228,7 +230,7 @@ function DashboardModal({
                     </div>
 
                     {item.kind === "BOOKING" ? (
-                      <dl className="mt-4 grid gap-2 rounded-xl bg-white/80 p-3 text-sm sm:grid-cols-2">
+                      <dl className="mt-4 grid gap-2 rounded-xl bg-white/80 p-3 text-sm sm:grid-cols-3">
                         <div>
                           <dt className="text-xs text-[#777285]">Contatto</dt>
                           <dd className="mt-0.5 font-medium">{item.customerPhone || item.customerEmail || "Nessun contatto inserito"}</dd>
@@ -236,6 +238,13 @@ function DashboardModal({
                         <div>
                           <dt className="text-xs text-[#777285]">Richieste e note</dt>
                           <dd className="mt-0.5 font-medium">{item.notes || "Nessuna richiesta annotata"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-[#777285]">Skipper</dt>
+                          <dd className={`mt-0.5 font-medium ${item.skipperAssignmentState === "UNASSIGNED" ? "text-amber-700" : ""}`}>
+                            {item.skipperName
+                              ?? (item.skipperAssignmentState === "UNASSIGNED" ? "Da assegnare" : "Nessuno")}
+                          </dd>
                         </div>
                       </dl>
                     ) : null}
@@ -255,6 +264,16 @@ function DashboardModal({
                           kind={event.kind === "DEPARTURE" ? "DEPARTURE_REMINDER" : event.kind === "RETURN" ? "RETURN_REMINDER" : "BOOKING_SUMMARY"}
                           label={event.kind === "DEPARTURE" ? "Promemoria WhatsApp" : event.kind === "RETURN" ? "Ricorda il rientro" : "Contatta su WhatsApp"}
                         />
+                      ) : null}
+                      {item.kind === "BOOKING" && skipperWhatsApp ? (
+                        <a
+                          href={skipperWhatsApp}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`flex min-h-11 items-center justify-center rounded-xl bg-[#1FA855] px-4 text-center text-sm font-semibold text-white hover:bg-[#188A47] ${interactiveClass}`}
+                        >
+                          WhatsApp skipper · {item.skipperName}
+                        </a>
                       ) : null}
                       {pendingDeparture && item.bookingId ? (
                         <CalendarMarkDepartedForm operatorId={operatorId} bookingId={item.bookingId} />
@@ -312,9 +331,10 @@ function DashboardModal({
                     </span>
                   </span>
                   {panel.metric !== "BLOCKS" ? (
-                    <span className="mt-3 grid gap-1 rounded-xl bg-white p-3 text-xs text-[#4A4758] sm:grid-cols-2">
+                    <span className="mt-3 grid gap-1 rounded-xl bg-white p-3 text-xs text-[#4A4758] sm:grid-cols-3">
                       <span><strong>Contatto:</strong> {item.customerPhone || "non inserito"}</span>
                       <span><strong>Richieste:</strong> {item.notes || "nessuna nota"}</span>
+                      <span><strong>Skipper:</strong> {item.skipperName ?? (item.skipperAssignmentState === "UNASSIGNED" ? "da assegnare" : "nessuno")}</span>
                     </span>
                   ) : null}
                 </button>

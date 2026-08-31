@@ -37,6 +37,7 @@ export default async function NewManualBookingPage({ searchParams }: PageProps) 
     { data: boats, error: boatsError },
     { data: locations, error: locationsError },
     { data: customers, error: customersError },
+    { data: skippers, error: skippersError },
   ] = await Promise.all([
     supabase
       .from("boats")
@@ -56,9 +57,16 @@ export default async function NewManualBookingPage({ searchParams }: PageProps) 
       .eq("operator_id", operator.id)
       .order("display_name")
       .limit(500),
+    supabase
+      .from("operator_internal_skippers")
+      .select("id, display_name, phone")
+      .eq("operator_id", operator.id)
+      .eq("is_active", true)
+      .is("removed_at", null)
+      .order("display_name"),
   ]);
 
-  if (boatsError || locationsError || customersError) {
+  if (boatsError || locationsError || customersError || skippersError) {
     throw new Error("Unable to load manual booking options.");
   }
 
@@ -139,6 +147,11 @@ export default async function NewManualBookingPage({ searchParams }: PageProps) 
               locations={(locations ?? []).map((location) => ({
                 id: location.id,
                 label: `${location.name}${location.city ? ` · ${location.city}` : ""}`,
+              }))}
+              skippers={(skippers ?? []).map((skipper) => ({
+                id: skipper.id,
+                name: skipper.display_name,
+                phone: skipper.phone,
               }))}
               initialDate={initialDate}
               initialBoatId={query.boat}

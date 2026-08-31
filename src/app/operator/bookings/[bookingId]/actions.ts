@@ -41,6 +41,7 @@ function rescheduleError(message: string) {
     ["bookings_no_active_customer_overlap", "customer-overlap"],
     ["boat_booking_overlap", "boat-overlap"],
     ["boat_occupancies_no_active_overlap", "boat-overlap"],
+    ["skipper_booking_overlap", "skipper-overlap"],
     ["booking_reschedule_not_allowed", "not-allowed"],
     ["operator_must_be_active", "operator-inactive"],
   ];
@@ -81,7 +82,7 @@ export async function rescheduleManualBooking(
     return { status: "error", code: "invalid-window" };
   }
 
-  const { data, error } = await supabase.rpc("operator_reschedule_manual_booking", {
+  const { data, error } = await supabase.rpc("operator_reschedule_manual_booking_with_internal_skipper", {
     p_operator_id: operator.id,
     p_booking_id: bookingId,
     p_boat_id: boatId,

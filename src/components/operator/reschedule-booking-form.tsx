@@ -49,6 +49,7 @@ const ERRORS: Record<string, string> = {
   location: "La sede non è disponibile.",
   "customer-overlap": "Il cliente ha già un’altra prenotazione che si sovrappone.",
   "boat-overlap": "La barca è già occupata anche solo per una parte dell’intervallo.",
+  "skipper-overlap": "Lo skipper assegnato ha già un altro impegno nel nuovo intervallo. Cambia orario oppure assegna prima un altro skipper.",
   "not-allowed": "Il tuo ruolo non consente questa operazione.",
   "operator-inactive": "Il workspace deve essere attivo.",
   "save-failed": "Riprogrammazione non riuscita. La prenotazione originale è rimasta invariata.",
