@@ -33,6 +33,12 @@ export async function setCalendarBookingSkipper(
   const newSkipperName = text(formData, "new_skipper_name");
   const newSkipperPhone = text(formData, "new_skipper_phone");
   const newSkipperNotes = text(formData, "new_skipper_notes");
+  const licenseAnswer = text(formData, "customer_has_required_license").toUpperCase();
+  const customerHasRequiredLicense = licenseAnswer === "YES"
+    ? true
+    : licenseAnswer === "NO"
+      ? false
+      : null;
   const mode = choice === "UNASSIGNED"
     ? "UNASSIGNED"
     : choice === "NEW"
@@ -53,9 +59,10 @@ export async function setCalendarBookingSkipper(
   }
 
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
-  const { error } = await supabase.rpc("operator_set_booking_internal_skipper", {
+  const { error } = await supabase.rpc("operator_set_booking_navigation_and_skipper", {
     p_operator_id: operator.id,
     p_booking_id: bookingId,
+    p_customer_has_required_license: customerHasRequiredLicense,
     p_mode: mode,
     p_skipper_id: skipperId,
     p_new_skipper_name: newSkipperName || null,
@@ -70,6 +77,9 @@ export async function setCalendarBookingSkipper(
       ["skipper_name_required", "skipper-name"],
       ["invalid_skipper_phone", "skipper-phone"],
       ["booking_skipper_not_editable", "booking-not-editable"],
+      ["booking_navigation_not_editable", "booking-not-editable"],
+      ["customer_license_answer_required", "license-answer-required"],
+      ["skipper_required_without_customer_license", "skipper-required"],
       ["not_allowed", "not-allowed"],
     ];
     return {

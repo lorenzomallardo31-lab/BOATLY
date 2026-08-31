@@ -21,6 +21,10 @@ type Props = {
     name: string | null;
     phone: string | null;
   };
+  navigation: {
+    licenseRequired: boolean;
+    customerHasRequiredLicense: boolean | null;
+  };
 };
 
 const initialState: CalendarActionState = { status: "idle" };
@@ -32,6 +36,8 @@ const errors: Record<string, string> = {
   "skipper-name": "Inserisci il nome dello skipper.",
   "skipper-phone": "Il telefono deve contenere da 8 a 15 cifre.",
   "booking-not-editable": "Questa prenotazione è già conclusa e l’assegnazione resta nello storico.",
+  "license-answer-required": "Indica se il cliente possiede la patente nautica richiesta.",
+  "skipper-required": "Il cliente non ha la patente: devi assegnare uno skipper.",
   "not-allowed": "Il tuo accesso non consente questa modifica.",
   "skipper-save-failed": "Assegnazione non salvata. La prenotazione è rimasta invariata.",
 };
@@ -44,12 +50,12 @@ function initialChoice(current: Props["current"]) {
   return "NONE";
 }
 
-function SubmitButton() {
+function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={disabled || pending}
       className="min-h-11 rounded-xl bg-[#6D5DFB] px-4 text-sm font-semibold text-white transition hover:bg-[#5948EF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45"
     >
       {pending ? "Controllo impegni…" : "Salva skipper"}
@@ -62,18 +68,41 @@ export default function BookingSkipperForm({
   bookingId,
   skippers,
   current,
+  navigation,
 }: Props) {
   const [state, action] = useActionState(setCalendarBookingSkipper, initialState);
   const [choice, setChoice] = useState(initialChoice(current));
+  const [licenseAnswer, setLicenseAnswer] = useState<"" | "YES" | "NO">(
+    navigation.customerHasRequiredLicense === true
+      ? "YES"
+      : navigation.customerHasRequiredLicense === false
+        ? "NO"
+        : "",
+  );
+  const skipperMandatory = navigation.licenseRequired && licenseAnswer === "NO";
+  const navigationIncomplete = navigation.licenseRequired && !licenseAnswer;
+  const skipperIncomplete = skipperMandatory
+    && !choice.startsWith("EXISTING:")
+    && choice !== "NEW";
   const currentIsOutsideList = current.skipperId
     && !skippers.some((skipper) => skipper.id === current.skipperId);
   const whatsappHref = skipperWhatsAppHref(current.phone);
   const error = state.code ? errors[state.code] ?? errors["skipper-save-failed"] : null;
 
+  function changeLicenseAnswer(next: "YES" | "NO") {
+    setLicenseAnswer(next);
+    if (next === "NO" && (choice === "NONE" || choice === "UNASSIGNED")) {
+      setChoice("");
+    } else if (next === "YES" && !choice) {
+      setChoice("NONE");
+    }
+  }
+
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="booking_id" value={bookingId} />
+      <input type="hidden" name="customer_has_required_license" value={licenseAnswer} />
 
       {current.state === "ASSIGNED" && current.name ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
@@ -106,16 +135,43 @@ export default function BookingSkipperForm({
         </div>
       ) : null}
 
+      {navigation.licenseRequired ? (
+        <fieldset className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <legend className="px-1 text-sm font-semibold">Il cliente ha la patente nautica? *</legend>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(["YES", "NO"] as const).map((value) => (
+              <label
+                key={value}
+                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-2 text-sm font-semibold transition active:scale-[0.98] ${
+                  licenseAnswer === value
+                    ? "border-[#6D5DFB] bg-white text-[#4C3FC2] ring-2 ring-[#6D5DFB]/15"
+                    : "border-amber-200 bg-white/70 text-[#4A4758] hover:border-[#AFA5FF]"
+                }`}
+              >
+                <input type="radio" className="sr-only" checked={licenseAnswer === value} onChange={() => changeLicenseAnswer(value)} />
+                {value === "YES" ? "Sì" : "No"}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : (
+        <p className="rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800">
+          Patente nautica non richiesta per questa barca.
+        </p>
+      )}
+
       <label className="grid gap-2 text-sm font-semibold">
-        Skipper della prenotazione
+        Skipper della prenotazione {skipperMandatory ? <span className="font-normal text-rose-700">(obbligatorio)</span> : <span className="font-normal text-[#777285]">(facoltativo)</span>}
         <select
           name="skipper_choice"
           value={choice}
           onChange={(event) => setChoice(event.target.value)}
+          required={skipperMandatory}
           className={fieldClass}
         >
-          <option value="NONE">Nessuno · non serve</option>
-          <option value="UNASSIGNED">Da assegnare</option>
+          {skipperMandatory ? <option value="">Seleziona o aggiungi uno skipper</option> : null}
+          {!skipperMandatory ? <option value="NONE">Nessuno · non serve</option> : null}
+          {!skipperMandatory ? <option value="UNASSIGNED">Da assegnare</option> : null}
           {currentIsOutsideList ? (
             <option value={`EXISTING:${current.skipperId}`} disabled>
               {current.name ?? "Skipper attuale"} · non disponibile per nuove assegnazioni
@@ -147,7 +203,13 @@ export default function BookingSkipperForm({
         </div>
       ) : null}
 
-      <div className="flex justify-end"><SubmitButton /></div>
+      {skipperMandatory ? (
+        <p className="rounded-xl bg-rose-50 p-3 text-xs font-medium leading-5 text-rose-800">
+          Senza patente del cliente non è possibile lasciare lo skipper vuoto o “da assegnare”.
+        </p>
+      ) : null}
+
+      <div className="flex justify-end"><SubmitButton disabled={navigationIncomplete || skipperIncomplete} /></div>
     </form>
   );
 }

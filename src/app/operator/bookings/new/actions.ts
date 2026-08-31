@@ -40,8 +40,17 @@ function errorCode(message: string) {
     ["skipper_not_available", "skipper-unavailable"],
     ["skipper_name_required", "skipper-name"],
     ["invalid_skipper_phone", "skipper-phone"],
+    ["customer_license_answer_required", "license-answer-required"],
+    ["skipper_required_without_customer_license", "skipper-required"],
   ];
   return mappings.find(([needle]) => message.includes(needle))?.[1] ?? "save-failed";
+}
+
+function customerLicenseAnswer(formData: FormData) {
+  const answer = text(formData, "customer_has_required_license").toUpperCase();
+  if (answer === "YES") return true;
+  if (answer === "NO") return false;
+  return null;
 }
 
 function skipperInput(formData: FormData) {
@@ -81,6 +90,7 @@ export async function createManualBooking(
   const newSkipperName = text(formData, "new_skipper_name");
   const newSkipperPhone = text(formData, "new_skipper_phone");
   const newSkipperNotes = text(formData, "new_skipper_notes");
+  const customerHasRequiredLicense = customerLicenseAnswer(formData);
 
   if (
     !operatorId ||
@@ -126,7 +136,7 @@ export async function createManualBooking(
     return { status: "error", code: "invalid-window" };
   }
 
-  const { data, error } = await supabase.rpc("operator_create_calendar_booking_with_internal_skipper", {
+  const { data, error } = await supabase.rpc("operator_create_calendar_booking_with_navigation", {
     p_operator_id: operator.id,
     p_boat_id: boatId,
     p_customer_name: customerName,
@@ -139,6 +149,7 @@ export async function createManualBooking(
     p_total_cents: Math.round(total * 100),
     p_operator_note: operatorNote || null,
     p_operator_customer_id: operatorCustomerId || null,
+    p_customer_has_required_license: customerHasRequiredLicense,
     p_skipper_mode: skipper.mode,
     p_skipper_id: skipper.skipperId,
     p_new_skipper_name: newSkipperName || null,
@@ -182,6 +193,7 @@ export async function createSimpleCalendarBooking(
   const newSkipperName = text(formData, "new_skipper_name");
   const newSkipperPhone = text(formData, "new_skipper_phone");
   const newSkipperNotes = text(formData, "new_skipper_notes");
+  const customerHasRequiredLicense = customerLicenseAnswer(formData);
 
   if (!operatorId || !boatId || !date || !startTime || !endTime || !customerName) {
     return {
@@ -209,7 +221,7 @@ export async function createSimpleCalendarBooking(
   }
 
   const { data, error } = await supabase.rpc(
-    "operator_create_simple_calendar_booking_with_internal_skipper",
+    "operator_create_simple_calendar_booking_with_navigation",
     {
       p_operator_id: operator.id,
       p_boat_id: boatId,
@@ -222,6 +234,7 @@ export async function createSimpleCalendarBooking(
       p_total_cents: 0,
       p_operator_note: operatorNote || null,
       p_legal_offering_id: legalOfferingId,
+      p_customer_has_required_license: customerHasRequiredLicense,
       p_skipper_mode: skipper.mode,
       p_skipper_id: skipper.skipperId,
       p_new_skipper_name: newSkipperName || null,

@@ -12,6 +12,7 @@ type Props = {
   operatorId: string;
   boatId: string;
   dayKey: string;
+  licenseRequired: boolean;
   passengerLimit: number | null;
   offerings: Array<{ id: string; label: string }>;
   skippers: Array<{ id: string; name: string; phone: string | null }>;
@@ -39,15 +40,17 @@ const errors: Record<string, string> = {
   "skipper-unavailable": "Lo skipper selezionato non è più disponibile. Scegline un altro.",
   "skipper-name": "Inserisci il nome dello skipper da aggiungere.",
   "skipper-phone": "Il telefono dello skipper deve contenere da 8 a 15 cifre.",
+  "license-answer-required": "Indica se il cliente possiede la patente nautica richiesta per questa barca.",
+  "skipper-required": "Il cliente non ha la patente richiesta: assegna uno skipper prima di salvare.",
   "save-failed": "Prenotazione non salvata. Nessun dato parziale è stato creato.",
 };
 
 const fieldClass = "min-h-11 w-full rounded-xl border border-[#D8D5E5] bg-white px-3 text-base outline-none focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/15 sm:text-sm";
 
-function SubmitButton() {
+function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className="min-h-12 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+    <button type="submit" disabled={disabled || pending} className="min-h-12 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
       {pending ? "Controllo disponibilità…" : "Crea prenotazione"}
     </button>
   );
@@ -57,19 +60,36 @@ export default function CalendarBookingForm({
   operatorId,
   boatId,
   dayKey,
+  licenseRequired,
   passengerLimit,
   offerings,
   skippers,
 }: Props) {
   const [state, action] = useActionState(createSimpleCalendarBooking, initialState);
   const [skipperChoice, setSkipperChoice] = useState("NONE");
+  const [licenseAnswer, setLicenseAnswer] = useState<"" | "YES" | "NO">("");
+  const skipperMandatory = licenseRequired && licenseAnswer === "NO";
+  const navigationIncomplete = licenseRequired && !licenseAnswer;
+  const skipperIncomplete = skipperMandatory
+    && !skipperChoice.startsWith("EXISTING:")
+    && skipperChoice !== "NEW";
   const error = state.code ? errors[state.code] ?? errors["save-failed"] : null;
+
+  function changeLicenseAnswer(next: "YES" | "NO") {
+    setLicenseAnswer(next);
+    if (next === "NO" && (skipperChoice === "NONE" || skipperChoice === "UNASSIGNED")) {
+      setSkipperChoice("");
+    } else if (next === "YES" && !skipperChoice) {
+      setSkipperChoice("NONE");
+    }
+  }
 
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="boat_id" value={boatId} />
       <input type="hidden" name="date" value={dayKey} />
+      <input type="hidden" name="customer_has_required_license" value={licenseAnswer} />
 
       {state.status === "success" ? (
         <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
@@ -111,17 +131,54 @@ export default function CalendarBookingForm({
         </p>
       </div>
 
+      {licenseRequired ? (
+        <fieldset className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <legend className="px-1 text-sm font-semibold text-[#171A2B]">
+            Il cliente ha la patente nautica? *
+          </legend>
+          <p className="mt-1 text-xs leading-5 text-amber-900">
+            Questa imbarcazione richiede la patente. La risposta determina se lo skipper è obbligatorio.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {(["YES", "NO"] as const).map((value) => (
+              <label
+                key={value}
+                className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border px-3 text-sm font-semibold transition active:scale-[0.98] ${
+                  licenseAnswer === value
+                    ? "border-[#6D5DFB] bg-white text-[#4C3FC2] ring-2 ring-[#6D5DFB]/15"
+                    : "border-amber-200 bg-white/70 text-[#4A4758] hover:border-[#AFA5FF]"
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  checked={licenseAnswer === value}
+                  onChange={() => changeLicenseAnswer(value)}
+                />
+                {value === "YES" ? "Sì, ce l’ha" : "No, non ce l’ha"}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : (
+        <div className="rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800">
+          Per questa barca la patente nautica non è richiesta.
+        </div>
+      )}
+
       <div className="rounded-2xl border border-[#D8D5E5] bg-white p-4">
         <label className="grid gap-2 text-sm font-semibold">
-          Skipper <span className="font-normal text-[#777285]">(facoltativo)</span>
+          Skipper <span className={`font-normal ${skipperMandatory ? "text-rose-700" : "text-[#777285]"}`}>{skipperMandatory ? "(obbligatorio)" : "(facoltativo)"}</span>
           <select
             name="skipper_choice"
             value={skipperChoice}
             onChange={(event) => setSkipperChoice(event.target.value)}
+            required={skipperMandatory}
             className={fieldClass}
           >
-            <option value="NONE">Nessuno · non serve</option>
-            <option value="UNASSIGNED">Da assegnare</option>
+            {skipperMandatory ? <option value="">Seleziona o aggiungi uno skipper</option> : null}
+            {!skipperMandatory ? <option value="NONE">Nessuno · non serve</option> : null}
+            {!skipperMandatory ? <option value="UNASSIGNED">Da assegnare</option> : null}
             {skippers.map((skipper) => (
               <option key={skipper.id} value={`EXISTING:${skipper.id}`}>
                 {skipper.name}{skipper.phone ? ` · ${skipper.phone}` : ""}
@@ -130,6 +187,12 @@ export default function CalendarBookingForm({
             <option value="NEW">+ Aggiungi uno skipper</option>
           </select>
         </label>
+
+        {skipperMandatory ? (
+          <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs font-medium leading-5 text-rose-800">
+            Senza patente del cliente, Boatly salva la prenotazione solo con uno skipper già assegnato.
+          </p>
+        ) : null}
 
         {skipperChoice === "UNASSIGNED" ? (
           <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
@@ -160,7 +223,7 @@ export default function CalendarBookingForm({
         <textarea name="operator_note" rows={3} maxLength={5000} className={`${fieldClass} py-3`} placeholder="Itinerario, richieste, promemoria…" />
       </label>
 
-      <div className="flex justify-end"><SubmitButton /></div>
+      <div className="flex justify-end"><SubmitButton disabled={navigationIncomplete || skipperIncomplete} /></div>
     </form>
   );
 }

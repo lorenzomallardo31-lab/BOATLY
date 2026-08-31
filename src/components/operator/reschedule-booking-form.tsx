@@ -10,9 +10,10 @@ import {
 
 const initialRescheduleState: RescheduleActionState = { status: "idle" };
 
-type BoatOption = { id: string; name: string; passengerLimit: number | null };
+type BoatOption = { id: string; name: string; passengerLimit: number | null; licenseRequired: boolean };
 type OfferingOption = { id: string; boatId: string; label: string };
 type LocationOption = { id: string; label: string };
+type SkipperOption = { id: string; name: string; phone: string | null };
 
 type Props = {
   operatorId: string;
@@ -21,6 +22,12 @@ type Props = {
   boats: BoatOption[];
   offerings: OfferingOption[];
   locations: LocationOption[];
+  skippers: SkipperOption[];
+  currentSkipper: {
+    state: string | null;
+    skipperId: string | null;
+    name: string | null;
+  };
   initial: {
     boatId: string;
     offeringId: string;
@@ -30,6 +37,7 @@ type Props = {
     passengerCount: number;
     total: string;
     operatorNote: string;
+    customerHasRequiredLicense: boolean | null;
   };
 };
 
@@ -50,6 +58,11 @@ const ERRORS: Record<string, string> = {
   "customer-overlap": "Il cliente ha già un’altra prenotazione che si sovrappone.",
   "boat-overlap": "La barca è già occupata anche solo per una parte dell’intervallo.",
   "skipper-overlap": "Lo skipper assegnato ha già un altro impegno nel nuovo intervallo. Cambia orario oppure assegna prima un altro skipper.",
+  "skipper-unavailable": "Lo skipper selezionato non è più disponibile.",
+  "skipper-name": "Inserisci il nome dello skipper.",
+  "skipper-phone": "Il telefono dello skipper deve contenere da 8 a 15 cifre.",
+  "license-answer-required": "Indica se il cliente possiede la patente nautica richiesta dalla nuova barca.",
+  "skipper-required": "Il cliente non ha la patente richiesta: assegna uno skipper prima di riprogrammare.",
   "not-allowed": "Il tuo ruolo non consente questa operazione.",
   "operator-inactive": "Il workspace deve essere attivo.",
   "save-failed": "Riprogrammazione non riuscita. La prenotazione originale è rimasta invariata.",
@@ -57,17 +70,38 @@ const ERRORS: Record<string, string> = {
 
 const inputClass = "min-h-11 w-full rounded-xl border border-[#D8D5E5] bg-white px-3 text-base outline-none focus:border-[#6D5DFB] focus:ring-2 focus:ring-[#6D5DFB]/15 sm:text-sm";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return <button type="submit" disabled={pending} className="min-h-12 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:opacity-50">{pending ? "Verifica e riprogramma…" : "Conferma riprogrammazione"}</button>;
+function initialSkipperChoice(current: Props["currentSkipper"]) {
+  if (current.state === "UNASSIGNED") return "UNASSIGNED";
+  if (current.state === "ASSIGNED" && current.skipperId) return `EXISTING:${current.skipperId}`;
+  return "NONE";
 }
 
-export default function RescheduleBookingForm({ operatorId, bookingId, boats, offerings, locations, initial, calendarMode = false }: Props) {
+function SubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+  return <button type="submit" disabled={disabled || pending} className="min-h-12 rounded-xl bg-[#6D5DFB] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{pending ? "Verifica e riprogramma…" : "Conferma riprogrammazione"}</button>;
+}
+
+export default function RescheduleBookingForm({ operatorId, bookingId, boats, offerings, locations, skippers, currentSkipper, initial, calendarMode = false }: Props) {
   const [state, action] = useActionState(rescheduleManualBooking, initialRescheduleState);
   const [boatId, setBoatId] = useState(initial.boatId);
   const [offeringId, setOfferingId] = useState(initial.offeringId);
+  const [licenseAnswer, setLicenseAnswer] = useState<"" | "YES" | "NO">(
+    initial.customerHasRequiredLicense === true
+      ? "YES"
+      : initial.customerHasRequiredLicense === false
+        ? "NO"
+        : "",
+  );
+  const [skipperChoice, setSkipperChoice] = useState(initialSkipperChoice(currentSkipper));
   const boatOfferings = useMemo(() => offerings.filter((item) => item.boatId === boatId), [boatId, offerings]);
   const selectedBoat = boats.find((boat) => boat.id === boatId);
+  const skipperMandatory = selectedBoat?.licenseRequired === true && licenseAnswer === "NO";
+  const navigationIncomplete = selectedBoat?.licenseRequired === true && !licenseAnswer;
+  const skipperIncomplete = skipperMandatory
+    && !skipperChoice.startsWith("EXISTING:")
+    && skipperChoice !== "NEW";
+  const currentSkipperOutsideList = currentSkipper.skipperId
+    && !skippers.some((skipper) => skipper.id === currentSkipper.skipperId);
   const error = state.code ? ERRORS[state.code] ?? ERRORS["save-failed"] : null;
 
   function changeBoat(nextId: string) {
@@ -75,10 +109,20 @@ export default function RescheduleBookingForm({ operatorId, bookingId, boats, of
     setOfferingId(offerings.find((item) => item.boatId === nextId)?.id ?? "");
   }
 
+  function changeLicenseAnswer(next: "YES" | "NO") {
+    setLicenseAnswer(next);
+    if (next === "NO" && (skipperChoice === "NONE" || skipperChoice === "UNASSIGNED")) {
+      setSkipperChoice("");
+    } else if (next === "YES" && !skipperChoice) {
+      setSkipperChoice("NONE");
+    }
+  }
+
   return (
     <form action={action} className="mt-5 space-y-5">
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="booking_id" value={bookingId} />
+      <input type="hidden" name="customer_has_required_license" value={licenseAnswer} />
       {calendarMode ? <input type="hidden" name="calendar_mode" value="1" /> : null}
       {state.status === "success" ? <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">Prenotazione riprogrammata e calendario aggiornato.</div> : null}
       {error ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium leading-6 text-rose-800">{error}</div> : null}
@@ -93,8 +137,43 @@ export default function RescheduleBookingForm({ operatorId, bookingId, boats, of
         <label className="grid gap-2 text-sm font-semibold">Nota operativa<textarea name="operator_note" rows={3} defaultValue={initial.operatorNote} className={`${inputClass} py-3`} /></label>
         <label className="grid gap-2 text-sm font-semibold sm:col-span-2">Motivo della modifica *<textarea name="reason" rows={3} required maxLength={1000} className={`${inputClass} py-3`} placeholder="Es. richiesta del cliente, meteo, cambio imbarcazione…" /></label>
       </div>
+      {selectedBoat?.licenseRequired ? (
+        <fieldset className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <legend className="px-1 text-sm font-semibold">Il cliente ha la patente nautica? *</legend>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(["YES", "NO"] as const).map((value) => (
+              <label key={value} className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-2 text-sm font-semibold transition active:scale-[0.98] ${licenseAnswer === value ? "border-[#6D5DFB] bg-white text-[#4C3FC2] ring-2 ring-[#6D5DFB]/15" : "border-amber-200 bg-white/70 text-[#4A4758] hover:border-[#AFA5FF]"}`}>
+                <input type="radio" className="sr-only" checked={licenseAnswer === value} onChange={() => changeLicenseAnswer(value)} />
+                {value === "YES" ? "Sì" : "No"}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : <p className="rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800">La barca selezionata non richiede patente nautica.</p>}
+
+      <div className="rounded-xl border border-[#E2DFEB] bg-[#F9F8FC] p-3">
+        <label className="grid gap-2 text-sm font-semibold">
+          Skipper {skipperMandatory ? <span className="font-normal text-rose-700">(obbligatorio)</span> : <span className="font-normal text-[#777285]">(facoltativo)</span>}
+          <select name="skipper_choice" value={skipperChoice} onChange={(event) => setSkipperChoice(event.target.value)} required={skipperMandatory} className={inputClass}>
+            {skipperMandatory ? <option value="">Seleziona o aggiungi uno skipper</option> : null}
+            {!skipperMandatory ? <option value="NONE">Nessuno · non serve</option> : null}
+            {!skipperMandatory ? <option value="UNASSIGNED">Da assegnare</option> : null}
+            {currentSkipperOutsideList ? <option value={`EXISTING:${currentSkipper.skipperId}`} disabled>{currentSkipper.name ?? "Skipper attuale"} · non disponibile</option> : null}
+            {skippers.map((skipper) => <option key={skipper.id} value={`EXISTING:${skipper.id}`}>{skipper.name}{skipper.phone ? ` · ${skipper.phone}` : ""}</option>)}
+            <option value="NEW">+ Aggiungi uno skipper</option>
+          </select>
+        </label>
+        {skipperMandatory ? <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs font-medium text-rose-800">Senza patente, lo skipper deve essere assegnato già durante questa modifica.</p> : null}
+        {skipperChoice === "NEW" ? (
+          <div className="mt-4 grid gap-3 border-t border-[#E2DFEB] pt-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-semibold">Nome skipper *<input name="new_skipper_name" required minLength={2} maxLength={160} className={inputClass} /></label>
+            <label className="grid gap-2 text-sm font-semibold">Telefono <span className="font-normal text-[#777285]">(facoltativo)</span><input name="new_skipper_phone" type="tel" className={inputClass} /></label>
+            <label className="grid gap-2 text-sm font-semibold sm:col-span-2">Nota <span className="font-normal text-[#777285]">(facoltativa)</span><textarea name="new_skipper_notes" rows={2} maxLength={2000} className={`${inputClass} py-3`} /></label>
+          </div>
+        ) : null}
+      </div>
       <div className="rounded-xl bg-[#FFF8EA] p-3 text-xs leading-5 text-[#7C5A20]">La prenotazione originale rimane nello storico come annullata. La sostitutiva viene creata solo se tutti i controlli passano.</div>
-      <div className="flex justify-end"><SubmitButton /></div>
+      <div className="flex justify-end"><SubmitButton disabled={navigationIncomplete || skipperIncomplete} /></div>
     </form>
   );
 }

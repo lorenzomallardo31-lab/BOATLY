@@ -75,6 +75,12 @@ type SkipperAssignmentRow = {
   skipper_phone_snapshot: string | null;
 };
 
+type NavigationRequirementRow = {
+  booking_id: string;
+  boat_license_required_snapshot: boolean;
+  customer_has_required_license: boolean | null;
+};
+
 const HORIZON_DAYS = 45;
 const NAVIGATION_STEP_DAYS = 20;
 const ACTIVE_BOOKING_STATUSES = [
@@ -199,7 +205,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
   ] = await Promise.all([
     supabase
       .from("boats")
-      .select("id, name, status, manufacturer, model, internal_code, operator_passenger_limit")
+      .select("id, name, status, manufacturer, model, internal_code, operator_passenger_limit, license_required")
       .eq("operator_id", operator.id)
       .is("deleted_at", null)
       .order("name"),
@@ -243,10 +249,14 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
   const boatIds = (boatData ?? []).map((boat) => boat.id);
   const customerIds = [...new Set(bookings.map((booking) => booking.operator_customer_id))];
   const bookingIds = bookings.map((booking) => booking.id);
+  const licenseByBoatId = new Map(
+    (boatData ?? []).map((boat) => [boat.id, boat.license_required === true]),
+  );
   const [
     { data: customerData, error: customersError },
     { data: offeringData, error: offeringsError },
     { data: assignmentData, error: assignmentsError },
+    { data: navigationData, error: navigationError },
   ] = await Promise.all([
     customerIds.length
       ? supabase
@@ -269,15 +279,26 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
           .eq("operator_id", operator.id)
           .in("booking_id", bookingIds)
       : Promise.resolve({ data: [] as SkipperAssignmentRow[], error: null }),
+    bookingIds.length
+      ? supabase
+          .from("booking_navigation_requirements")
+          .select("booking_id, boat_license_required_snapshot, customer_has_required_license")
+          .eq("operator_id", operator.id)
+          .in("booking_id", bookingIds)
+      : Promise.resolve({ data: [] as NavigationRequirementRow[], error: null }),
   ]);
-  if (customersError || offeringsError || assignmentsError) {
+  if (customersError || offeringsError || assignmentsError || navigationError) {
     throw new Error("Unable to load planning relations.");
   }
   const customers = (customerData ?? []) as CustomerRow[];
   const assignments = (assignmentData ?? []) as SkipperAssignmentRow[];
+  const navigationRequirements = (navigationData ?? []) as NavigationRequirementRow[];
   const customerById = new Map(customers.map((customer) => [customer.id, customer]));
   const assignmentByBookingId = new Map(
     assignments.map((assignment) => [assignment.booking_id, assignment]),
+  );
+  const navigationByBookingId = new Map(
+    navigationRequirements.map((requirement) => [requirement.booking_id, requirement]),
   );
   const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
   const occupancyBookingIds = new Set(
@@ -297,6 +318,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       boat.internal_code ||
       "Scheda tecnica da completare",
     passengerLimit: boat.operator_passenger_limit,
+    licenseRequired: boat.license_required === true,
   }));
 
   const items: ScheduleItem[] = occupancies.flatMap((occupancy) => {
@@ -313,6 +335,9 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
     const customer = booking ? customerById.get(booking.operator_customer_id) ?? null : null;
     const skipperAssignment = booking
       ? assignmentByBookingId.get(booking.id) ?? null
+      : null;
+    const navigationRequirement = booking
+      ? navigationByBookingId.get(booking.id) ?? null
       : null;
     return [{
       id: occupancy.id,
@@ -347,6 +372,10 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       skipperId: skipperAssignment?.skipper_id ?? null,
       skipperName: skipperAssignment?.skipper_name_snapshot ?? null,
       skipperPhone: skipperAssignment?.skipper_phone_snapshot ?? null,
+      licenseRequired: navigationRequirement?.boat_license_required_snapshot
+        ?? licenseByBoatId.get(occupancy.boat_id)
+        ?? false,
+      customerHasRequiredLicense: navigationRequirement?.customer_has_required_license ?? null,
     }];
   });
 
@@ -354,6 +383,7 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
     if (occupancyBookingIds.has(booking.id)) continue;
     const customer = customerById.get(booking.operator_customer_id) ?? null;
     const skipperAssignment = assignmentByBookingId.get(booking.id) ?? null;
+    const navigationRequirement = navigationByBookingId.get(booking.id) ?? null;
     items.push({
       id: `booking-${booking.id}`,
       boatId: booking.boat_id,
@@ -387,6 +417,10 @@ export default async function OperatorCalendarPage({ searchParams }: CalendarPag
       skipperId: skipperAssignment?.skipper_id ?? null,
       skipperName: skipperAssignment?.skipper_name_snapshot ?? null,
       skipperPhone: skipperAssignment?.skipper_phone_snapshot ?? null,
+      licenseRequired: navigationRequirement?.boat_license_required_snapshot
+        ?? licenseByBoatId.get(booking.boat_id)
+        ?? false,
+      customerHasRequiredLicense: navigationRequirement?.customer_has_required_license ?? null,
     });
   }
 

@@ -20,6 +20,7 @@ type BoatOption = {
   id: string;
   name: string;
   passengerLimit: number | null;
+  licenseRequired: boolean;
 };
 
 type CustomerOption = {
@@ -76,6 +77,8 @@ const ERROR_LABELS: Record<string, string> = {
   "skipper-unavailable": "Lo skipper selezionato non è più disponibile.",
   "skipper-name": "Inserisci il nome dello skipper.",
   "skipper-phone": "Il telefono dello skipper deve contenere da 8 a 15 cifre.",
+  "license-answer-required": "Indica se il cliente possiede la patente nautica richiesta.",
+  "skipper-required": "Il cliente non ha la patente richiesta: assegna uno skipper.",
   "save-failed": "Non è stato possibile salvare la prenotazione. Riprova senza duplicare l’invio.",
 };
 
@@ -128,6 +131,7 @@ export function ManualBookingForm({
   );
   const [customerId, setCustomerId] = useState(firstCustomerId);
   const [skipperChoice, setSkipperChoice] = useState("NONE");
+  const [licenseAnswer, setLicenseAnswer] = useState<"" | "YES" | "NO">("");
 
   const selectedBoat = boats.find((boat) => boat.id === boatId);
   const boatOfferings = useMemo(
@@ -140,6 +144,23 @@ export function ManualBookingForm({
     setOfferingId(
       offerings.find((offering) => offering.boatId === nextBoatId)?.id ?? "",
     );
+    setLicenseAnswer("");
+    setSkipperChoice("NONE");
+  }
+
+  const skipperMandatory = selectedBoat?.licenseRequired === true && licenseAnswer === "NO";
+  const navigationIncomplete = selectedBoat?.licenseRequired === true && !licenseAnswer;
+  const skipperIncomplete = skipperMandatory
+    && !skipperChoice.startsWith("EXISTING:")
+    && skipperChoice !== "NEW";
+
+  function changeLicenseAnswer(next: "YES" | "NO") {
+    setLicenseAnswer(next);
+    if (next === "NO" && (skipperChoice === "NONE" || skipperChoice === "UNASSIGNED")) {
+      setSkipperChoice("");
+    } else if (next === "YES" && !skipperChoice) {
+      setSkipperChoice("NONE");
+    }
   }
 
   const error = state.code ? ERROR_LABELS[state.code] ?? ERROR_LABELS["save-failed"] : null;
@@ -148,12 +169,15 @@ export function ManualBookingForm({
     !boatId ||
     !offeringId ||
     locations.length === 0 ||
-    (customerMode === "EXISTING" && !customerId);
+    (customerMode === "EXISTING" && !customerId) ||
+    navigationIncomplete ||
+    skipperIncomplete;
 
   return (
     <form action={formAction} className="space-y-6">
       <input type="hidden" name="operator_id" value={operatorId} />
       <input type="hidden" name="customer_mode" value={customerMode} />
+      <input type="hidden" name="customer_has_required_license" value={licenseAnswer} />
 
       {error ? (
         <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium leading-6 text-rose-800">
@@ -233,16 +257,35 @@ export function ManualBookingForm({
           </div>
         </div>
 
+        {selectedBoat?.licenseRequired ? (
+          <fieldset className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <legend className="px-1 text-sm font-semibold">Il cliente ha la patente nautica? *</legend>
+            <p className="mt-1 text-xs leading-5 text-amber-900">Questa barca richiede la patente. Se il cliente non la possiede, dovrai assegnare uno skipper.</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {(["YES", "NO"] as const).map((value) => (
+                <label key={value} className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border px-3 text-sm font-semibold transition active:scale-[0.98] ${licenseAnswer === value ? "border-[#6D5DFB] bg-white text-[#4C3FC2] ring-2 ring-[#6D5DFB]/15" : "border-amber-200 bg-white/70 text-[#4A4758] hover:border-[#AFA5FF]"}`}>
+                  <input type="radio" className="sr-only" checked={licenseAnswer === value} onChange={() => changeLicenseAnswer(value)} />
+                  {value === "YES" ? "Sì, ce l’ha" : "No, non ce l’ha"}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : (
+          <p className="mt-5 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800">Per questa barca la patente nautica non è richiesta.</p>
+        )}
+
         <div className="mt-5 rounded-2xl border border-[#E2DFEB] bg-[#FAF9FC] p-4">
           <label className="grid gap-2 text-sm font-semibold">
-            Skipper <span className="font-normal text-[#777285]">(facoltativo)</span>
-            <select name="skipper_choice" value={skipperChoice} onChange={(event) => setSkipperChoice(event.target.value)} className={inputClass}>
-              <option value="NONE">Nessuno · non serve</option>
-              <option value="UNASSIGNED">Da assegnare</option>
+            Skipper <span className={`font-normal ${skipperMandatory ? "text-rose-700" : "text-[#777285]"}`}>{skipperMandatory ? "(obbligatorio)" : "(facoltativo)"}</span>
+            <select name="skipper_choice" value={skipperChoice} onChange={(event) => setSkipperChoice(event.target.value)} required={skipperMandatory} className={inputClass}>
+              {skipperMandatory ? <option value="">Seleziona o aggiungi uno skipper</option> : null}
+              {!skipperMandatory ? <option value="NONE">Nessuno · non serve</option> : null}
+              {!skipperMandatory ? <option value="UNASSIGNED">Da assegnare</option> : null}
               {skippers.map((skipper) => <option key={skipper.id} value={`EXISTING:${skipper.id}`}>{skipper.name}{skipper.phone ? ` · ${skipper.phone}` : ""}</option>)}
               <option value="NEW">+ Aggiungi uno skipper</option>
             </select>
           </label>
+          {skipperMandatory ? <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs font-medium leading-5 text-rose-800">Lo skipper deve essere assegnato subito: “da assegnare” non è sufficiente.</p> : null}
           {skipperChoice === "NEW" ? (
             <div className="mt-4 grid gap-4 border-t border-[#E2DFEB] pt-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm font-semibold">Nome skipper *<input name="new_skipper_name" required minLength={2} maxLength={160} className={inputClass} /></label>

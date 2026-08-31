@@ -42,10 +42,25 @@ function rescheduleError(message: string) {
     ["boat_booking_overlap", "boat-overlap"],
     ["boat_occupancies_no_active_overlap", "boat-overlap"],
     ["skipper_booking_overlap", "skipper-overlap"],
+    ["skipper_not_available", "skipper-unavailable"],
+    ["skipper_name_required", "skipper-name"],
+    ["invalid_skipper_phone", "skipper-phone"],
+    ["customer_license_answer_required", "license-answer-required"],
+    ["skipper_required_without_customer_license", "skipper-required"],
     ["booking_reschedule_not_allowed", "not-allowed"],
     ["operator_must_be_active", "operator-inactive"],
   ];
   return mappings.find(([needle]) => message.includes(needle))?.[1] ?? "save-failed";
+}
+
+function skipperInput(formData: FormData) {
+  const choice = text(formData, "skipper_choice");
+  if (choice === "UNASSIGNED") return { mode: "UNASSIGNED", skipperId: null };
+  if (choice === "NEW") return { mode: "NEW", skipperId: null };
+  if (choice.startsWith("EXISTING:")) {
+    return { mode: "EXISTING", skipperId: choice.slice("EXISTING:".length) || null };
+  }
+  return { mode: "NONE", skipperId: null };
 }
 
 export async function rescheduleManualBooking(
@@ -63,6 +78,16 @@ export async function rescheduleManualBooking(
   const total = Number(text(formData, "total").replace(",", "."));
   const operatorNote = text(formData, "operator_note");
   const reason = text(formData, "reason");
+  const licenseAnswer = text(formData, "customer_has_required_license").toUpperCase();
+  const customerHasRequiredLicense = licenseAnswer === "YES"
+    ? true
+    : licenseAnswer === "NO"
+      ? false
+      : null;
+  const skipper = skipperInput(formData);
+  const newSkipperName = text(formData, "new_skipper_name");
+  const newSkipperPhone = text(formData, "new_skipper_phone");
+  const newSkipperNotes = text(formData, "new_skipper_notes");
 
   if (!operatorId || !bookingId || !boatId || !offeringId || !locationId || !startsAtLocal || !endsAtLocal) {
     return { status: "error", code: "missing-fields" };
@@ -74,6 +99,12 @@ export async function rescheduleManualBooking(
   if (!Number.isFinite(total) || total < 0) {
     return { status: "error", code: "invalid-total" };
   }
+  if (skipper.mode === "EXISTING" && !skipper.skipperId) {
+    return { status: "error", code: "skipper-unavailable" };
+  }
+  if (skipper.mode === "NEW" && newSkipperName.length < 2) {
+    return { status: "error", code: "skipper-name" };
+  }
 
   const { supabase, operator } = await requireOperatorWorkspaceContext(operatorId);
   const startsAt = zonedDateTimeToIso(startsAtLocal, operator.timezone);
@@ -82,7 +113,7 @@ export async function rescheduleManualBooking(
     return { status: "error", code: "invalid-window" };
   }
 
-  const { data, error } = await supabase.rpc("operator_reschedule_manual_booking_with_internal_skipper", {
+  const { data, error } = await supabase.rpc("operator_reschedule_manual_booking_with_navigation", {
     p_operator_id: operator.id,
     p_booking_id: bookingId,
     p_boat_id: boatId,
@@ -92,6 +123,12 @@ export async function rescheduleManualBooking(
     p_ends_at: endsAt,
     p_passenger_count: passengerCount,
     p_total_cents: Math.round(total * 100),
+    p_customer_has_required_license: customerHasRequiredLicense,
+    p_skipper_mode: skipper.mode,
+    p_skipper_id: skipper.skipperId,
+    p_new_skipper_name: newSkipperName || null,
+    p_new_skipper_phone: newSkipperPhone || null,
+    p_new_skipper_notes: newSkipperNotes || null,
     p_operator_note: operatorNote || null,
     p_reason: reason,
   });

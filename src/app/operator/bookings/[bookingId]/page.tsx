@@ -79,12 +79,21 @@ export default async function OperatorBookingDetailPage({ params, searchParams }
     "void-failed": "Storno non riuscito. Il registro non è stato modificato.",
   };
 
-  const [{ data: activeBoats }, { data: activeLocations }] = canReschedule
+  const [
+    { data: activeBoats },
+    { data: activeLocations },
+    { data: activeSkippers },
+    { data: currentSkipperAssignment },
+    { data: currentNavigationRequirement },
+  ] = canReschedule
     ? await Promise.all([
-        supabase.from("boats").select("id, name, operator_passenger_limit").eq("operator_id", operator.id).eq("status", "ACTIVE").order("name"),
+        supabase.from("boats").select("id, name, operator_passenger_limit, license_required").eq("operator_id", operator.id).eq("status", "ACTIVE").order("name"),
         supabase.from("operator_locations").select("id, name, city").eq("operator_id", operator.id).eq("is_active", true).order("is_primary", { ascending: false }),
+        supabase.from("operator_internal_skippers").select("id, display_name, phone").eq("operator_id", operator.id).eq("is_active", true).is("removed_at", null).order("display_name"),
+        supabase.from("booking_internal_skipper_assignments").select("assignment_state, skipper_id, skipper_name_snapshot").eq("operator_id", operator.id).eq("booking_id", booking.id).maybeSingle(),
+        supabase.from("booking_navigation_requirements").select("customer_has_required_license").eq("operator_id", operator.id).eq("booking_id", booking.id).maybeSingle(),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: null }, { data: null }];
   const activeBoatIds = (activeBoats ?? []).map((item) => item.id);
   const { data: activeOfferings } = canReschedule && activeBoatIds.length
     ? await supabase.from("boat_legal_offerings").select("id, boat_id, legal_type, skipper_mode").in("boat_id", activeBoatIds).eq("is_active", true)
@@ -244,9 +253,15 @@ export default async function OperatorBookingDetailPage({ params, searchParams }
                 <RescheduleBookingForm
                   operatorId={operator.id}
                   bookingId={booking.id}
-                  boats={(activeBoats ?? []).map((item) => ({ id: item.id, name: item.name, passengerLimit: item.operator_passenger_limit }))}
+                  boats={(activeBoats ?? []).map((item) => ({ id: item.id, name: item.name, passengerLimit: item.operator_passenger_limit, licenseRequired: item.license_required === true }))}
                   offerings={(activeOfferings ?? []).map((item) => ({ id: item.id, boatId: item.boat_id, label: `${item.legal_type} · ${item.skipper_mode}` }))}
                   locations={(activeLocations ?? []).map((item) => ({ id: item.id, label: `${item.name}${item.city ? ` · ${item.city}` : ""}` }))}
+                  skippers={(activeSkippers ?? []).map((item) => ({ id: item.id, name: item.display_name, phone: item.phone }))}
+                  currentSkipper={{
+                    state: currentSkipperAssignment?.assignment_state ?? null,
+                    skipperId: currentSkipperAssignment?.skipper_id ?? null,
+                    name: currentSkipperAssignment?.skipper_name_snapshot ?? null,
+                  }}
                   initial={{
                     boatId: booking.boat_id,
                     offeringId: booking.legal_offering_id,
@@ -256,6 +271,7 @@ export default async function OperatorBookingDetailPage({ params, searchParams }
                     passengerCount: booking.passenger_count,
                     total: ((booking.customer_total_cents_snapshot ?? 0) / 100).toFixed(2).replace(".", ","),
                     operatorNote: booking.operator_note ?? "",
+                    customerHasRequiredLicense: currentNavigationRequirement?.customer_has_required_license ?? null,
                   }}
                 />
               </details>

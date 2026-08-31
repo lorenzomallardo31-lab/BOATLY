@@ -41,7 +41,7 @@ export default async function NewManualBookingPage({ searchParams }: PageProps) 
   ] = await Promise.all([
     supabase
       .from("boats")
-      .select("id, name, status, operator_passenger_limit")
+      .select("id, name, status, operator_passenger_limit, license_required")
       .eq("operator_id", operator.id)
       .eq("status", "ACTIVE")
       .order("name"),
@@ -132,6 +132,7 @@ export default async function NewManualBookingPage({ searchParams }: PageProps) 
                 id: boat.id,
                 name: boat.name,
                 passengerLimit: boat.operator_passenger_limit,
+                licenseRequired: boat.license_required === true,
               }))}
               offerings={(offerings ?? []).map((offering) => ({
                 id: offering.id,

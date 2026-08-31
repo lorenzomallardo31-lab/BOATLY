@@ -34,6 +34,7 @@ export type ScheduleBoat = {
   status: string;
   detail: string;
   passengerLimit: number | null;
+  licenseRequired: boolean;
 };
 
 export type ScheduleItem = {
@@ -69,6 +70,8 @@ export type ScheduleItem = {
   skipperId: string | null;
   skipperName: string | null;
   skipperPhone: string | null;
+  licenseRequired: boolean;
+  customerHasRequiredLicense: boolean | null;
 };
 
 export type InternalSkipperOption = {
@@ -201,6 +204,9 @@ export default function OperatorSchedule({
   canManageFleet,
 }: OperatorScheduleProps) {
   const [selected, setSelected] = useState<SelectedCell | null>(null);
+  const [mobileDayKey, setMobileDayKey] = useState(
+    days.find((day) => day.key === today.key)?.key ?? days[0]?.key ?? today.key,
+  );
 
   const indexedDays = useMemo(
     () => days.some((day) => day.key === today.key) ? days : [...days, today],
@@ -239,6 +245,20 @@ export default function OperatorSchedule({
     ? itemsByCell.get(cellKey(selected.boatId, selected.dayKey)) ?? []
     : [];
   const selectedBoatIsActive = selectedBoat?.status === "ACTIVE";
+  const mobileDay = days.find((day) => day.key === mobileDayKey) ?? days[0] ?? today;
+  const mobileDayCells = boats.map((boat) => ({
+    boat,
+    items: itemsByCell.get(cellKey(boat.id, mobileDay.key)) ?? [],
+  }));
+  const mobileBookedCount = mobileDayCells.filter(({ items: cellItems }) =>
+    cellItems.some((item) => item.kind === "BOOKING"),
+  ).length;
+  const mobileBlockedCount = mobileDayCells.filter(({ items: cellItems }) =>
+    cellItems.length > 0 && cellItems.every((item) => item.kind === "BLOCK"),
+  ).length;
+  const mobileFreeCount = mobileDayCells.filter(({ boat, items: cellItems }) =>
+    boat.status === "ACTIVE" && cellItems.length === 0,
+  ).length;
 
   return (
     <>
@@ -251,7 +271,110 @@ export default function OperatorSchedule({
         timezone={timezone}
         onOpenCell={(boatId) => setSelected({ boatId, dayKey: today.key })}
       />
-      <div className="max-h-[calc(100dvh-13rem)] overflow-auto overscroll-contain lg:max-h-[70vh]">
+
+      <section className="bg-[#F5F4FA] sm:hidden">
+        <div className="border-b border-[#E2DFEB] bg-white px-3 pb-3 pt-2 shadow-[0_8px_20px_-20px_rgba(23,26,43,0.55)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#6D5DFB]">Scegli il giorno</p>
+              <h2 className="mt-0.5 text-sm font-semibold capitalize text-[#171A2B]">{longDateLabel(mobileDay.key)}</h2>
+            </div>
+            {mobileDay.today ? <span className="rounded-full bg-[#EDE9FE] px-2.5 py-1 text-[10px] font-bold text-[#4C3FC2]">OGGI</span> : null}
+          </div>
+
+          <div className="-mx-1 mt-3 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {days.map((day) => {
+              const active = day.key === mobileDay.key;
+              return (
+                <button
+                  key={day.key}
+                  type="button"
+                  onClick={() => setMobileDayKey(day.key)}
+                  aria-pressed={active}
+                  className={`min-w-[58px] snap-start rounded-2xl border px-2 py-2 text-center transition active:scale-95 ${
+                    active
+                      ? "border-[#6D5DFB] bg-[#6D5DFB] text-white shadow-md shadow-[#6D5DFB]/20"
+                      : day.weekend
+                        ? "border-[#DDD8FF] bg-[#F3F1FF] text-[#4C3FC2]"
+                        : "border-[#E2DFEB] bg-white text-[#4A4758]"
+                  }`}
+                >
+                  <span className="block text-[9px] font-bold uppercase">{day.weekday}</span>
+                  <span className="mt-0.5 block text-lg font-semibold leading-none">{day.dayNumber}</span>
+                  <span className="mt-1 block text-[8px] font-bold uppercase opacity-80">{day.month}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-emerald-50 px-2 py-2 text-center"><span className="block text-lg font-semibold leading-none text-emerald-800">{mobileBookedCount}</span><span className="mt-1 block text-[9px] font-bold uppercase text-emerald-700">Prenotate</span></div>
+            <div className="rounded-xl bg-rose-50 px-2 py-2 text-center"><span className="block text-lg font-semibold leading-none text-rose-800">{mobileBlockedCount}</span><span className="mt-1 block text-[9px] font-bold uppercase text-rose-700">Bloccate</span></div>
+            <div className="rounded-xl bg-white px-2 py-2 text-center ring-1 ring-inset ring-[#E2DFEB]"><span className="block text-lg font-semibold leading-none text-[#4A4758]">{mobileFreeCount}</span><span className="mt-1 block text-[9px] font-bold uppercase text-[#777285]">Libere</span></div>
+          </div>
+        </div>
+
+        <div className="space-y-2.5 p-3">
+          {mobileDayCells.map(({ boat, items: cellItems }) => {
+            const active = boat.status === "ACTIVE";
+            const appearance = cellAppearance(cellItems, active);
+            const firstItem = primaryCellItem(cellItems);
+            const booking = cellItems.find((item) => item.kind === "BOOKING") ?? null;
+            const tone = booking
+              ? booking.rawStatus === "IN_PROGRESS"
+                ? "border-emerald-700 bg-emerald-600 text-white"
+                : booking.rawStatus === "COMPLETED"
+                  ? "border-teal-300 bg-teal-50 text-teal-950"
+                  : "border-emerald-300 bg-emerald-50 text-emerald-950"
+              : cellItems.length > 0
+                ? "border-rose-300 bg-rose-50 text-rose-950"
+                : active
+                  ? "border-[#E2DFEB] bg-white text-[#171A2B]"
+                  : "border-[#DDD9E5] bg-[#ECEAF1] text-[#777285]";
+
+            return (
+              <button
+                key={boat.id}
+                type="button"
+                onClick={() => setSelected({ boatId: boat.id, dayKey: mobileDay.key })}
+                className={`w-full rounded-2xl border p-3.5 text-left shadow-sm transition active:scale-[0.985] ${tone}`}
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-base font-semibold">{boat.name}</span>
+                    <span className="mt-0.5 block truncate text-[10px] opacity-70">{boat.detail}</span>
+                  </span>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${booking?.rawStatus === "IN_PROGRESS" ? "bg-white/20 text-white" : "bg-white/80 text-current shadow-sm"}`}>
+                    {appearance.label}
+                  </span>
+                </span>
+
+                {firstItem ? (
+                  <span className="mt-3 block rounded-xl bg-white/55 p-2.5 text-xs">
+                    <span className="flex items-center justify-between gap-3">
+                      <strong className="truncate">{firstItem.kind === "BOOKING" ? firstItem.title : firstItem.notes || firstItem.title}</strong>
+                      {firstItem.kind === "BOOKING" ? <span className="shrink-0 font-semibold">{timeLabel(firstItem.startsAt, timezone)}–{timeLabel(firstItem.endsAt, timezone)}</span> : null}
+                    </span>
+                    {firstItem.kind === "BOOKING" && (firstItem.notes || firstItem.skipperName || firstItem.skipperAssignmentState === "UNASSIGNED") ? (
+                      <span className="mt-1.5 block truncate opacity-75">
+                        {[firstItem.notes, firstItem.skipperName ? `Skipper ${firstItem.skipperName}` : firstItem.skipperAssignmentState === "UNASSIGNED" ? "Skipper da assegnare" : null].filter(Boolean).join(" · ")}
+                      </span>
+                    ) : null}
+                    {cellItems.length > 1 ? <span className="mt-1.5 block font-semibold">+ {cellItems.length - 1} altro elemento</span> : null}
+                  </span>
+                ) : (
+                  <span className="mt-3 flex items-center justify-between text-xs opacity-75">
+                    <span>{active ? "Tocca per prenotare o bloccare" : "Barca non disponibile"}</span>
+                    <span aria-hidden="true" className="text-base">›</span>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="hidden max-h-[calc(100dvh-13rem)] overflow-auto overscroll-contain sm:block lg:max-h-[70vh]">
         <table className="min-w-max border-separate border-spacing-0 text-left">
           <thead>
             <tr>
@@ -426,6 +549,7 @@ export default function OperatorSchedule({
                           operatorId={operatorId}
                           boatId={selectedBoat.id}
                           dayKey={selectedDay.key}
+                          licenseRequired={selectedBoat.licenseRequired}
                           passengerLimit={selectedBoat.passengerLimit}
                           offerings={offerings.filter((offering) => offering.boatId === selectedBoat.id)}
                           skippers={skippers}
@@ -496,6 +620,20 @@ export default function OperatorSchedule({
                           </dd>
                         </div>
                       ) : null}
+                      {item.kind === "BOOKING" ? (
+                        <div>
+                          <dt className="text-xs text-[#777285]">Patente cliente</dt>
+                          <dd className={`mt-0.5 font-semibold ${item.licenseRequired && item.customerHasRequiredLicense === null ? "text-amber-700" : ""}`}>
+                            {!item.licenseRequired
+                              ? "Non richiesta"
+                              : item.customerHasRequiredLicense === true
+                                ? "Sì"
+                                : item.customerHasRequiredLicense === false
+                                  ? "No · skipper obbligatorio"
+                                  : "Da confermare"}
+                          </dd>
+                        </div>
+                      ) : null}
                     </dl>
 
                     {item.notes ? <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm text-[#4A4758]">{item.notes}</p> : null}
@@ -555,6 +693,10 @@ export default function OperatorSchedule({
                                   name: item.skipperName,
                                   phone: item.skipperPhone,
                                 }}
+                                navigation={{
+                                  licenseRequired: item.licenseRequired,
+                                  customerHasRequiredLicense: item.customerHasRequiredLicense,
+                                }}
                               />
                             </div>
                           </details>
@@ -588,9 +730,15 @@ export default function OperatorSchedule({
                               operatorId={operatorId}
                               bookingId={item.bookingId}
                               calendarMode
-                              boats={boats.filter((boat) => boat.status === "ACTIVE").map((boat) => ({ id: boat.id, name: boat.name, passengerLimit: boat.passengerLimit }))}
+                              boats={boats.filter((boat) => boat.status === "ACTIVE").map((boat) => ({ id: boat.id, name: boat.name, passengerLimit: boat.passengerLimit, licenseRequired: boat.licenseRequired }))}
                               offerings={offerings}
                               locations={locations}
+                              skippers={skippers}
+                              currentSkipper={{
+                                state: item.skipperAssignmentState,
+                                skipperId: item.skipperId,
+                                name: item.skipperName,
+                              }}
                               initial={{
                                 boatId: item.boatId,
                                 offeringId: item.legalOfferingId,
@@ -600,6 +748,7 @@ export default function OperatorSchedule({
                                 passengerCount: item.passengers ?? 1,
                                 total: item.total,
                                 operatorNote: item.notes ?? "",
+                                customerHasRequiredLicense: item.customerHasRequiredLicense,
                               }}
                             />
                           </details>
