@@ -18,12 +18,33 @@ function operatorUrl(operatorId: string, parameter: string) {
 function fail(operatorId: string, scope: string, message?: string): never {
   const code = message?.includes("reason")
     ? "reason-required"
-    : message?.includes("last_active_owner")
-      ? "last-owner"
-      : message?.includes("already_exists")
-        ? "duplicate"
-        : "save-failed";
+    : message?.includes("operator_must_be_active")
+      ? "operator-inactive"
+      : message?.includes("admin_membership_conflict")
+        ? "support-conflict"
+        : message?.includes("last_active_owner")
+          ? "last-owner"
+          : message?.includes("already_exists")
+            ? "duplicate"
+            : "save-failed";
   redirect(operatorUrl(operatorId, `error=${code}&scope=${encodeURIComponent(scope)}`));
+}
+
+export async function openOperatorWorkspace(formData: FormData) {
+  const operatorId = text(formData, "operator_id");
+  if (!operatorId) redirect("/admin/operators");
+
+  const { supabase } = await requirePlatformContext();
+  const { error } = await supabase.rpc("admin_start_operator_support", {
+    p_operator_id: operatorId,
+  });
+
+  if (error) fail(operatorId, "support", error.message);
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/operators");
+  revalidatePath("/operator");
+  redirect(`/operator/calendar?operator=${encodeURIComponent(operatorId)}`);
 }
 
 function refreshOperator(operatorId: string) {

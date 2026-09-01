@@ -53,7 +53,7 @@ export default function OperatorNav({ operatorId, operatorName }: OperatorNavPro
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#171A2B] text-white shadow-[0_10px_30px_rgba(23,26,43,0.12)]">
+      <header className="operator-primary-nav sticky top-0 z-40 border-b border-white/10 bg-[#171A2B] text-white shadow-[0_10px_30px_rgba(23,26,43,0.12)]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <Link href={`/operator/calendar${suffix}`} className="min-w-0">
             <span className="flex items-center gap-2 text-lg font-bold tracking-tight">

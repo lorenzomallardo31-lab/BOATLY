@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 import {
   deleteOperatorAccount,
+  openOperatorWorkspace,
   setOperatorMemberStatus,
   setOperatorStatus,
   toggleOperatorSuspension,
@@ -102,13 +103,17 @@ function message(error?: string, scope?: string) {
     duplicate: "Esiste già una sede con questo nome nel workspace.",
     "save-failed": "Operazione non completata. Controlla i dati e riprova.",
     "confirmation-required": "Per eliminare l’account devi scrivere esattamente il nome dell’attività.",
+    "operator-inactive": "Per entrare nel gestionale devi prima confermare o sbloccare l’attività.",
+    "support-conflict": "Il tuo account possiede già un accesso incompatibile a questo gestionale.",
+    "support-exit": "Non è stato possibile chiudere correttamente la modalità assistenza.",
+    "support-expired": "La modalità assistenza è scaduta. Entra nuovamente se devi continuare.",
   };
   return `${labels[error] ?? labels["save-failed"]}${scope ? ` Sezione: ${scope}.` : ""}`;
 }
 
 export default async function AdminOperatorDetailPage({ params, searchParams }: PageProps) {
   const [{ operatorId }, query] = await Promise.all([params, searchParams]);
-  const { supabase, userId } = await requirePlatformContext();
+  const { supabase } = await requirePlatformContext();
   const [
     operatorResult,
     legalResult,
@@ -139,6 +144,7 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
       .from("operator_members")
       .select("user_id, role, status, joined_at")
       .eq("operator_id", operatorId)
+      .is("support_session_id", null)
       .order("role"),
     supabase
       .from("audit_logs")
@@ -159,9 +165,6 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
   const legal = (legalResult.data ?? {}) as LegalProfile;
   const locations = (locationsResult.data ?? []) as LocationRow[];
   const members = (membersResult.data ?? []) as MemberRow[];
-  const canOpenOperatorWorkspace = members.some(
-    (member) => member.user_id === userId && member.status === "ACTIVE",
-  );
   const userIds = members.map((member) => member.user_id);
   const { data: profileData, error: profilesError } = userIds.length
     ? await supabase
@@ -198,14 +201,18 @@ export default async function AdminOperatorDetailPage({ params, searchParams }: 
             <span className={`rounded-full px-3 py-2 text-xs font-bold ring-1 ${statusClasses(operator.status)}`}>
               {statusLabel(operator.status)}
             </span>
-            {canOpenOperatorWorkspace ? (
-              <Link
-                href={`/operator/calendar?operator=${operator.id}`}
-                className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-[#0B1F33]"
-              >
-                Apri gestionale
-              </Link>
-            ) : null}
+            {operator.status === "ACTIVE" ? (
+              <form action={openOperatorWorkspace}>
+                <input type="hidden" name="operator_id" value={operator.id} />
+                <button className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-[#0B1F33] transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0">
+                  Entra nel gestionale
+                </button>
+              </form>
+            ) : (
+              <span className="max-w-52 text-right text-xs text-white/70">
+                Conferma o sblocca l’attività per entrare.
+              </span>
+            )}
           </div>
         </header>
 

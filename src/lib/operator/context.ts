@@ -26,6 +26,7 @@ export type OperatorBoatContext = {
   membership: {
     role: string;
     status: string;
+    supportSessionId: string | null;
   };
   canManage: boolean;
 };
@@ -84,7 +85,7 @@ export async function requireOperatorBoatContext(
     error: membershipError,
   } = await supabase
     .from("operator_members")
-    .select("role, status")
+    .select("role, status, support_session_id")
     .eq("operator_id", boatRow.operator_id)
     .eq("user_id", userId)
     .eq("status", "ACTIVE")
@@ -92,6 +93,22 @@ export async function requireOperatorBoatContext(
 
   if (membershipError || !membership) {
     redirect("/operator/fleet");
+  }
+
+  if (membership.support_session_id) {
+    const { data: supportData, error: supportError } = await supabase.rpc(
+      "admin_current_operator_support",
+    );
+    const activeSupport = Array.isArray(supportData) ? supportData[0] : null;
+
+    if (
+      supportError ||
+      !activeSupport ||
+      activeSupport.session_id !== membership.support_session_id ||
+      activeSupport.operator_id !== boatRow.operator_id
+    ) {
+      redirect(`/admin/operators/${boatRow.operator_id}?error=support-expired&scope=access`);
+    }
   }
 
   const {
@@ -118,7 +135,11 @@ export async function requireOperatorBoatContext(
     userId,
     boat: boatRow,
     operator: operatorRow,
-    membership,
+    membership: {
+      role: membership.role,
+      status: membership.status,
+      supportSessionId: membership.support_session_id,
+    },
     canManage,
   };
 }

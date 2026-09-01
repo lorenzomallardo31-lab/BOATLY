@@ -15,6 +15,7 @@ export type OperatorWorkspaceContext = {
   membership: {
     role: string;
     status: string;
+    supportSessionId: string | null;
   };
 };
 
@@ -35,7 +36,7 @@ export async function requireOperatorWorkspaceContext(
   const userId = claimsData.claims.sub;
   const { data: memberships, error: membershipsError } = await supabase
     .from("operator_members")
-    .select("operator_id, role, status")
+    .select("operator_id, role, status, support_session_id")
     .eq("user_id", userId)
     .eq("status", "ACTIVE");
 
@@ -49,6 +50,22 @@ export async function requireOperatorWorkspaceContext(
 
   if (!selectedMembership) {
     redirect("/operator/calendar");
+  }
+
+  if (selectedMembership.support_session_id) {
+    const { data: supportData, error: supportError } = await supabase.rpc(
+      "admin_current_operator_support",
+    );
+    const activeSupport = Array.isArray(supportData) ? supportData[0] : null;
+
+    if (
+      supportError ||
+      !activeSupport ||
+      activeSupport.session_id !== selectedMembership.support_session_id ||
+      activeSupport.operator_id !== selectedMembership.operator_id
+    ) {
+      redirect(`/admin/operators/${selectedMembership.operator_id}?error=support-expired&scope=access`);
+    }
   }
 
   const { data: operator, error: operatorError } = await supabase
@@ -73,6 +90,7 @@ export async function requireOperatorWorkspaceContext(
     membership: {
       role: selectedMembership.role,
       status: selectedMembership.status,
+      supportSessionId: selectedMembership.support_session_id,
     },
   };
 }
